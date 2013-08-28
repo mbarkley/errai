@@ -16,7 +16,6 @@ public class MessageReplyCallbackTest extends AbstractErraiTest {
   private static final int TIMEOUT = 20000;
   private static final int POLL = 500;
 
-  private Object messageValue;
   private MessageBus bus = ErraiBus.get();
   private boolean received;
   private MessageCallback callback = new MessageCallback() {
@@ -30,19 +29,6 @@ public class MessageReplyCallbackTest extends AbstractErraiTest {
   public String getModuleName() {
     return "org.jboss.errai.bus.MessageReplyCallbackTests";
   }
-  
-  public MessageReplyCallbackTest() {
-    bus.subscribe("ReplyTestService", new MessageCallback() {
-      @Override
-      public void callback(Message message) {
-        reply(message);
-      }
-    });
-  }
-  
-  private void reply(Message message) {
-    MessageBuilder.createConversation(message).subjectProvided().done().sendNowWith(ErraiBus.get());
-  }
 
   @Override
   protected void gwtSetUp() throws Exception {
@@ -54,17 +40,7 @@ public class MessageReplyCallbackTest extends AbstractErraiTest {
     runAndWait(new Runnable() {
       @Override
       public void run() {
-        MessageBuilder.createMessage().toSubject("ReplyTestService").withValue(messageValue).done().repliesTo(callback)
-                .sendNowWith(bus);
-      }
-    });
-  }
-  
-  public void testSendViaDefaultMessageBuilderAgain() throws Exception {
-    runAndWait(new Runnable() {
-      @Override
-      public void run() {
-        MessageBuilder.createMessage().toSubject("ReplyTestService").withValue(messageValue).done().repliesTo(callback)
+        MessageBuilder.createMessage().toSubject("ReplyCallbackTestService").done().repliesTo(callback)
                 .sendNowWith(bus);
       }
     });
@@ -74,7 +50,7 @@ public class MessageReplyCallbackTest extends AbstractErraiTest {
     runAndWait(new Runnable() {
       @Override
       public void run() {
-        Message message = MessageBuilder.createMessage().toSubject("ReplyTestService").withValue(messageValue).done()
+        Message message = MessageBuilder.createMessage().toSubject("ReplyCallbackTestService").done()
                 .repliesTo(callback).getMessage();
         message.sendNowWith(bus);
       }
