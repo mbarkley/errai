@@ -45,6 +45,7 @@ import org.jboss.errai.common.client.util.TimeUnit;
  * Part of the implementation of the fluent API whose entry point is {@link MessageBuilder}.
  *
  * @author Mike Brock
+ * @author Max Barkley <mbarkley@redhat.com>
  */
 @SuppressWarnings({"ConstantConditions", "unchecked"})
 class DefaultMessageBuilder<R extends Sendable> {
