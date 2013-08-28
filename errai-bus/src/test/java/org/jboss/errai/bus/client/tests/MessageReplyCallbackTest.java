@@ -57,10 +57,32 @@ public class MessageReplyCallbackTest extends AbstractErraiTest {
     });
   }
 
+  public void testReuseMessage() {
+    final Message message = MessageBuilder.createMessage("ReplyCallbackTestService").done().repliesTo(callback)
+            .getMessage();
+    runAndWaitAndThen(new Runnable() {
+      @Override
+      public void run() {
+        message.sendNowWith(bus);
+      }
+    }, new Runnable() {
+      @Override
+      public void run() {
+        received = false;
+        message.sendNowWith(bus);
+      }
+      
+    });
+  }
+  
   private void runAndWait(Runnable test) {
+    runAndWaitAndThen(test, null);
+  }
+
+  private void runAndWaitAndThen(Runnable first, final Runnable second) {
     delayTestFinish(TIMEOUT + 2 * POLL);
     final long start = System.currentTimeMillis();
-    test.run();
+    first.run();
     new Timer() {
       @Override
       public void run() {
@@ -70,7 +92,12 @@ public class MessageReplyCallbackTest extends AbstractErraiTest {
         }
         else if (received) {
           cancel();
-          finishTest();
+          if (second != null) {
+            runAndWaitAndThen(second, null);
+          }
+          else {
+            finishTest();
+          }
         }
       }
     }.scheduleRepeating(POLL);

@@ -336,7 +336,7 @@ public class CommandMessage implements Message {
 
   @Override
   public void sendNowWith(final MessageBus viaThis) {
-    if (ConversationHelper.hasConversationCallback(this) && !hasPart(MessageParts.ReplyTo)) {
+    if (ConversationHelper.hasConversationCallback(this)) {
       ConversationHelper.createConversationService(viaThis, this);
     }
     viaThis.send(this);
