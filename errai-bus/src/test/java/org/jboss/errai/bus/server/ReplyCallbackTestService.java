@@ -13,9 +13,10 @@ public class ReplyCallbackTestService implements MessageCallback {
 
   @Inject
   MessageBus bus;
-  
+
   @Override
   public void callback(Message message) {
-    MessageBuilder.createConversation(message).subjectProvided().done().sendNowWith(bus);
+    MessageBuilder.createConversation(message).subjectProvided().done().repliesToSubject("ReplyCallbackTestService")
+            .sendNowWith(bus);
   }
 }

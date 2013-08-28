@@ -71,10 +71,73 @@ public class MessageReplyCallbackTest extends AbstractErraiTest {
         received = false;
         message.sendNowWith(bus);
       }
-      
+
+    });
+  }
+
+  /*
+   * This test in a nut shell: 
+   *    - send message to ReplyCallbackTestService and wait for first reply 
+   *    - send second message to ReplyCallbackTestService by building conversation
+   *    - test that this conversation was repliable by waiting for second reply from ReplyCallbackTestService
+   */
+  public void testReplyToConversationViaMessage() {
+    delayTestFinish(TIMEOUT);
+    MessageBuilder.createMessage("ReplyCallbackTestService").done().repliesTo(new MessageCallback() {
+      @Override
+      public void callback(Message message) {
+        final Message m = message;
+        runAndWait(new Runnable() {
+          @Override
+          public void run() {
+            MessageBuilder.createConversation(m).subjectProvided().done().repliesTo(callback).getMessage()
+                    .sendNowWith(bus);
+          }
+        });
+      }
+    }).sendNowWith(bus);
+  }
+  
+  /*
+   * This test in a nut shell: 
+   *    - send message to ReplyCallbackTestService and wait for first reply 
+   *    - send second message to ReplyCallbackTestService by building conversation
+   *    - test that this conversation was repliable by waiting for second reply from ReplyCallbackTestService
+   */
+  public void testReplyToConversationViaDefaultBuilder() {
+    delayTestFinish(TIMEOUT);
+    MessageBuilder.createMessage("ReplyCallbackTestService").done().repliesTo(new MessageCallback() {
+      @Override
+      public void callback(Message message) {
+        final Message m = message;
+        runAndWait(new Runnable() {
+          @Override
+          public void run() {
+            MessageBuilder.createConversation(m).subjectProvided().done().repliesTo(callback).sendNowWith(bus);
+          }
+        });
+      }
+    }).sendNowWith(bus);
+  }
+  
+  public void testSendGlobalViaDefaultBuilder() {
+    runAndWait(new Runnable() {
+      @Override
+      public void run() {
+        MessageBuilder.createMessage("ReplyCallbackTestService").done().repliesTo(callback).sendGlobalWith(bus);
+      }
     });
   }
   
+  public void testSendNoListenersViaDefaultBuilder() {
+    runAndWait(new Runnable() {
+      @Override
+      public void run() {
+        MessageBuilder.createMessage("ReplyCallbackTestService").done().repliesTo(callback).sendNowWith(bus, false);
+      }
+    });
+  }
+
   private void runAndWait(Runnable test) {
     runAndWaitAndThen(test, null);
   }
