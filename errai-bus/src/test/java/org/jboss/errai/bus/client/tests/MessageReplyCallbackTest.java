@@ -13,7 +13,7 @@ import com.google.gwt.user.client.Timer;
  */
 public class MessageReplyCallbackTest extends AbstractErraiTest {
 
-  private static final int TIMEOUT = 20000;
+  private static final int TIMEOUT = 60000;
   private static final int POLL = 500;
 
   private MessageBus bus = ErraiBus.get();
