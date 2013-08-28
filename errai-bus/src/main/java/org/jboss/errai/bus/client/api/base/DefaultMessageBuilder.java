@@ -86,6 +86,7 @@ class DefaultMessageBuilder<R extends Sendable> {
 
       @Override
       public void sendNowWith(final MessageBus viaThis, final boolean fireMessageListener) {
+        if (reply) createConversationService(viaThis, message);
         viaThis.send(message, false);
       }
 
@@ -96,6 +97,8 @@ class DefaultMessageBuilder<R extends Sendable> {
 
       @Override
       public void sendGlobalWith(final MessageBus viaThis) {
+        if (reply) createConversationService(viaThis, message);
+
         viaThis.sendGlobal(message);
       }
 
