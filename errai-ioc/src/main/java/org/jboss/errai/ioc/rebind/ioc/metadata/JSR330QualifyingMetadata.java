@@ -72,8 +72,6 @@ public class JSR330QualifyingMetadata implements QualifyingMetadata {
 
       return ((to.size() == 1
           && to.contains(BuiltInQualifiers.ANY_INSTANCE))
-          || from.size() == 1
-          && from.contains(BuiltInQualifiers.ANY_INSTANCE)
           || doQualifiersMatch(from, to));
     }
     else return metadata == null;
