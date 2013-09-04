@@ -12,6 +12,8 @@ import org.jboss.errai.ioc.rebind.ioc.metadata.QualifyingMetadata;
 
 import java.util.Map;
 
+import javax.enterprise.inject.Any;
+
 /**
  * Defines an injector which is responsible for providing instance references of beans to the code generating
  * container.
@@ -201,7 +203,8 @@ public interface Injector {
    *     the parameterized type to compare against.
    * @param qualifyingMetadata
    *     the qualifying metadata to compare against
-   * @param anyWildcard TODO
+   * @param anyWildcard
+   *     if true, this method will match as long as this object contains ONLY the single qualifier {@link Any}
    * @return true if matches.
    */
   boolean matches(MetaParameterizedType parameterizedType, QualifyingMetadata qualifyingMetadata, boolean anyWildcard);
