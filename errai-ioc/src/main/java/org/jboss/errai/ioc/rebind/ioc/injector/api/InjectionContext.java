@@ -165,7 +165,7 @@ public class InjectionContext {
 
     if (injectors != null) {
       for (final Injector inj : injectors) {
-        if (inj.matches(type.getParameterizedType(), metadata)) {
+        if (inj.matches(type.getParameterizedType(), metadata, true)) {
           matching.add(inj);
         }
       }
@@ -193,7 +193,7 @@ public class InjectionContext {
 
     if (injectors != null) {
       for (final Injector inj : injectors) {
-        if (inj.matches(type.getParameterizedType(), metadata)) {
+        if (inj.matches(type.getParameterizedType(), metadata, false)) {
 
           if (!inj.isEnabled()) {
             if (inj.isSoftDisabled()) {
@@ -224,9 +224,31 @@ public class InjectionContext {
     }
 
     if (matching.isEmpty()) {
-      throw new InjectionFailure(erased);
+      // try again, but with wildcard
+      if (injectors != null) {
+        for (final Injector inj : injectors) {
+          if (inj.matches(type.getParameterizedType(), metadata, true)) {
+
+            if (!inj.isEnabled()) {
+              if (inj.isSoftDisabled()) {
+                inj.setEnabled(true);
+              }
+              else {
+                continue;
+              }
+            }
+
+            matching.add(inj);
+            if (inj.isAlternative()) {
+              alternativeBeans = true;
+            }
+          }
+        }
+      }
+      if (matching.isEmpty())
+        throw new InjectionFailure(erased);
     }
-    else if (matching.size() > 1) {
+    if (matching.size() > 1) {
       if (alternativeBeans) {
         final Iterator<Injector> matchIterator = matching.iterator();
         while (matchIterator.hasNext()) {
@@ -325,7 +347,7 @@ public class InjectionContext {
       final Collection<Injector> collection = proxiedInjectors.get(injectorType.getErased());
       final Iterator<Injector> iterator = collection.iterator();
       while (iterator.hasNext()) {
-        if (iterator.next().matches(injectorType.getParameterizedType(), qualifyingMetadata)) {
+        if (iterator.next().matches(injectorType.getParameterizedType(), qualifyingMetadata, true)) {
           iterator.remove();
         }
       }
@@ -340,7 +362,7 @@ public class InjectionContext {
 
     if (proxiedInjectors.containsKey(injectorType.getErased())) {
       for (final Injector inj : proxiedInjectors.get(injectorType.getErased())) {
-        if (inj.isEnabled() && inj.matches(injectorType.getParameterizedType(), qualifyingMetadata)) {
+        if (inj.isEnabled() && inj.matches(injectorType.getParameterizedType(), qualifyingMetadata, true)) {
           return true;
         }
       }
@@ -353,7 +375,7 @@ public class InjectionContext {
 
     if (injectors.containsKey(injectorType.getErased())) {
       for (final Injector inj : injectors.get(injectorType.getErased())) {
-        if (inj.isEnabled() && inj.matches(injectorType.getParameterizedType(), qualifyingMetadata)) {
+        if (inj.isEnabled() && inj.matches(injectorType.getParameterizedType(), qualifyingMetadata, true)) {
           return true;
         }
       }
@@ -366,7 +388,7 @@ public class InjectionContext {
 
     if (injectors.containsKey(injectorType.getErased())) {
       for (final Injector inj : injectors.get(injectorType.getErased())) {
-        if (inj.isEnabled() && inj.matches(injectorType.getParameterizedType(), qualifyingMetadata)) {
+        if (inj.isEnabled() && inj.matches(injectorType.getParameterizedType(), qualifyingMetadata, true)) {
           return inj.isRendered();
         }
       }

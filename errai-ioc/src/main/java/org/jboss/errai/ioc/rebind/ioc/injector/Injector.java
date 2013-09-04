@@ -201,10 +201,10 @@ public interface Injector {
    *     the parameterized type to compare against.
    * @param qualifyingMetadata
    *     the qualifying metadata to compare against
-   *
+   * @param anyWildcard TODO
    * @return true if matches.
    */
-  boolean matches(MetaParameterizedType parameterizedType, QualifyingMetadata qualifyingMetadata);
+  boolean matches(MetaParameterizedType parameterizedType, QualifyingMetadata qualifyingMetadata, boolean anyWildcard);
 
   /**
    * Returns the QualifyingMetadata associated with this injector.

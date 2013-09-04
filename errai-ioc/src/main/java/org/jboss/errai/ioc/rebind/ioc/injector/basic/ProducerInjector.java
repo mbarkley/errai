@@ -212,7 +212,7 @@ public class ProducerInjector extends AbstractInjector {
       if (parameters[0].isAnnotationPresent(Disposes.class)
           && parameters[0].getType().isAssignableFrom(injectedType)
           && ctx.getQualifyingMetadataFactory().createFrom(parameters[0].getAnnotations())
-          .doesSatisfy(getQualifyingMetadata())) {
+          .doesSatisfy(getQualifyingMetadata(), true)) {
         return method;
       }
     }

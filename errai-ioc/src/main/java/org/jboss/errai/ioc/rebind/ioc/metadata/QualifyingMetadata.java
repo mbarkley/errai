@@ -24,7 +24,7 @@ import java.lang.annotation.Annotation;
  * @author Mike Brock
  */
 public interface QualifyingMetadata {
-  public boolean doesSatisfy(QualifyingMetadata metadata);
+  public boolean doesSatisfy(QualifyingMetadata metadata, boolean anyWildcard);
   
   public Statement render();
   

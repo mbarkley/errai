@@ -60,7 +60,7 @@ public class JSR330QualifyingMetadata implements QualifyingMetadata {
   }
 
   @Override
-  public boolean doesSatisfy(final QualifyingMetadata metadata) {
+  public boolean doesSatisfy(final QualifyingMetadata metadata, boolean anyWildcard) {
     if (metadata instanceof JSR330QualifyingMetadata) {
       final JSR330QualifyingMetadata comparable = (JSR330QualifyingMetadata) metadata;
 
@@ -72,6 +72,7 @@ public class JSR330QualifyingMetadata implements QualifyingMetadata {
 
       return ((to.size() == 1
           && to.contains(BuiltInQualifiers.ANY_INSTANCE))
+          || anyWildcard && from.size() == 1 && from.contains(BuiltInQualifiers.ANY_INSTANCE)
           || doQualifiersMatch(from, to));
     }
     else return metadata == null;

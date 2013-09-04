@@ -173,14 +173,15 @@ public abstract class AbstractInjector implements Injector {
   }
 
   @Override
-  public boolean matches(final MetaParameterizedType parameterizedType, final QualifyingMetadata qualifyingMetadata) {
+  public boolean matches(final MetaParameterizedType parameterizedType, final QualifyingMetadata qualifyingMetadata,
+          boolean anyWildcard) {
     boolean parmTypesSatisfied = true;
     if (parameterizedType != null) {
       parmTypesSatisfied = parameterizedType.isAssignableFrom(getQualifyingTypeInformation());
     }
 
     final boolean metaDataSatisfied = getQualifyingMetadata() == null
-        || getQualifyingMetadata().doesSatisfy(qualifyingMetadata);
+        || getQualifyingMetadata().doesSatisfy(qualifyingMetadata, anyWildcard);
 
     return parmTypesSatisfied && metaDataSatisfied;
   }
