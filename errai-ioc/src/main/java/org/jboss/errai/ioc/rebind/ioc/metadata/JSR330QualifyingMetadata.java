@@ -17,6 +17,8 @@
 package org.jboss.errai.ioc.rebind.ioc.metadata;
 
 import java.lang.annotation.Annotation;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -69,6 +71,7 @@ public class JSR330QualifyingMetadata implements QualifyingMetadata {
 
       final Set<Annotation> to = new HashSet<Annotation>();
       addAllExceptDefault(to, comparable.qualifiers);
+      removeNonTypeTargettedQualifiers(to);
 
       return ((to.size() == 1
           && to.contains(BuiltInQualifiers.ANY_INSTANCE))
@@ -83,6 +86,26 @@ public class JSR330QualifyingMetadata implements QualifyingMetadata {
         addTo.add(a);
       }
     }
+  }
+  
+  private static void removeNonTypeTargettedQualifiers(final Set<Annotation> to) {
+    Set<Annotation> toRemove = new HashSet<Annotation>();
+    for (Annotation a : to) {
+      Target target = a.annotationType().getAnnotation(Target.class);
+      if (target != null) {
+        boolean isValid = false;
+        for (int i = 0; i < target.value().length; i++) {
+          if (target.value()[i].equals(ElementType.TYPE)) {
+            isValid = true;
+            break;
+          }
+        }
+        if (!isValid) {
+          toRemove.add(a);
+        }
+      }
+    }
+    to.removeAll(toRemove);
   }
 
   private static boolean doQualifiersMatch(final Set<Annotation> from, final Set<Annotation> to) {
