@@ -347,11 +347,17 @@ public class InjectableInstance<T extends Annotation> extends InjectionPoint<T> 
   public Injector getTargetInjector() {
     final MetaClass targetType = getInjector() == null ? getEnclosingType() : getInjector().getInjectedType();
 
-    if (isProxy()) {
-      return injectionContext.getProxiedInjector(targetType, getQualifyingMetadata());
-    }
-    else {
-      return injectionContext.getQualifiedInjector(targetType, getQualifyingMetadata());
+    switch(taskType) {
+    case PrivateMethod:
+    case Method:
+      return injectionContext.getInjector(targetType);
+    default:
+      if (isProxy()) {
+        return injectionContext.getProxiedInjector(targetType, getQualifyingMetadata());
+      }
+      else {
+        return injectionContext.getQualifiedInjector(targetType, getQualifyingMetadata());
+      }
     }
   }
 
