@@ -350,6 +350,8 @@ public class InjectableInstance<T extends Annotation> extends InjectionPoint<T> 
     switch(taskType) {
     case PrivateMethod:
     case Method:
+    case Field:
+    case PrivateField:
       return injectionContext.getInjector(targetType);
     default:
       if (isProxy()) {
