@@ -32,11 +32,14 @@ import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
+import org.jboss.errai.ioc.client.api.qualifiers.BuiltInQualifiers;
 import org.jboss.errai.ioc.client.container.RefHolder;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
+import org.jboss.errai.ioc.rebind.ioc.exception.InjectionFailure;
 import org.jboss.errai.ioc.rebind.ioc.injector.AsyncInjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.Injector;
+import org.jboss.errai.ioc.rebind.ioc.metadata.JSR330QualifyingMetadata;
 
 public class InjectableInstance<T extends Annotation> extends InjectionPoint<T> {
   private static final String TRANSIENT_DATA_KEY = "InjectableInstance::TransientData";
@@ -352,7 +355,12 @@ public class InjectableInstance<T extends Annotation> extends InjectionPoint<T> 
     case Method:
     case Field:
     case PrivateField:
-      return injectionContext.getInjector(targetType);
+      try {
+        return injectionContext.getProxiedInjector(targetType, JSR330QualifyingMetadata.createFromAnnotations(new Annotation[] {BuiltInQualifiers.ANY_INSTANCE}));
+      }
+      catch (InjectionFailure ex) {
+        return injectionContext.getInjector(targetType);
+      }
     default:
       if (isProxy()) {
         return injectionContext.getProxiedInjector(targetType, getQualifyingMetadata());
