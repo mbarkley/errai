@@ -34,16 +34,13 @@ import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.common.client.api.Assert;
-import org.jboss.errai.ioc.client.api.qualifiers.BuiltInQualifiers;
 import org.jboss.errai.ioc.client.container.ProxyResolver;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.AbstractInjector;
 import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
-import org.jboss.errai.ioc.rebind.ioc.metadata.JSR330QualifyingMetadata;
 import org.jboss.errai.ioc.rebind.ioc.metadata.QualifyingMetadata;
 
-import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -66,7 +63,7 @@ public class ProxyInjector extends AbstractInjector {
 
     this.proxiedType = proxiedType;
     this.varName = InjectUtil.getNewInjectorName() + "_proxy";
-    this.qualifyingMetadata = getMetadataWithAny(metadata);
+    this.qualifyingMetadata = AbstractInjector.getMetadataWithAny(metadata);
     final String proxyClassName = proxiedType.getName() + "_" + varName;
 
     this.closeStatements = new ArrayList<Statement>();
@@ -77,18 +74,6 @@ public class ProxyInjector extends AbstractInjector {
 
     context.getBootstrapClass()
             .addInnerClass(new InnerClass(proxyClass));
-  }
-
-  private static QualifyingMetadata getMetadataWithAny(QualifyingMetadata metadata) {
-    Annotation[] qualifiers = new Annotation[metadata.getQualifiers().length+1];
-    
-    for (int i = 0; i < metadata.getQualifiers().length; i++) {
-      qualifiers[i] = metadata.getQualifiers()[i];
-    }
-    
-    qualifiers[qualifiers.length-1] = BuiltInQualifiers.ANY_INSTANCE;
-    
-    return JSR330QualifyingMetadata.createFromAnnotations(qualifiers);
   }
 
   @Override
