@@ -85,9 +85,20 @@ public class JSR330QualifyingMetadata implements QualifyingMetadata {
   }
   
   private static void addQualifiersForSource(final Set<Annotation> addTo, final Set<Annotation> from) {
+    boolean hasNew = false, hasAny = false;
+    
     for (Annotation a : from) {
-      if (!a.annotationType().equals(New.class))
-        addTo.add(a);
+      if (a.annotationType().equals(New.class)) {
+        hasNew = true;
+        continue;
+      }
+      else if (a.annotationType().equals(Any.class))
+        hasAny = true;
+      addTo.add(a);
+    }
+    
+    if (!hasAny && !hasNew) {
+      addTo.add(BuiltInQualifiers.ANY_INSTANCE);
     }
   }
 
