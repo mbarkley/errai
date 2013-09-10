@@ -101,19 +101,6 @@ public class JSR330QualifyingMetadata implements QualifyingMetadata {
       addTo.add(BuiltInQualifiers.ANY_INSTANCE);
     }
   }
-  
-  private static void addAllExcept(final Set<Annotation> addTo, final Set<Annotation> from,
-          final Class<? extends Annotation> type) {
-    for (Annotation a : from) {
-      if (!a.annotationType().equals(type)) {
-        addTo.add(a);
-      }
-    }
-  }
-  
-  private static void addAllExceptDefault(final Set<Annotation> addTo, final Set<Annotation> from) {
-    addAllExcept(addTo, from, Default.class);
-  }
 
   private static boolean doQualifiersMatch(final Set<Annotation> from, final Set<Annotation> to) {
     final Map<String, Annotation> fromAnnos = new HashMap<String, Annotation>();
