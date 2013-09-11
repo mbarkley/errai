@@ -227,5 +227,14 @@ public class JSR330QualifyingMetadata implements QualifyingMetadata {
       return false;
     return true;
   }
+
+  @Override
+  public QualifyingMetadata filter(Annotation annotation) {
+    Set<Annotation> retVal = new HashSet<Annotation>(qualifiers.size() - 1);
+    retVal.addAll(qualifiers);
+    retVal.remove(BuiltInQualifiers.ANY_INSTANCE);
+    
+    return new JSR330QualifyingMetadata(retVal);
+  }
   
 }

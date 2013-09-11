@@ -294,7 +294,7 @@ public class InjectableInstance<T extends Annotation> extends InjectionPoint<T> 
     final Statement val;
 
     if (getTargetInjector().getInjectedType().equals(getEnclosingType()) &&
-        getTargetInjector().getQualifyingMetadata().equals(getQualifyingMetadata()) &&
+        getTargetInjector().getQualifyingMetadata().filter(BuiltInQualifiers.ANY_INSTANCE).equals(getQualifyingMetadata()) &&
         getInjector() != null) {
 
       val = Refs.get(getInjector().getInstanceVarName());
