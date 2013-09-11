@@ -563,6 +563,9 @@ public abstract class AbstractInjector implements Injector {
   }
 
   public static QualifyingMetadata getMetadataWithAny(QualifyingMetadata metadata) {
+    if (metadata == null)
+      return JSR330QualifyingMetadata.createFromAnnotations(new Annotation[] {BuiltInQualifiers.ANY_INSTANCE});
+    
     Annotation[] qualifiers = new Annotation[metadata.getQualifiers().length+1];
     
     for (int i = 0; i < metadata.getQualifiers().length; i++) {
