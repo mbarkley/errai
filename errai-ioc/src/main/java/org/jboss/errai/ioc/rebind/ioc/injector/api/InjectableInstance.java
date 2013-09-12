@@ -294,6 +294,7 @@ public class InjectableInstance<T extends Annotation> extends InjectionPoint<T> 
     final Statement val;
 
     if (getTargetInjector().getInjectedType().equals(getEnclosingType()) &&
+        // @Any is only implicitly added to injection SOURCES, so we must filter it out to do an exact comparison
         getTargetInjector().getQualifyingMetadata().filter(BuiltInQualifiers.ANY_INSTANCE).equals(getQualifyingMetadata()) &&
         getInjector() != null) {
 
@@ -355,7 +356,11 @@ public class InjectableInstance<T extends Annotation> extends InjectionPoint<T> 
     case Method:
     case Field:
     case PrivateField:
+      // injectors for method and field producers are still registered by their enclosing class
+      // so we must be sure to match against the qualifiers for that class
       try {
+        // isProxy() does not compare against the right qualifiers, so instead
+        // just try to return a proxied injector and see if that works
         return injectionContext.getProxiedInjector(targetType,
                 JSR330QualifyingMetadata.createFromAnnotations(targetType.getAnnotations()));
       }
