@@ -356,7 +356,8 @@ public class InjectableInstance<T extends Annotation> extends InjectionPoint<T> 
     case Field:
     case PrivateField:
       try {
-        return injectionContext.getProxiedInjector(targetType, JSR330QualifyingMetadata.createFromAnnotations(new Annotation[] {BuiltInQualifiers.ANY_INSTANCE}));
+        return injectionContext.getProxiedInjector(targetType,
+                JSR330QualifyingMetadata.createFromAnnotations(targetType.getAnnotations()));
       }
       catch (InjectionFailure ex) {
         return injectionContext.getInjector(targetType);
