@@ -4,13 +4,14 @@ import org.jboss.errai.enterprise.client.cdi.AbstractErraiCDITest;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ui.client.local.spi.TranslationService;
 import org.jboss.errai.ui.test.i18n.client.res.I18nAppScopeTestApp;
+import org.jboss.errai.ui.test.i18n.client.res.I18nDepInDepScopeTestApp;
 import org.jboss.errai.ui.test.i18n.client.res.I18nDepScopeTestApp;
 import org.junit.Test;
 
 /**
  * @author Max Barkley <mbarkley@redhat.com>
  */
-public class I18nApplicationScopedTest extends AbstractErraiCDITest {
+public class I18nScopeTest extends AbstractErraiCDITest {
 
   @Override
   public String getModuleName() {
@@ -20,7 +21,7 @@ public class I18nApplicationScopedTest extends AbstractErraiCDITest {
   @Override
   protected void gwtSetUp() throws Exception {
     super.gwtSetUp();
-    TranslationService.setCurrentLocale("en_US");
+    TranslationService.setCurrentLocale("en_us");
   }
 
   /**
@@ -28,13 +29,13 @@ public class I18nApplicationScopedTest extends AbstractErraiCDITest {
    */
   @Test
   public void testDepScopeInAppScope() throws Exception {
-    assertEquals("en_US", TranslationService.currentLocale());
+    assertEquals("en_us", TranslationService.currentLocale());
     
     I18nAppScopeTestApp app1 = IOC.getBeanManager().lookupBean(I18nAppScopeTestApp.class).getInstance();
     
     assertEquals("Failed to load default text", "hello", app1.getWidget().getInlineLabelText());
     
-    TranslationService.setCurrentLocale("fr_FR");
+    TranslationService.setCurrentLocale("fr_fr");
     
     assertEquals("Failed to translate application scoped widget", "bonjour", app1.getWidget().getInlineLabelText());
   }
@@ -44,15 +45,43 @@ public class I18nApplicationScopedTest extends AbstractErraiCDITest {
    */
   @Test
   public void testAppScopeInDepScope() throws Exception {
-    assertEquals("en_US", TranslationService.currentLocale());
+    assertEquals("en_us", TranslationService.currentLocale());
 
     I18nDepScopeTestApp app1 = IOC.getBeanManager().lookupBean(I18nDepScopeTestApp.class).getInstance();
 
     assertEquals("Failed to load default text", "hello", app1.getWidget().getInlineLabelText());
     
-    TranslationService.setCurrentLocale("fr_FR");
+    TranslationService.setCurrentLocale("fr_fr");
     
     assertEquals("Failed to translate application scoped widget", "bonjour", app1.getWidget().getInlineLabelText());
+  }
+  
+  @Test
+  public void testDepScopeTest() throws Exception {
+    assertEquals("en_us", TranslationService.currentLocale());
+    
+    I18nDepInDepScopeTestApp app1 = IOC.getBeanManager().lookupBean(I18nDepInDepScopeTestApp.class).getInstance();
+    
+    assertEquals("Failed to load default text", "hello", app1.getWidget().getInlineLabelText());
+    
+    TranslationService.setCurrentLocale("fr_fr");
+    
+    assertEquals("Failed to translate depdendent scoped widget", "bonjour", app1.getWidget().getInlineLabelText());
+  }
+  
+  @Test
+  public void testDepScopeTestReplacement() throws Exception {
+    assertEquals("en_us", TranslationService.currentLocale());
+    
+    I18nDepInDepScopeTestApp app1 = IOC.getBeanManager().lookupBean(I18nDepInDepScopeTestApp.class).getInstance();
+    
+    assertEquals("Failed to load default text", "hello", app1.getWidget().getInlineLabelText());
+    
+    TranslationService.setCurrentLocale("fr_fr");
+    
+    I18nDepInDepScopeTestApp app2 = IOC.getBeanManager().lookupBean(I18nDepInDepScopeTestApp.class).getInstance();
+    
+    assertEquals("Failed to translate depdendent scoped widget", "bonjour", app2.getWidget().getInlineLabelText());
   }
 
 }
