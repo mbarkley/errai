@@ -52,9 +52,7 @@ public class I18nApplicationScopedTest extends AbstractErraiCDITest {
     
     TranslationService.setCurrentLocale("fr_FR");
     
-    I18nDepScopeTestApp app2 = IOC.getBeanManager().lookupBean(I18nDepScopeTestApp.class).getInstance();
-
-    assertEquals("Failed to translate application scoped widget", "bonjour", app2.getWidget().getInlineLabelText());
+    assertEquals("Failed to translate application scoped widget", "bonjour", app1.getWidget().getInlineLabelText());
   }
 
 }
