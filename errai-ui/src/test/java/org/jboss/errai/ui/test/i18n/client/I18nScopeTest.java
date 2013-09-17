@@ -56,6 +56,9 @@ public class I18nScopeTest extends AbstractErraiCDITest {
     assertEquals("Failed to translate application scoped widget", "bonjour", app1.getWidget().getInlineLabelText());
   }
   
+  /**
+   * Test that dependent scoped beans will be translated after manual locale change.
+   */
   @Test
   public void testDepScopeTest() throws Exception {
     assertEquals("en_us", TranslationService.currentLocale());
@@ -69,6 +72,9 @@ public class I18nScopeTest extends AbstractErraiCDITest {
     assertEquals("Failed to translate depdendent scoped widget", "bonjour", app1.getWidget().getInlineLabelText());
   }
   
+  /**
+   * Test that newly created Dependent scoped beans will be translated after manual locale change.
+   */
   @Test
   public void testDepScopeTestReplacement() throws Exception {
     assertEquals("en_us", TranslationService.currentLocale());
