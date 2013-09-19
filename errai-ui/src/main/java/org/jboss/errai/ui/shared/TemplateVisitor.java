@@ -47,7 +47,7 @@ public class TemplateVisitor implements DomVisitor {
    * @param element
    */
   protected void visitElement(String i18nKeyPrefix, Element element) {
-    String translationKey = i18nKeyPrefix + getTranslationKey(element);
+    String translationKey = i18nKeyPrefix + getOrGenerateTranslationKey(element);
     String translationValue = getTextContent(element);
     i18nValues.put(translationKey, translationValue);
   }
@@ -79,16 +79,18 @@ public class TemplateVisitor implements DomVisitor {
     } else if (hasAttribute(element, "name")) {
       elementKey = element.getAttribute("name");
     } else {
-      elementKey = getTranslationKey(element);
+      elementKey = getOrGenerateTranslationKey(element);
     }
     return elementKey;
   }
 
   /**
-   * Gets a translation key associated with the given element.
+   * Gets a translation key associated with the given element. If no key attribute exists in this
+   * element, generate and assign one.
+   * 
    * @param element
    */
-  protected String getTranslationKey(Element element) {
+  protected String getOrGenerateTranslationKey(Element element) {
     String translationKey = null;
     String currentText = getTextContent(element);
     if (hasAttribute(element, "data-i18n-key")) {
@@ -98,6 +100,7 @@ public class TemplateVisitor implements DomVisitor {
       if (translationKey.length() > 128) {
         translationKey = translationKey.substring(0, 128) + translationKey.hashCode();
       }
+      element.setAttribute("data-i18n-key", translationKey);
     }
     return translationKey;
   }

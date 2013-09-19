@@ -162,7 +162,7 @@ public final class TemplateUtil {
     DomVisit.visit(new ElementWrapper(templateRoot), new TemplateVisitor(i18nKeyPrefix) {
       @Override
       protected void visitElement(String i18nKeyPrefix, org.w3c.dom.Element element) {
-        String translationKey = i18nKeyPrefix + getTranslationKey(element);
+        String translationKey = i18nKeyPrefix + getOrGenerateTranslationKey(element);
         String translationValue = getI18nValue(translationKey);
         if (translationValue != null)
           ((ElementWrapper) element).getElement().setInnerHTML(translationValue);
