@@ -109,7 +109,7 @@ public class TemplateVisitor implements DomVisitor {
    * Returns true if the given element has some text and no element children.
    * @param element
    */
-  private boolean isTextOnly(Element element) {
+  public boolean isTextOnly(Element element) {
     NodeList childNodes = element.getChildNodes();
     for (int idx = 0; idx < childNodes.getLength(); idx++) {
       Node item = childNodes.item(idx);
@@ -127,7 +127,7 @@ public class TemplateVisitor implements DomVisitor {
    * @param element
    * @param attributeName
    */
-  private boolean hasAttribute(Element element, String attributeName) {
+  public boolean hasAttribute(Element element, String attributeName) {
     String attribute = element.getAttribute(attributeName);
     return (attribute != null && attribute.trim().length() > 0);
   }

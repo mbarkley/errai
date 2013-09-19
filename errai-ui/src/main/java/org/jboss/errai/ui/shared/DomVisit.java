@@ -26,4 +26,17 @@ public class DomVisit {
     }
   }
 
+  public static void revisit(Element element, DomReVisitor visitor) {
+    if (visitor.visit(element)) {
+      NodeList childNodes = element.getChildNodes();
+      for (int idx = 0; idx < childNodes.getLength(); idx++) {
+        Node childNode = childNodes.item(idx);
+        if (childNode.getNodeType() == Node.ELEMENT_NODE) {
+          revisit((Element) childNode, visitor);
+        }
+      }
+    }
+    visitor.afterVisit(element);
+  }
+
 }
