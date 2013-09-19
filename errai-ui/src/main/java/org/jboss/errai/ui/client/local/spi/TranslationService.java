@@ -18,7 +18,18 @@ package org.jboss.errai.ui.client.local.spi;
 import java.util.*;
 import java.util.logging.Logger;
 
+import org.jboss.errai.ioc.client.container.IOC;
+import org.jboss.errai.ioc.client.container.async.AsyncBeanDef;
+import org.jboss.errai.ioc.client.container.async.CreationalCallback;
+import org.jboss.errai.ui.shared.DomVisit;
+import org.jboss.errai.ui.shared.DomVisitor;
 import org.jboss.errai.ui.shared.JSONMap;
+import org.jboss.errai.ui.shared.api.annotations.Templated;
+import org.jboss.errai.ui.shared.wrapper.ElementWrapper;
+import org.w3c.dom.Element;
+
+import com.google.gwt.dom.client.Document;
+import com.google.gwt.user.client.ui.Composite;
 
 /**
  * A base class for a generated translation service that includes all
@@ -143,11 +154,27 @@ public abstract class TranslationService {
   }-*/;
 
   /**
-   * Forcibly set the current locale.  Mostly useful for testing.
+   * Forcibly set the current locale and re-translate all instantiated {@link Templated} beans.
+   * 
    * @param locale
    */
   public final static void setCurrentLocale(String locale) {
     currentLocale = locale;
+    retranslateTemplatedBeans();
+  }
+  
+  /**
+   * Retranslate all {@link Templated} beans to the current locale.
+   */
+  public static void retranslateTemplatedBeans() {
+    DomVisit.visit(new ElementWrapper(Document.get().getBody()), new DomVisitor() {
+      
+      @Override
+      public boolean visit(Element element) {
+        // TODO Auto-generated method stub
+        return false;
+      }
+    });
   }
 
 }
