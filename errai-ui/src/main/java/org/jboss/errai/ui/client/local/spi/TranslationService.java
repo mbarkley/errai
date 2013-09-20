@@ -159,10 +159,20 @@ public abstract class TranslationService {
    * @param locale
    */
   public final static void setCurrentLocale(String locale) {
-    currentLocale = locale;
+    setCurrentLocaleWithoutUpdate(locale);
     retranslateTemplatedBeans();
   }
   
+  /**
+   * Forcibly set the current locale but do not re-translate existing templated instances. Mostly
+   * useful for testing.
+   * 
+   * @param locale
+   */
+  public final static void setCurrentLocaleWithoutUpdate(String locale) {
+    currentLocale = locale;
+  }
+
   /**
    * Re-translate displayed {@link Templated} beans to the current locale.
    */
