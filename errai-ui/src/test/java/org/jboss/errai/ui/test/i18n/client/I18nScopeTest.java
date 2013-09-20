@@ -44,6 +44,7 @@ public class I18nScopeTest extends AbstractErraiCDITest {
     I18nAppScopeTestApp app1 = IOC.getBeanManager().lookupBean(I18nAppScopeTestApp.class).getInstance();
 
     assertEquals("Failed to load default text", "hello", app1.getWidget().getInlineLabelText());
+    assertTrue("Widget must be attached to DOM", app1.getWidget().isAttached());
 
     TranslationService.setCurrentLocale("fr_fr");
 
@@ -60,6 +61,7 @@ public class I18nScopeTest extends AbstractErraiCDITest {
     I18nDepScopeTestApp app1 = IOC.getBeanManager().lookupBean(I18nDepScopeTestApp.class).getInstance();
 
     assertEquals("Failed to load default text", "hello", app1.getWidget().getInlineLabelText());
+    assertTrue("Widget must be attached to DOM", app1.getWidget().isAttached());
 
     TranslationService.setCurrentLocale("fr_fr");
 
@@ -76,6 +78,7 @@ public class I18nScopeTest extends AbstractErraiCDITest {
     I18nDepInDepScopeTestApp app1 = IOC.getBeanManager().lookupBean(I18nDepInDepScopeTestApp.class).getInstance();
 
     assertEquals("Failed to load default text", "hello", app1.getWidget().getInlineLabelText());
+    assertTrue("Widget must be attached to DOM", app1.getWidget().isAttached());
 
     TranslationService.setCurrentLocale("fr_fr");
 
