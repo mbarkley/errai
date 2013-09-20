@@ -15,26 +15,30 @@
  */
 package org.jboss.errai.ui.client.local.spi;
 
+import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
-import java.util.Stack;
 import java.util.logging.Logger;
 
-import org.jboss.errai.ui.shared.DomRevisitor;
+import javax.enterprise.context.ApplicationScoped;
+
+import org.jboss.errai.ioc.client.container.IOC;
+import org.jboss.errai.ioc.client.container.async.AsyncBeanDef;
+import org.jboss.errai.ioc.client.container.async.CreationalCallback;
 import org.jboss.errai.ui.shared.DomVisit;
 import org.jboss.errai.ui.shared.JSONMap;
-import org.jboss.errai.ui.shared.TemplateTranslationVisitor;
+import org.jboss.errai.ui.shared.TranslationDomRevisitor;
 import org.jboss.errai.ui.shared.api.annotations.Templated;
 import org.jboss.errai.ui.shared.wrapper.ElementWrapper;
-import org.w3c.dom.Element;
 
 import com.google.gwt.dom.client.Document;
+import com.google.gwt.user.client.ui.Composite;
 
 /**
- * A base class for a generated translation service that includes all
- * of the translation visible at compile time.
- *
+ * A base class for a generated translation service that includes all of the translation visible at
+ * compile time.
+ * 
  * @author eric.wittmann@redhat.com
  */
 public abstract class TranslationService {
@@ -43,6 +47,7 @@ public abstract class TranslationService {
   private static String currentLocale = null;
 
   private Dictionary dictionary = new Dictionary();
+
   /**
    * @return true if the translation service is enabled/should be used
    */
@@ -53,9 +58,10 @@ public abstract class TranslationService {
   public Collection<String> getSupportedLocales() {
     return dictionary.getSupportedLocals();
   }
-  
+
   /**
    * Registers the bundle with the translation service.
+   * 
    * @param jsonData
    */
   protected void registerBundle(String jsonData, String locale) {
@@ -64,8 +70,9 @@ public abstract class TranslationService {
   }
 
   /**
-   * Registers some i18n data with the translation service.  This is called
-   * for each discovered bundle file.
+   * Registers some i18n data with the translation service. This is called for each discovered
+   * bundle file.
+   * 
    * @param data
    * @param locale
    */
@@ -84,6 +91,7 @@ public abstract class TranslationService {
 
   /**
    * Gets the translation for the given i18n translation key.
+   * 
    * @param translationKey
    */
   public String getTranslation(String translationKey) {
@@ -94,7 +102,7 @@ public abstract class TranslationService {
       logger.fine("Translation found in locale map: " + localeName);
       return translationData.get(translationKey);
     }
-    // Nothing?  Then return null.
+    // Nothing? Then return null.
     logger.fine("Translation not found in any locale map, leaving unchanged.");
     return null;
   }
@@ -138,20 +146,20 @@ public abstract class TranslationService {
    * Gets the browser's configured locale.
    */
   public final static native String getBrowserLocale() /*-{
-    if ($wnd.navigator.language) {
-      return $wnd.navigator.language;
-    }
-    if ($wnd.navigator.userLanguage) {
-      return $wnd.navigator.userLanguage;
-    }
-    if ($wnd.navigator.browserLanguage) {
-      return $wnd.navigator.browserLanguage;
-    }
-    if ($wnd.navigator.systemLanguage) {
-      return $wnd.navigator.systemLanguage;
-    }
-    return null;
-  }-*/;
+                                                       if ($wnd.navigator.language) {
+                                                       return $wnd.navigator.language;
+                                                       }
+                                                       if ($wnd.navigator.userLanguage) {
+                                                       return $wnd.navigator.userLanguage;
+                                                       }
+                                                       if ($wnd.navigator.browserLanguage) {
+                                                       return $wnd.navigator.browserLanguage;
+                                                       }
+                                                       if ($wnd.navigator.systemLanguage) {
+                                                       return $wnd.navigator.systemLanguage;
+                                                       }
+                                                       return null;
+                                                       }-*/;
 
   /**
    * Forcibly set the current locale and re-translate all instantiated {@link Templated} beans.
@@ -162,7 +170,7 @@ public abstract class TranslationService {
     setCurrentLocaleWithoutUpdate(locale);
     retranslateTemplatedBeans();
   }
-  
+
   /**
    * Forcibly set the current locale but do not re-translate existing templated instances. Mostly
    * useful for testing.
@@ -177,37 +185,21 @@ public abstract class TranslationService {
    * Re-translate displayed {@link Templated} beans to the current locale.
    */
   public static void retranslateTemplatedBeans() {
-    DomVisit.revisit(new ElementWrapper(Document.get().getBody()), new DomRevisitor() {
-      /*
-       * Outline:
-       * 
-       * Root nodes of templates are marked with 'data-i18n-prefix' attribute, allowing lookup. Use
-       * a stack to keep track of which template we are in. After visiting, if the top of the stack
-       * matches an element prefix attribute, we are leaving that template.
-       */
+    // Translate attached templates
+    DomVisit.revisit(new ElementWrapper(Document.get().getBody()), new TranslationDomRevisitor());
 
-      private TemplateTranslationVisitor visitor = new TemplateTranslationVisitor("");
-      private final Stack<String> prefixes = new Stack<String>();
-      private static final String PREFIX = "data-i18n-prefix";
-
-      @Override
-      public boolean visit(Element element) {
-        if (visitor.hasAttribute(element, PREFIX))
-          prefixes.push(element.getAttribute(PREFIX));
-
-        if (prefixes.empty())
-          return !visitor.isTextOnly(element);
-
-        visitor.setI18nPrefix(prefixes.peek());
-        return visitor.visit(element);
-      }
-
-      @Override
-      public void afterVisit(Element element) {
-        if (visitor.hasAttribute(element, PREFIX) && element.getAttribute(PREFIX).equals(prefixes.peek()))
-          prefixes.pop();
-      }
-    });
+    // Translate unattached Singleton templates
+    for (AsyncBeanDef<Composite> beanDef : IOC.getAsyncBeanManager().lookupBeans(Composite.class)) {
+      Class<? extends Annotation> scope = beanDef.getScope();
+      if (scope != null
+              && (scope.equals(ApplicationScoped.class)))
+        beanDef.getInstance(new CreationalCallback<Composite>() {
+          @Override
+          public void callback(Composite beanInstance) {
+            if (beanInstance.getParent() == null && !beanInstance.isAttached())
+              DomVisit.revisit(new ElementWrapper(beanInstance.getElement()), new TranslationDomRevisitor());
+          }
+        });
+    }
   }
-
 }
