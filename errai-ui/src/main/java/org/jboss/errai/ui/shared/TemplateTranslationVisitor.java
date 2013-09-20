@@ -2,12 +2,23 @@ package org.jboss.errai.ui.shared;
 
 import org.jboss.errai.ui.shared.wrapper.ElementWrapper;
 
+/**
+ * Visits the DOM and translates i18n text.
+ */
 public class TemplateTranslationVisitor extends TemplateVisitor {
 
   public TemplateTranslationVisitor(String i18nPrefix) {
     super(i18nPrefix);
   }
 
+  /**
+   * Translate the text in this element if there is i18n text.
+   * 
+   * @param i18nKeyPrefix
+   *          The template prefix for the i18n key
+   * @param element
+   *          The element to be translated
+   */
   @Override
   protected void visitElement(String i18nKeyPrefix, org.w3c.dom.Element element) {
     String translationKey = i18nKeyPrefix + getOrGenerateTranslationKey(element);
@@ -16,6 +27,16 @@ public class TemplateTranslationVisitor extends TemplateVisitor {
       ((ElementWrapper) element).getElement().setInnerHTML(translationValue);
   }
 
+  /**
+   * Translate the text value in an attribute of this element if there is i18n text.
+   * 
+   * @param i18nKeyPrefix
+   *          The template prefix for the i18n key
+   * @param element
+   *          The element containing the attribute to be translated
+   * @param attributeName
+   *          The name of the attribute to be translated
+   */
   @Override
   protected void visitAttribute(String i18nKeyPrefix, org.w3c.dom.Element element, String attributeName) {
     String translationKey = i18nKeyPrefix + getElementKey(element);

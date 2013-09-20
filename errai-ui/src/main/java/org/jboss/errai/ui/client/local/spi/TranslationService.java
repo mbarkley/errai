@@ -21,17 +21,15 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.logging.Logger;
 
-import org.jboss.errai.ui.shared.DomReVisitor;
+import org.jboss.errai.ui.shared.DomRevisitor;
 import org.jboss.errai.ui.shared.DomVisit;
 import org.jboss.errai.ui.shared.JSONMap;
 import org.jboss.errai.ui.shared.TemplateTranslationVisitor;
-import org.jboss.errai.ui.shared.TemplateVisitor;
 import org.jboss.errai.ui.shared.api.annotations.Templated;
 import org.jboss.errai.ui.shared.wrapper.ElementWrapper;
 import org.w3c.dom.Element;
 
 import com.google.gwt.dom.client.Document;
-import com.google.gwt.event.logical.shared.HasAttachHandlers;
 
 /**
  * A base class for a generated translation service that includes all
@@ -169,41 +167,37 @@ public abstract class TranslationService {
    * Re-translate displayed {@link Templated} beans to the current locale.
    */
   public static void retranslateTemplatedBeans() {
-    DomVisit.revisit(new ElementWrapper(Document.get().getBody()),
-        new DomReVisitor() {
-          /*
-           * Outline:
-           * 
-           * Root nodes of templates are marked with 'data-i18n-prefix'
-           * attribute, allowing lookup. Use a stack to keep track of which
-           * template we are in. After visiting, if the top of the stack matches
-           * an element prefix attribute, we are leaving that template.
-           */
+    DomVisit.revisit(new ElementWrapper(Document.get().getBody()), new DomRevisitor() {
+      /*
+       * Outline:
+       * 
+       * Root nodes of templates are marked with 'data-i18n-prefix' attribute, allowing lookup. Use
+       * a stack to keep track of which template we are in. After visiting, if the top of the stack
+       * matches an element prefix attribute, we are leaving that template.
+       */
 
-          private TemplateTranslationVisitor visitor = new TemplateTranslationVisitor(
-              "");
-          private final Stack<String> prefixes = new Stack<String>();
-          private static final String PREFIX = "data-i18n-prefix";
+      private TemplateTranslationVisitor visitor = new TemplateTranslationVisitor("");
+      private final Stack<String> prefixes = new Stack<String>();
+      private static final String PREFIX = "data-i18n-prefix";
 
-          @Override
-          public boolean visit(Element element) {
-            if (visitor.hasAttribute(element, PREFIX))
-              prefixes.push(element.getAttribute(PREFIX));
+      @Override
+      public boolean visit(Element element) {
+        if (visitor.hasAttribute(element, PREFIX))
+          prefixes.push(element.getAttribute(PREFIX));
 
-            if (prefixes.empty())
-              return !visitor.isTextOnly(element);
+        if (prefixes.empty())
+          return !visitor.isTextOnly(element);
 
-            visitor.setI18nPrefix(prefixes.peek());
-            return visitor.visit(element);
-          }
+        visitor.setI18nPrefix(prefixes.peek());
+        return visitor.visit(element);
+      }
 
-          @Override
-          public void afterVisit(Element element) {
-            if (visitor.hasAttribute(element, PREFIX)
-                && element.getAttribute(PREFIX).equals(prefixes.peek()))
-              prefixes.pop();
-          }
-        });
+      @Override
+      public void afterVisit(Element element) {
+        if (visitor.hasAttribute(element, PREFIX) && element.getAttribute(PREFIX).equals(prefixes.peek()))
+          prefixes.pop();
+      }
+    });
   }
 
 }

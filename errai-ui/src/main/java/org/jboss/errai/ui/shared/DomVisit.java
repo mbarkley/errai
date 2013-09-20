@@ -26,7 +26,7 @@ public class DomVisit {
     }
   }
 
-  public static void revisit(Element element, DomReVisitor visitor) {
+  public static void revisit(Element element, DomRevisitor visitor) {
     if (visitor.visit(element)) {
       NodeList childNodes = element.getChildNodes();
       for (int idx = 0; idx < childNodes.getLength(); idx++) {
