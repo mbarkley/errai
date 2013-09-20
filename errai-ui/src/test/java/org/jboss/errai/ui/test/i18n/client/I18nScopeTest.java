@@ -3,6 +3,7 @@ package org.jboss.errai.ui.test.i18n.client;
 import org.jboss.errai.enterprise.client.cdi.AbstractErraiCDITest;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ui.client.local.spi.TranslationService;
+import org.jboss.errai.ui.test.i18n.client.res.AppScopedWidget;
 import org.jboss.errai.ui.test.i18n.client.res.DepScopedWidget;
 import org.jboss.errai.ui.test.i18n.client.res.I18nAppScopeTestApp;
 import org.jboss.errai.ui.test.i18n.client.res.I18nDepInDepScopeTestApp;
@@ -114,6 +115,19 @@ public class I18nScopeTest extends AbstractErraiCDITest {
     TranslationService.setCurrentLocale("fr_fr");
     
     assertEquals("Failed to translate dependent unattached widget", "bonjour", depWidget.getInlineLabelText());
+  }
+  
+  @Test
+  public void testAppScopeBeanNotInDom() throws Exception {
+    assertEquals("en_us", TranslationService.currentLocale());
+
+    AppScopedWidget appWidget = IOC.getBeanManager().lookupBean(AppScopedWidget.class).getInstance();
+    
+    assertTrue("This widget should not be attached to the DOM!", !appWidget.isAttached());
+    
+    TranslationService.setCurrentLocale("fr_fr");
+    
+    assertEquals("Failed to translate dependent unattached widget", "bonjour", appWidget.getInlineLabelText());
   }
 
 }
