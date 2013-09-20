@@ -10,6 +10,8 @@ import org.jboss.errai.ui.test.i18n.client.res.I18nDepInDepScopeTestApp;
 import org.jboss.errai.ui.test.i18n.client.res.I18nDepScopeTestApp;
 import org.junit.Test;
 
+import com.google.gwt.user.client.ui.RootPanel;
+
 /**
  * Test that templated beans of different scopes are re-translated when the locale is manually
  * changed.
@@ -114,6 +116,8 @@ public class I18nScopeTest extends AbstractErraiCDITest {
     
     TranslationService.setCurrentLocale("fr_fr");
     
+    RootPanel.get().add(depWidget);
+    
     assertEquals("Failed to translate dependent unattached widget", "bonjour", depWidget.getInlineLabelText());
   }
   
@@ -126,6 +130,8 @@ public class I18nScopeTest extends AbstractErraiCDITest {
     assertTrue("This widget should not be attached to the DOM!", !appWidget.isAttached());
     
     TranslationService.setCurrentLocale("fr_fr");
+    
+    RootPanel.get().add(appWidget);
     
     assertEquals("Failed to translate dependent unattached widget", "bonjour", appWidget.getInlineLabelText());
   }
