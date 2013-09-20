@@ -8,6 +8,7 @@ import org.jboss.errai.ui.test.i18n.client.res.DepScopedWidget;
 import org.jboss.errai.ui.test.i18n.client.res.I18nAppScopeTestApp;
 import org.jboss.errai.ui.test.i18n.client.res.I18nDepInDepScopeTestApp;
 import org.jboss.errai.ui.test.i18n.client.res.I18nDepScopeTestApp;
+import org.jboss.errai.ui.test.i18n.client.res.TemplatedParent;
 import org.junit.Test;
 
 import com.google.gwt.user.client.ui.RootPanel;
@@ -134,6 +135,26 @@ public class I18nScopeTest extends AbstractErraiCDITest {
     RootPanel.get().add(appWidget);
     
     assertEquals("Failed to translate dependent unattached widget", "bonjour", appWidget.getInlineLabelText());
+  }
+  
+  /**
+   * Make sure that re-translation does not clobber overridden parts of template.
+   */
+  @Test
+  public void testTemplatedInTemplated() throws Exception {
+    assertEquals("en_us", TranslationService.currentLocale());
+    
+    TemplatedParent parent = IOC.getBeanManager().lookupBean(TemplatedParent.class).getInstance();
+    
+    assertTrue("This widget should be attached to the DOM", parent.isAttached());
+    
+    TranslationService.setCurrentLocale("fr_fr");
+    
+    assertEquals("Parent template leaf element was not properly translated", "bonjour", parent.greeting.getInnerText());
+    assertEquals("Non-keyed child template was not translated", "bonjour",
+            parent.templatedChildNoI18nKey.greeting.getInnerText());
+    assertEquals("Keyed child template was not translated", "bonjour",
+            parent.templatedChildWithI18nKey.greeting.getInnerText());
   }
 
 }
