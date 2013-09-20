@@ -4,13 +4,13 @@ import org.jboss.errai.enterprise.client.cdi.AbstractErraiCDITest;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ui.client.local.spi.TranslationService;
 import org.jboss.errai.ui.test.i18n.client.res.AppScopedWidget;
-import org.jboss.errai.ui.test.i18n.client.res.DepScopedWidget;
 import org.jboss.errai.ui.test.i18n.client.res.I18nAppScopeTestApp;
 import org.jboss.errai.ui.test.i18n.client.res.I18nDepInDepScopeTestApp;
 import org.jboss.errai.ui.test.i18n.client.res.I18nDepScopeTestApp;
 import org.jboss.errai.ui.test.i18n.client.res.TemplatedParent;
 import org.junit.Test;
 
+import com.google.gwt.dom.client.Element;
 import com.google.gwt.user.client.ui.RootPanel;
 
 /**
@@ -107,49 +107,62 @@ public class I18nScopeTest extends AbstractErraiCDITest {
     assertEquals("Failed to translate depdendent scoped widget", "bonjour", app2.getWidget().getInlineLabelText());
   }
 
-//  @Test
-//  public void testDepScopeBeanNotInDom() throws Exception {
-//    assertEquals("en_us", TranslationService.currentLocale());
-//
-//    DepScopedWidget depWidget = IOC.getBeanManager().lookupBean(DepScopedWidget.class).getInstance();
-//    
-//    assertTrue("This widget should not be attached to the DOM!", !depWidget.isAttached());
-//    
-//    TranslationService.setCurrentLocale("fr_fr");
-//    
-//    RootPanel.get().add(depWidget);
-//    
-//    assertEquals("Failed to translate dependent unattached widget", "bonjour", depWidget.getInlineLabelText());
-//  }
-  
+  // @Test
+  // public void testDepScopeBeanNotInDom() throws Exception {
+  // assertEquals("en_us", TranslationService.currentLocale());
+  //
+  // DepScopedWidget depWidget =
+  // IOC.getBeanManager().lookupBean(DepScopedWidget.class).getInstance();
+  //
+  // assertTrue("This widget should not be attached to the DOM!", !depWidget.isAttached());
+  //
+  // TranslationService.setCurrentLocale("fr_fr");
+  //
+  // RootPanel.get().add(depWidget);
+  //
+  // assertEquals("Failed to translate dependent unattached widget", "bonjour",
+  // depWidget.getInlineLabelText());
+  // }
+
   @Test
   public void testAppScopeBeanNotInDom() throws Exception {
     assertEquals("en_us", TranslationService.currentLocale());
 
     AppScopedWidget appWidget = IOC.getBeanManager().lookupBean(AppScopedWidget.class).getInstance();
-    
+
     assertTrue("This widget should not be attached to the DOM!", !appWidget.isAttached());
-    
+
     TranslationService.setCurrentLocale("fr_fr");
-    
+
     RootPanel.get().add(appWidget);
-    
+
     assertEquals("Failed to translate dependent unattached widget", "bonjour", appWidget.getInlineLabelText());
   }
-  
+
   /**
    * Make sure that re-translation does not clobber overridden parts of template.
    */
   @Test
   public void testTemplatedInTemplated() throws Exception {
     assertEquals("en_us", TranslationService.currentLocale());
-    
+
     TemplatedParent parent = IOC.getBeanManager().lookupBean(TemplatedParent.class).getInstance();
-    
+
+    RootPanel.get().add(parent);
     assertTrue("This widget should be attached to the DOM", parent.isAttached());
-    
+
     TranslationService.setCurrentLocale("fr_fr");
-    
+
+    // Check values through DOM
+    Element element = parent.getElement();
+    assertEquals("Parent template leaf element was not properly translated", "bonjour", element.getFirstChildElement()
+            .getInnerText());
+    assertEquals("Non-keyed child template was not translated", "bonjour", element.getFirstChildElement()
+            .getNextSiblingElement().getInnerText());
+    assertEquals("Keyed child template was not translated", "bonjour",
+            element.getFirstChildElement().getNextSiblingElement().getNextSiblingElement().getInnerText());
+
+    // Check values through widgets
     assertEquals("Parent template leaf element was not properly translated", "bonjour", parent.greeting.getInnerText());
     assertEquals("Non-keyed child template was not translated", "bonjour",
             parent.templatedChildNoI18nKey.greeting.getInnerText());
