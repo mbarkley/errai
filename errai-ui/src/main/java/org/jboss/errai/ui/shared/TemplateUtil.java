@@ -93,6 +93,9 @@ public final class TemplateUtil {
       }
       parentElement.replaceChild(field.getElement(), element);
 
+      boolean hasI18nKey = !field.getElement().getAttribute("data-i18n-key").equals("");
+      boolean hasI18nPrefix = !field.getElement().getAttribute("data-i18n-prefix").equals("");
+      
       /*
        * Preserve template Element attributes.
        */
@@ -100,13 +103,13 @@ public final class TemplateUtil {
       for (int i = 0; i < templateAttributes.length(); i++) {
         final Node node = templateAttributes.get(i);
         String name = node.getNodeName();
-        String newValue = field.getElement().getAttribute(name);
         String oldValue = node.getNodeValue();
         /*
          * If this new element already has i18n value from another template, do not overwrite it.
          */
-        if (!name.equals("data-i18n-key") || newValue == null || "".equals(newValue))
-          field.getElement().setAttribute(name, oldValue);
+        if ((name.equals("data-i18n-key") || name.equals("data-role") && oldValue.equals("dummy")) && (hasI18nKey || hasI18nPrefix))
+          continue;
+        field.getElement().setAttribute(name, oldValue);
       }
     } catch (Exception e) {
       throw new IllegalStateException("Could not replace Element with [data-field=" + fieldName

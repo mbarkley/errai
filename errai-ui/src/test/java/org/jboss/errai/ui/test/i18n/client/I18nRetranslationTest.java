@@ -194,10 +194,11 @@ public class I18nRetranslationTest extends AbstractErraiCDITest {
 
     res[0] = element.getFirstChildElement().getInnerText();
     res[1] = element.getFirstChildElement().getNextSiblingElement().getInnerText().trim();
-    res[2] = element.getFirstChildElement().getNextSiblingElement().getFirstChildElement().getInnerText();
+    res[2] = element.getFirstChildElement().getNextSiblingElement().getNextSiblingElement().getFirstChildElement()
+            .getInnerText();
     res[3] = element.getFirstChildElement().getNextSiblingElement().getNextSiblingElement().getFirstChildElement()
             .getNextSiblingElement().getInnerText();
-    
+
     for (int i = 0; i < expected.length; i++) {
       assertEquals("Value " + i + " was improperly translated", expected[i], res[i]);
     }
