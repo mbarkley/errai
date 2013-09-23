@@ -40,6 +40,7 @@ import com.google.gwt.user.client.ui.Composite;
  * compile time.
  * 
  * @author eric.wittmann@redhat.com
+ * @author Max Barkley <mbarkley@redhat.com>
  */
 public abstract class TranslationService {
 
@@ -185,10 +186,10 @@ public abstract class TranslationService {
    * Re-translate displayed {@link Templated} beans to the current locale.
    */
   public static void retranslateTemplatedBeans() {
-    // Translate attached templates
+    // Translate DOM-attached templates
     DomVisit.revisit(new ElementWrapper(Document.get().getBody()), new TranslationDomRevisitor());
 
-    // Translate unattached Singleton templates
+    // Translate DOM-detached Singleton templates
     for (AsyncBeanDef<Composite> beanDef : IOC.getAsyncBeanManager().lookupBeans(Composite.class)) {
       Class<? extends Annotation> scope = beanDef.getScope();
       if (scope != null
@@ -196,6 +197,10 @@ public abstract class TranslationService {
         beanDef.getInstance(new CreationalCallback<Composite>() {
           @Override
           public void callback(Composite beanInstance) {
+            /*
+             * Only translate parent-less widgets to avoid re-translating a single widget multiple
+             * times (the call to revisit will traverse the whole subtree rooted at this widget).
+             */
             if (beanInstance.getParent() == null && !beanInstance.isAttached())
               DomVisit.revisit(new ElementWrapper(beanInstance.getElement()), new TranslationDomRevisitor());
           }

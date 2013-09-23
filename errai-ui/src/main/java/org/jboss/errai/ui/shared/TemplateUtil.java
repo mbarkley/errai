@@ -40,6 +40,7 @@ import org.jboss.errai.ui.shared.wrapper.ElementWrapper;
  * Errai UI Runtime Utility for handling {@link Template} composition.
  * 
  * @author <a href="mailto:lincolnbaxter@gmail.com">Lincoln Baxter, III</a>
+ * @author Max Barkley <mbarkley@redhat.com>
  */
 public final class TemplateUtil {
   private static final Logger logger = Logger.getLogger(TemplateUtil.class.getName());
@@ -105,9 +106,10 @@ public final class TemplateUtil {
         String name = node.getNodeName();
         String oldValue = node.getNodeValue();
         /*
-         * If this new element already has i18n value from another template, do not overwrite it.
+         * If this new component is templated, do not overwrite i18n related attributes.
          */
-        if ((name.equals("data-i18n-key") || name.equals("data-role") && oldValue.equals("dummy")) && (hasI18nKey || hasI18nPrefix))
+        if ((name.equals("data-i18n-key") || name.equals("data-role") && oldValue.equals("dummy"))
+                && (hasI18nKey || hasI18nPrefix))
           continue;
         field.getElement().setAttribute(name, oldValue);
       }

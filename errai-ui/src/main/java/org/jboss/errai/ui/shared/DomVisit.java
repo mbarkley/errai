@@ -6,6 +6,7 @@ import org.w3c.dom.NodeList;
 
 /**
  * @author edewit@redhat.com
+ * @author Max Barkley <mbarkley@redhat.com>
  */
 public class DomVisit {
 

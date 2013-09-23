@@ -4,6 +4,9 @@ import org.jboss.errai.ui.shared.wrapper.ElementWrapper;
 
 /**
  * Visits the DOM and translates i18n text.
+ * 
+ * @author <a href="mailto:lincolnbaxter@gmail.com">Lincoln Baxter, III</a>
+ * @author Max Barkley <mbarkley@redhat.com>
  */
 public class TemplateTranslationVisitor extends TemplateVisitor {
 

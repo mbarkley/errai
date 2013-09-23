@@ -17,7 +17,8 @@ import com.google.gwt.user.client.ui.RootPanel;
 
 /**
  * Test that templated beans of different scopes are re-translated when the locale is manually
- * changed.
+ * changed (ERRAI-610). Templated widgets attached to the DOM and detached application scoped Templated widgets
+ * should be translated.
  * 
  * @author Max Barkley <mbarkley@redhat.com>
  */
@@ -109,6 +110,10 @@ public class I18nRetranslationTest extends AbstractErraiCDITest {
     assertEquals("Failed to translate depdendent scoped widget", "bonjour", app2.getWidget().getInlineLabelText());
   }
 
+  /*
+   * This tests for in-place translation of unattached dependent-scoped beans in case we wish to
+   * support this feature one day.
+   */
   // @Test
   // public void testDepScopeBeanNotInDom() throws Exception {
   // assertEquals("en_us", TranslationService.currentLocale());
