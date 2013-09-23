@@ -4,6 +4,8 @@ import org.jboss.errai.enterprise.client.cdi.AbstractErraiCDITest;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ui.client.local.spi.TranslationService;
 import org.jboss.errai.ui.test.i18n.client.res.AppScopedWidget;
+import org.jboss.errai.ui.test.i18n.client.res.ComplexTemplatedChild;
+import org.jboss.errai.ui.test.i18n.client.res.ComplexTemplatedParent;
 import org.jboss.errai.ui.test.i18n.client.res.I18nAppScopeTestApp;
 import org.jboss.errai.ui.test.i18n.client.res.I18nDepInDepScopeTestApp;
 import org.jboss.errai.ui.test.i18n.client.res.I18nDepScopeTestApp;
@@ -19,7 +21,7 @@ import com.google.gwt.user.client.ui.RootPanel;
  * 
  * @author Max Barkley <mbarkley@redhat.com>
  */
-public class I18nScopeTest extends AbstractErraiCDITest {
+public class I18nRetranslationTest extends AbstractErraiCDITest {
 
   @Override
   public String getModuleName() {
@@ -149,7 +151,6 @@ public class I18nScopeTest extends AbstractErraiCDITest {
     TemplatedParent parent = IOC.getBeanManager().lookupBean(TemplatedParent.class).getInstance();
 
     RootPanel.get().add(parent);
-    assertTrue("This widget should be attached to the DOM", parent.isAttached());
 
     TranslationService.setCurrentLocale("fr_fr");
 
@@ -159,15 +160,47 @@ public class I18nScopeTest extends AbstractErraiCDITest {
             .getInnerText());
     assertEquals("Non-keyed child template was not translated", "bonjour", element.getFirstChildElement()
             .getNextSiblingElement().getInnerText());
-    assertEquals("Keyed child template was not translated", "bonjour",
-            element.getFirstChildElement().getNextSiblingElement().getNextSiblingElement().getInnerText());
+    assertEquals("Keyed child template was not translated", "bonjour", element.getFirstChildElement()
+            .getNextSiblingElement().getNextSiblingElement().getInnerText());
 
     // Check values through widgets
     assertEquals("Parent template leaf element was not properly translated", "bonjour", parent.greeting.getInnerText());
-    assertEquals("Non-keyed child template was not translated", "bonjour",
-            parent.templatedChildNoI18nKey.getText());
-    assertEquals("Keyed child template was not translated", "bonjour",
-            parent.templatedChildWithI18nKey.getText());
+    assertEquals("Non-keyed child template was not translated", "bonjour", parent.templatedChildNoI18nKey.getText());
+    assertEquals("Keyed child template was not translated", "bonjour", parent.templatedChildWithI18nKey.getText());
+  }
+
+  /**
+   * Test that a templated data-field (with more than a singleton-node tree) is retranslated
+   * properly.
+   */
+  @Test
+  public void testComplexTemplatedInTemplated() throws Exception {
+    assertEquals("en_us", TranslationService.currentLocale());
+
+    ComplexTemplatedParent parent = IOC.getBeanManager().lookupBean(ComplexTemplatedParent.class).getInstance();
+    RootPanel.get().add(parent);
+
+    TranslationService.setCurrentLocale("fr_fr");
+
+    assertEquals("Greeting was not retranslated", "bonjour", parent.greeting.getInnerText());
+    checkComplexTemplatedChild(parent.templatedChildNoI18nKey);
+    checkComplexTemplatedChild(parent.templatedChildWithI18nKey);
+  }
+
+  private void checkComplexTemplatedChild(ComplexTemplatedChild child) {
+    String[] expected = new String[] { "bonjour", "rouge", "anglais", "de rien" };
+    String[] res = new String[expected.length];
+    Element element = child.getElement();
+
+    res[0] = element.getFirstChildElement().getInnerText();
+    res[1] = element.getFirstChildElement().getNextSiblingElement().getInnerText().trim();
+    res[2] = element.getFirstChildElement().getNextSiblingElement().getFirstChildElement().getInnerText();
+    res[3] = element.getFirstChildElement().getNextSiblingElement().getNextSiblingElement().getFirstChildElement()
+            .getNextSiblingElement().getInnerText();
+    
+    for (int i = 0; i < expected.length; i++) {
+      assertEquals("Value " + i + " was improperly translated", expected[i], res[i]);
+    }
   }
 
 }

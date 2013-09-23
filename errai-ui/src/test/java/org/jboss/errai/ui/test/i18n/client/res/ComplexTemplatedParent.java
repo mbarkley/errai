@@ -12,17 +12,16 @@ import com.google.gwt.user.client.ui.Composite;
 
 @Templated("BasicTemplate.html")
 @Bundle("TemplateInTemplate.json")
-public class TemplatedParent extends Composite {
+public class ComplexTemplatedParent extends Composite {
 
-  @Inject
-  @DataField
-  public TemplatedChild templatedChildNoI18nKey;
-  
-  @Inject
-  @DataField
-  public TemplatedChild templatedChildWithI18nKey;
-  
   @DataField
   public Element greeting = DOM.createDiv();
   
+  @Inject
+  @DataField
+  public ComplexTemplatedChild templatedChildWithI18nKey;
+
+  @Inject
+  @DataField
+  public ComplexTemplatedChild templatedChildNoI18nKey;
 }
