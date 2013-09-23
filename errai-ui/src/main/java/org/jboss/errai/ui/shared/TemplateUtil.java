@@ -99,7 +99,11 @@ public final class TemplateUtil {
       final JsArray<Node> templateAttributes = getAttributes(element);
       for (int i = 0; i < templateAttributes.length(); i++) {
         final Node node = templateAttributes.get(i);
-        field.getElement().setAttribute(node.getNodeName(), node.getNodeValue());
+        String name = node.getNodeName();
+        String newValue = field.getElement().getAttribute(name);
+        String oldValue = node.getNodeValue();
+        if (!name.equals("data-i18n-key") || newValue == null || "".equals(newValue))
+          field.getElement().setAttribute(name, oldValue);
       }
     } catch (Exception e) {
       throw new IllegalStateException("Could not replace Element with [data-field=" + fieldName
