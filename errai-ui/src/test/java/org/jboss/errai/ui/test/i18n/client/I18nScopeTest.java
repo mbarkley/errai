@@ -165,9 +165,9 @@ public class I18nScopeTest extends AbstractErraiCDITest {
     // Check values through widgets
     assertEquals("Parent template leaf element was not properly translated", "bonjour", parent.greeting.getInnerText());
     assertEquals("Non-keyed child template was not translated", "bonjour",
-            parent.templatedChildNoI18nKey.greeting.getInnerText());
+            parent.templatedChildNoI18nKey.getText());
     assertEquals("Keyed child template was not translated", "bonjour",
-            parent.templatedChildWithI18nKey.greeting.getInnerText());
+            parent.templatedChildWithI18nKey.getText());
   }
 
 }
