@@ -102,6 +102,9 @@ public final class TemplateUtil {
         String name = node.getNodeName();
         String newValue = field.getElement().getAttribute(name);
         String oldValue = node.getNodeValue();
+        /*
+         * If this new element already has i18n value from another template, do not overwrite it.
+         */
         if (!name.equals("data-i18n-key") || newValue == null || "".equals(newValue))
           field.getElement().setAttribute(name, oldValue);
       }
