@@ -1,4 +1,4 @@
-package org.jboss.errai.bus.client.tests.support;
+package org.jboss.errai.bus.server;
 
 import javax.inject.Inject;
 
