@@ -19,7 +19,7 @@ public class CDIServiceAnnotationTests extends AbstractErraiTest {
   public final static String REPLY_TO = "AnnotationTester";
 
   private final int POLL = 100;
-  private final int TIMEOUT = 60000;
+  private final int TIMEOUT = 10000;
 
   public CDIServiceAnnotationTests() {
     super();
