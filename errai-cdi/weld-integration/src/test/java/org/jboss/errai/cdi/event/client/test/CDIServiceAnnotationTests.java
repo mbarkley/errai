@@ -74,6 +74,10 @@ public class CDIServiceAnnotationTests extends AbstractErraiTest {
     runServiceTest("ClassWithNamedCommandMethod", "ANamedCommandMethod");
   }
   
+  public void testClassWithServiceAndCommandMethod() throws Exception {
+    runServiceTest("ClassWithServiceAndCommandMethod", "serviceAndCommandMethod");
+  }
+  
   private void runServiceTest(final String subject, String command) {
     runServiceTestAndThen(subject, command, new Runnable() {
       @Override
