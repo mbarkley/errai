@@ -17,7 +17,6 @@ package org.jboss.errai.cdi.server;
 
 import org.jboss.errai.bus.client.api.messaging.Message;
 import org.jboss.errai.bus.client.api.QueueSession;
-import org.jboss.errai.bus.server.annotations.Service;
 
 import javax.enterprise.inject.spi.Bean;
 import javax.enterprise.inject.spi.BeanManager;
@@ -58,16 +57,6 @@ public class CDIServerUtil {
 
     return (T) beanManager.getReference(bean, beanClass, beanManager.createCreationalContext(bean));
   }
-
-  public static String resolveServiceName(final Class<?> type) {
-    String subjectName = type.getAnnotation(Service.class).value();
-
-    if (subjectName.equals(""))
-      subjectName = type.getSimpleName();
-
-    return subjectName;
-  }
-
 
   static class AnnotationHolder implements Annotation {
     private final Class<? extends Annotation> annotationType;

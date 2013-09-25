@@ -37,6 +37,8 @@ import org.jboss.errai.bus.server.io.ServiceInstanceProvider;
 import org.jboss.errai.bus.server.service.ErraiService;
 import org.jboss.errai.bus.server.service.ErraiServiceSingleton;
 import org.jboss.errai.bus.server.util.SecureHashUtil;
+import org.jboss.errai.bus.server.util.ServiceTypeParser;
+import org.jboss.errai.bus.server.util.ServiceTypeParser.NotAService;
 import org.jboss.errai.cdi.server.events.ConversationalEvent;
 import org.jboss.errai.cdi.server.events.EventDispatcher;
 import org.jboss.errai.cdi.server.events.EventRoutingTable;
@@ -405,28 +407,24 @@ public class CDIExtensionPoints implements Extension {
         }
 
         registered.remove(type);
-
-        // Discriminate on @Command
-        final Map<String, Method> commandPoints = new HashMap<String, Method>();
-        for (final AnnotatedMethod method : type.getMethods()) {
-          if (method.isAnnotationPresent(Command.class)) {
-            final Command command = method.getAnnotation(Command.class);
-            for (String cmdName : command.value()) {
-              if (cmdName.equals(""))
-                cmdName = method.getJavaMember().getName();
-              commandPoints.put(cmdName, method.getJavaMember());
-            }
-          }
+        
+        ServiceTypeParser svcParser;
+        try {
+          svcParser = new ServiceTypeParser(type.getJavaClass());
+        }
+        catch (NotAService ex) {
+          // This shouldn't be possible
+          throw new RuntimeException(ex);
         }
 
         final Object callback = CDIServerUtil.lookupBean(beanManager, type.getJavaClass());
-        final String subjectName = CDIServerUtil.resolveServiceName(type.getJavaClass());
+        final String subjectName = svcParser.getServiceName();
 
-        if (commandPoints.isEmpty()) {
+        if (!svcParser.hasCommandPoints()) {
           bus.subscribe(subjectName, (MessageCallback) callback);
         }
         else {
-          bus.subscribeLocal(subjectName, new CommandBindingsCallback(commandPoints, callback, bus));
+          bus.subscribeLocal(subjectName, new CommandBindingsCallback(svcParser.getCommandPoints(), callback, bus));
         }
       }
     }
