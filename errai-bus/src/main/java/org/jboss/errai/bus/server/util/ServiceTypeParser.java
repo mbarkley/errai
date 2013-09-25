@@ -75,7 +75,7 @@ public class ServiceTypeParser {
   public static Map<String, Method> getCommandPoints(Class<?> clazz) {
     Map<String, Method> commandPoints = new HashMap<String, Method>();
     for (final Method method : clazz.getDeclaredMethods()) {
-      if (method.isAnnotationPresent(Command.class)) {
+      if (method.isAnnotationPresent(Command.class) && !method.isAnnotationPresent(Service.class)) {
         Command command = method.getAnnotation(Command.class);
         for (String cmdName : command.value()) {
           if (cmdName.equals(""))
