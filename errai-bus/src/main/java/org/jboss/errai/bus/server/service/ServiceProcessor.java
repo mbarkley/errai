@@ -21,13 +21,11 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.jboss.errai.bus.client.api.Local;
 import org.jboss.errai.bus.client.api.builder.DefaultRemoteCallBuilder;
 import org.jboss.errai.bus.client.api.messaging.Message;
 import org.jboss.errai.bus.client.api.messaging.MessageBus;
 import org.jboss.errai.bus.client.api.messaging.MessageCallback;
 import org.jboss.errai.bus.client.api.messaging.RequestDispatcher;
-import org.jboss.errai.bus.server.annotations.Command;
 import org.jboss.errai.bus.server.annotations.Remote;
 import org.jboss.errai.bus.server.annotations.Service;
 import org.jboss.errai.bus.server.annotations.security.RequireAuthentication;
@@ -42,6 +40,7 @@ import org.jboss.errai.bus.server.service.bootstrap.BootstrapContext;
 import org.jboss.errai.bus.server.service.bootstrap.GuiceProviderProxy;
 import org.jboss.errai.bus.server.util.NotAService;
 import org.jboss.errai.bus.server.util.ServiceMethodParser;
+import org.jboss.errai.bus.server.util.ServiceParser;
 import org.jboss.errai.bus.server.util.ServiceTypeParser;
 import org.jboss.errai.common.client.api.Assert;
 import org.jboss.errai.common.client.api.ResourceProvider;
@@ -86,7 +85,7 @@ public class ServiceProcessor implements MetaDataProcessor<BootstrapContext> {
   private void processServiceClass(final Class<?> loadClass, final BootstrapContext context,
           final ErraiServiceConfiguratorImpl config) {
     Object svc = null;
-    ServiceTypeParser svcParser;
+    ServiceParser svcParser;
     try {
       svcParser = new ServiceTypeParser(loadClass);
     }
@@ -100,7 +99,7 @@ public class ServiceProcessor implements MetaDataProcessor<BootstrapContext> {
       return;
     }
 
-    Class<?> remoteImpl = svcParser.getRemoteImplementation();
+    Class<?> remoteImpl = ((ServiceTypeParser) svcParser).getRemoteImplementation();
     if (remoteImpl != null) {
       svc = createRPCScaffolding(remoteImpl, loadClass, context);
     }
@@ -157,7 +156,7 @@ public class ServiceProcessor implements MetaDataProcessor<BootstrapContext> {
           final ErraiServiceConfiguratorImpl config) {
     Object svc = null;
 
-    ServiceMethodParser svcParser;
+    ServiceParser svcParser;
     try {
       svcParser = new ServiceMethodParser(loadMethod);
     } catch (NotAService ex) {
@@ -205,6 +204,10 @@ public class ServiceProcessor implements MetaDataProcessor<BootstrapContext> {
                 new CommandBindingsCallback(svcParser.getCommandPoints(), svc, context.getBus()));
       }
     }
+  }
+  
+  private void processService(ServiceParser svcParser) {
+    
   }
 
   /**

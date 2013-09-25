@@ -9,7 +9,7 @@ import org.jboss.errai.bus.client.api.Local;
 import org.jboss.errai.bus.server.annotations.Command;
 import org.jboss.errai.bus.server.annotations.Service;
 
-public class ServiceMethodParser {
+public class ServiceMethodParser implements ServiceParser {
 
   private final String svcName;
   private final boolean local;
@@ -25,18 +25,22 @@ public class ServiceMethodParser {
     commandPoints = Collections.unmodifiableMap(getCommandPoints(method));
   }
 
+  @Override
   public String getServiceName() {
     return svcName;
   }
 
+  @Override
   public boolean isLocal() {
     return local;
   }
   
+  @Override
   public Map<String, Method> getCommandPoints() {
     return commandPoints;
   }
   
+  @Override
   public boolean hasCommandPoints() {
     return getCommandPoints().size() != 0;
   }

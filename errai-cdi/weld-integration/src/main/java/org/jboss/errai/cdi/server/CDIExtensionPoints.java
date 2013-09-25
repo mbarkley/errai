@@ -38,6 +38,7 @@ import org.jboss.errai.bus.server.service.ErraiService;
 import org.jboss.errai.bus.server.service.ErraiServiceSingleton;
 import org.jboss.errai.bus.server.util.NotAService;
 import org.jboss.errai.bus.server.util.SecureHashUtil;
+import org.jboss.errai.bus.server.util.ServiceParser;
 import org.jboss.errai.bus.server.util.ServiceTypeParser;
 import org.jboss.errai.cdi.server.events.ConversationalEvent;
 import org.jboss.errai.cdi.server.events.EventDispatcher;
@@ -408,7 +409,7 @@ public class CDIExtensionPoints implements Extension {
 
         registered.remove(type);
         
-        ServiceTypeParser svcParser;
+        ServiceParser svcParser;
         try {
           svcParser = new ServiceTypeParser(type.getJavaClass());
         }

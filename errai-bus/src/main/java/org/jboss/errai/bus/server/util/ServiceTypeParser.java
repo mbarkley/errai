@@ -10,7 +10,7 @@ import org.jboss.errai.bus.server.annotations.Command;
 import org.jboss.errai.bus.server.annotations.Remote;
 import org.jboss.errai.bus.server.annotations.Service;
 
-public class ServiceTypeParser {
+public class ServiceTypeParser implements ServiceParser {
   
   private final Class<?> clazz;
   private final Map<String, Method> commandPoints;
@@ -31,10 +31,18 @@ public class ServiceTypeParser {
     this.commandPoints = Collections.unmodifiableMap(getCommandPoints(clazz));
   }
   
+  /* (non-Javadoc)
+   * @see org.jboss.errai.bus.server.util.ServiceParser#getCommandPoints()
+   */
+  @Override
   public Map<String, Method> getCommandPoints() {
     return commandPoints;
   }
   
+  /* (non-Javadoc)
+   * @see org.jboss.errai.bus.server.util.ServiceParser#hasCommandPoints()
+   */
+  @Override
   public boolean hasCommandPoints() {
     return commandPoints.size() != 0;
   }
@@ -43,6 +51,10 @@ public class ServiceTypeParser {
     return getRemoteImplementation(clazz);
   }
   
+  /* (non-Javadoc)
+   * @see org.jboss.errai.bus.server.util.ServiceParser#getServiceName()
+   */
+  @Override
   public String getServiceName() {
     return svcName;
   }
@@ -59,6 +71,10 @@ public class ServiceTypeParser {
     return null;
   }
   
+  /* (non-Javadoc)
+   * @see org.jboss.errai.bus.server.util.ServiceParser#isLocal()
+   */
+  @Override
   public boolean isLocal() {
     return local;
   }
