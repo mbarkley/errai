@@ -87,12 +87,4 @@ public class ServiceTypeParser {
     return commandPoints;
   }
   
-  public class NotAService extends Exception {
-    private static final long serialVersionUID = 1L;
-
-    public NotAService(String message) {
-      super(message);
-    }
-  }
-  
 }

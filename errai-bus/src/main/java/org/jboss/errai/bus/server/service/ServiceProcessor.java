@@ -40,8 +40,9 @@ import org.jboss.errai.bus.server.io.ServiceMethodCallback;
 import org.jboss.errai.bus.server.security.auth.rules.RolesRequiredRule;
 import org.jboss.errai.bus.server.service.bootstrap.BootstrapContext;
 import org.jboss.errai.bus.server.service.bootstrap.GuiceProviderProxy;
+import org.jboss.errai.bus.server.util.NotAService;
+import org.jboss.errai.bus.server.util.ServiceMethodParser;
 import org.jboss.errai.bus.server.util.ServiceTypeParser;
-import org.jboss.errai.bus.server.util.ServiceTypeParser.NotAService;
 import org.jboss.errai.common.client.api.Assert;
 import org.jboss.errai.common.client.api.ResourceProvider;
 import org.jboss.errai.common.client.api.tasks.TaskManager;
@@ -156,8 +157,10 @@ public class ServiceProcessor implements MetaDataProcessor<BootstrapContext> {
           final ErraiServiceConfiguratorImpl config) {
     Object svc = null;
 
-    Service svcAnnotation = loadMethod.getAnnotation(Service.class);
-    if (null == svcAnnotation) {
+    ServiceMethodParser svcParser;
+    try {
+      svcParser = new ServiceMethodParser(loadMethod);
+    } catch (NotAService ex) {
       // Diagnose Errai-111
       StringBuilder sb = new StringBuilder();
       sb.append("Service annotation cannot be loaded. (See https://jira.jboss.org/browse/ERRAI-111)\n");
@@ -168,26 +171,8 @@ public class ServiceProcessor implements MetaDataProcessor<BootstrapContext> {
       return;
     }
 
-    boolean local = loadMethod.isAnnotationPresent(Local.class);
-
-    String svcName = svcAnnotation.value();
-
-    // If no name is specified, just use the class name as the service by default.
-    if ("".equals(svcName)) {
-      svcName = loadMethod.getName();
-    }
-
-    Map<String, Method> commandPoints = new HashMap<String, Method>();
-    if (loadMethod.isAnnotationPresent(Command.class)) {
-      Command command = loadMethod.getAnnotation(Command.class);
-      for (String cmdName : command.value()) {
-        if (cmdName.equals(""))
-          cmdName = loadMethod.getName();
-        commandPoints.put(cmdName, loadMethod);
-      }
-    }
-
-    if (loadMethod.getParameterTypes().length == 0 || loadMethod.getParameterTypes().length == 1 && loadMethod.getParameterTypes()[0].equals(Message.class)) {
+    if (loadMethod.getParameterTypes().length == 0 || loadMethod.getParameterTypes().length == 1
+            && loadMethod.getParameterTypes()[0].equals(Message.class)) {
       log.debug("discovered service: " + loadMethod.getDeclaringClass().getName());
       try {
         svc = createServiceInjector(loadMethod.getDeclaringClass(), context, config, false);
@@ -195,13 +180,13 @@ public class ServiceProcessor implements MetaDataProcessor<BootstrapContext> {
         t.printStackTrace();
       }
 
-      if (commandPoints.isEmpty()) {
+      if (!svcParser.hasCommandPoints()) {
         // Subscribe the service to the bus.
-        if (local) {
-          context.getBus().subscribeLocal(svcName, new ServiceMethodCallback(svc, loadMethod));
+        if (svcParser.isLocal()) {
+          context.getBus().subscribeLocal(svcParser.getServiceName(), new ServiceMethodCallback(svc, loadMethod));
         }
         else {
-          context.getBus().subscribe(svcName, new ServiceMethodCallback(svc, loadMethod));
+          context.getBus().subscribe(svcParser.getServiceName(), new ServiceMethodCallback(svc, loadMethod));
         }
       }
     }
@@ -210,12 +195,14 @@ public class ServiceProcessor implements MetaDataProcessor<BootstrapContext> {
       svc = createServiceInjector(loadMethod.getDeclaringClass(), context, config, false);
     }
 
-    if (!commandPoints.isEmpty()) {
-      if (local) {
-        context.getBus().subscribeLocal(svcName, new CommandBindingsCallback(commandPoints, svc, context.getBus()));
+    if (svcParser.hasCommandPoints()) {
+      if (svcParser.isLocal()) {
+        context.getBus().subscribeLocal(svcParser.getServiceName(),
+                new CommandBindingsCallback(svcParser.getCommandPoints(), svc, context.getBus()));
       }
       else {
-        context.getBus().subscribe(svcName, new CommandBindingsCallback(commandPoints, svc, context.getBus()));
+        context.getBus().subscribe(svcParser.getServiceName(),
+                new CommandBindingsCallback(svcParser.getCommandPoints(), svc, context.getBus()));
       }
     }
   }
