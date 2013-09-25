@@ -19,4 +19,10 @@ public class ClassWithServiceAndCommandMethod {
     MessageBuilder.createConversation(message).subjectProvided().noErrorHandling().sendNowWith(bus);
   }
   
+  @Service("ClassWithServiceAndCommandMethod")
+  @Command
+  private void badCommand(Message message) {
+    throw new RuntimeException("This should never be called!");
+  }
+  
 }
