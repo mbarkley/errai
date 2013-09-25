@@ -12,4 +12,10 @@ public class MethodServiceAndCommand extends BaseServiceTester {
     System.out.println("message to ClassServiceMethodAnnotation with command commandTest received");
     sendResponse(message);
   }
+  
+  @Service("commandSerice")
+  @Command
+  public void badCommand(Message message) {
+    throw new RuntimeException("This should never be called!");
+  }
 }

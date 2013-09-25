@@ -20,6 +20,12 @@ public class ClassWithServiceAndMethodWithServiceAndCommand implements MessageCa
   private void command(Message message) {
     MessageBuilder.createConversation(message).subjectProvided().noErrorHandling().sendNowWith(bus);
   }
+  
+  @Service("TheMethodsService")
+  @Command
+  private void badCommand(Message message) {
+    throw new RuntimeException("This should never be called!");
+  }
 
   @Override
   public void callback(Message message) {
