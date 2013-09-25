@@ -1,7 +1,5 @@
 package org.jboss.errai.cdi.event.client.test;
 
-import junit.framework.AssertionFailedError;
-
 import org.jboss.errai.bus.client.ErraiBus;
 import org.jboss.errai.bus.client.api.base.MessageBuilder;
 import org.jboss.errai.bus.client.api.messaging.Message;
