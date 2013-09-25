@@ -17,6 +17,7 @@ public class ServiceAnnotationTests extends AbstractErraiTest {
 
   MessageBus bus = ErraiBus.get();
   private boolean received;
+  private Message receivedMessage;
   public final static String REPLY_TO = "AnnotationTester";
 
   private final int POLL = 100;
@@ -28,6 +29,7 @@ public class ServiceAnnotationTests extends AbstractErraiTest {
       @Override
       public void callback(Message message) {
         received = true;
+        receivedMessage = message;
       }
     });
   }
@@ -61,6 +63,47 @@ public class ServiceAnnotationTests extends AbstractErraiTest {
 
   public void testMethodAnnotationCommandAndService() throws Exception {
     runServiceTest("commandService", "commandTest");
+  }
+  
+  /**
+   * Test that type service works with inner method service.
+   */
+  public void testClassWithServiceAndMethodWithService1() throws Exception {
+    runServiceTest("ClassWithServiceAndMethodWithService", null);
+  }
+  
+  /**
+   * Test that method service works with enclosing type service.
+   */
+  public void testClassWithServiceAndMethodWithService2() throws Exception {
+    runServiceTest("methodWithService", null);
+  }
+
+  /**
+   * Check that a method with a service and command annotation works if it is enclosed in a service
+   * type.
+   */
+  public void testClassWithServiceAndMethodWithServiceAndCommand1() throws Exception {
+    runServiceTest("TheMethodsService", "command");
+  }
+
+  /**
+   * Check that a type service will ignores @Command method annotations if that method also is a
+   * service.
+   */
+  public void testClassWithServiceAndMethodWithServiceAndCommand2() throws Exception {
+    runServiceTestAndThen("ClassWithServiceAndMethodWithServiceAndCommand", "command", new Runnable() {
+
+      @Override
+      public void run() {
+        if ("callback".equals(receivedMessage.getValue(String.class))) {
+          finishTest();
+        }
+        else {
+          fail("The callback should have received this message");
+        }
+      }
+    });
   }
 
   public void testClassWithMultipleServices() throws Exception {
