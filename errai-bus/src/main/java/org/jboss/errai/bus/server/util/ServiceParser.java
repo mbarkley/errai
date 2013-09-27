@@ -6,15 +6,27 @@ import java.util.Map;
 import org.jboss.errai.bus.client.api.messaging.MessageBus;
 import org.jboss.errai.bus.client.api.messaging.MessageCallback;
 
-public interface ServiceParser {
+public abstract class ServiceParser {
+  
+  protected boolean local;
+  protected String svcName;
+  protected Map<String, Method> commandPoints;
 
-  public abstract Map<String, Method> getCommandPoints();
+  public Map<String, Method> getCommandPoints() {
+    return commandPoints;
+  }
 
-  public abstract boolean hasCommandPoints();
+  public boolean hasCommandPoints() {
+    return getCommandPoints().size() != 0;
+  }
 
-  public abstract String getServiceName();
+  public String getServiceName() {
+    return svcName;
+  }
 
-  public abstract boolean isLocal();
+  public boolean isLocal() {
+    return local;
+  }
 
   public abstract Class<?> getDelegateClass();
 

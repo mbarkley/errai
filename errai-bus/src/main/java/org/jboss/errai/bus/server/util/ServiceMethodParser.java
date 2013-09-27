@@ -13,11 +13,8 @@ import org.jboss.errai.bus.server.annotations.Service;
 import org.jboss.errai.bus.server.io.CommandBindingsCallback;
 import org.jboss.errai.bus.server.io.ServiceMethodCallback;
 
-public class ServiceMethodParser implements ServiceParser {
+public class ServiceMethodParser extends ServiceParser {
 
-  private final String svcName;
-  private final boolean local;
-  private final Map<String, Method> commandPoints;
   private final Method method;
 
   public ServiceMethodParser(Method method) throws NotAService {
@@ -29,26 +26,6 @@ public class ServiceMethodParser implements ServiceParser {
             Service.class).value();
     local = method.isAnnotationPresent(Local.class);
     commandPoints = Collections.unmodifiableMap(getCommandPoints(method));
-  }
-
-  @Override
-  public String getServiceName() {
-    return svcName;
-  }
-
-  @Override
-  public boolean isLocal() {
-    return local;
-  }
-  
-  @Override
-  public Map<String, Method> getCommandPoints() {
-    return commandPoints;
-  }
-  
-  @Override
-  public boolean hasCommandPoints() {
-    return getCommandPoints().size() != 0;
   }
   
   private static Map<String, Method> getCommandPoints(Method method) {

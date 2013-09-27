@@ -15,12 +15,9 @@ import org.jboss.errai.bus.server.annotations.security.RequireAuthentication;
 import org.jboss.errai.bus.server.annotations.security.RequireRoles;
 import org.jboss.errai.bus.server.io.CommandBindingsCallback;
 
-public class ServiceTypeParser implements ServiceParser {
+public class ServiceTypeParser extends ServiceParser {
   
   private final Class<?> clazz;
-  private final Map<String, Method> commandPoints;
-  private final String svcName;
-  private final boolean local;
 
   public ServiceTypeParser(Class<?> clazz) throws NotAService {
     this.clazz = clazz;
@@ -36,32 +33,8 @@ public class ServiceTypeParser implements ServiceParser {
     this.commandPoints = Collections.unmodifiableMap(getCommandPoints(clazz));
   }
   
-  /* (non-Javadoc)
-   * @see org.jboss.errai.bus.server.util.ServiceParser#getCommandPoints()
-   */
-  @Override
-  public Map<String, Method> getCommandPoints() {
-    return commandPoints;
-  }
-  
-  /* (non-Javadoc)
-   * @see org.jboss.errai.bus.server.util.ServiceParser#hasCommandPoints()
-   */
-  @Override
-  public boolean hasCommandPoints() {
-    return commandPoints.size() != 0;
-  }
-  
   public Class<?> getRemoteImplementation() {
     return getRemoteImplementation(clazz);
-  }
-  
-  /* (non-Javadoc)
-   * @see org.jboss.errai.bus.server.util.ServiceParser#getServiceName()
-   */
-  @Override
-  public String getServiceName() {
-    return svcName;
   }
   
   private static Class<?> getRemoteImplementation(Class<?> type) {
@@ -75,14 +48,6 @@ public class ServiceTypeParser implements ServiceParser {
     }
     return null;
   }
-  
-  /* (non-Javadoc)
-   * @see org.jboss.errai.bus.server.util.ServiceParser#isLocal()
-   */
-  @Override
-  public boolean isLocal() {
-    return local;
-  }
 
   public static String resolveServiceName(final Class<?> type) {
     String subjectName = type.getAnnotation(Service.class).value();
@@ -93,7 +58,7 @@ public class ServiceTypeParser implements ServiceParser {
     return subjectName;
   }
   
-  public static Map<String, Method> getCommandPoints(Class<?> clazz) {
+  private static Map<String, Method> getCommandPoints(Class<?> clazz) {
     Map<String, Method> commandPoints = new HashMap<String, Method>();
     for (final Method method : clazz.getDeclaredMethods()) {
       if (method.isAnnotationPresent(Command.class) && !method.isAnnotationPresent(Service.class)) {
