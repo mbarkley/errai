@@ -24,6 +24,6 @@ public interface ServiceParser {
 
   public abstract boolean hasAuthentication();
 
-  public abstract MessageCallback getCallback(Object delegate, MessageBus bus);
+  public abstract MessageCallback getCallback(Object delegateInstance, MessageBus bus);
 
 }

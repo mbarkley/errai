@@ -16,6 +16,7 @@
 package org.jboss.errai.cdi.server;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -24,6 +25,8 @@ import java.util.Set;
 
 import javax.enterprise.inject.spi.AnnotatedMethod;
 import javax.enterprise.inject.spi.AnnotatedType;
+
+import org.jboss.errai.bus.server.util.ServiceParser;
 
 /**
  * Holds references to the types discovered when CDI bootraps.
@@ -38,6 +41,7 @@ public class TypeRegistry {
   private final List<AnnotatedType> serviceEndpoints = new ArrayList<AnnotatedType>();
   private final Map<AnnotatedType, List<AnnotatedMethod>> serviceMethods = new HashMap<AnnotatedType, List<AnnotatedMethod>>();
   private final Set<Class<?>> remoteInterfaces = new HashSet<Class<?>>();
+  private final Map<Class<?>, List<ServiceParser>> services = new HashMap<Class<?>, List<ServiceParser>>();
 
   public void addServiceEndpoint(final AnnotatedType service) {
     serviceEndpoints.add(service);
@@ -64,5 +68,19 @@ public class TypeRegistry {
 
   public Set<Class<?>> getRemoteInterfaces() {
     return remoteInterfaces;
+  }
+  
+  public Collection<Class<?>> getDelegateClasses() {
+    return services.keySet();
+  }
+  
+  public Collection<ServiceParser> getDelegateServices(Object delegate) {
+    return services.get(delegate);
+  }
+  
+  public void addService(ServiceParser service) {
+    if (!services.containsKey(service.getDelegateClass()))
+      services.put(service.getDelegateClass(), new ArrayList<ServiceParser>());
+    services.get(service.getDelegateClass()).add(service);
   }
 }

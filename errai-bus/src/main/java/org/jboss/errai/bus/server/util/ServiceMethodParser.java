@@ -93,5 +93,10 @@ public class ServiceMethodParser implements ServiceParser {
       return new ServiceMethodCallback(delegate, method);
     }
   }
+
+  @Override
+  public String toString() {
+    return method.toString();
+  }
   
 }

@@ -38,6 +38,7 @@ import org.jboss.errai.bus.server.service.ErraiService;
 import org.jboss.errai.bus.server.service.ErraiServiceSingleton;
 import org.jboss.errai.bus.server.util.NotAService;
 import org.jboss.errai.bus.server.util.SecureHashUtil;
+import org.jboss.errai.bus.server.util.ServiceMethodParser;
 import org.jboss.errai.bus.server.util.ServiceParser;
 import org.jboss.errai.bus.server.util.ServiceTypeParser;
 import org.jboss.errai.cdi.server.events.ConversationalEvent;
@@ -195,13 +196,19 @@ public class CDIExtensionPoints implements Extension {
       }
 
       if (!isRpc) {
-        managedTypes.addServiceEndpoint(type);
+        try {
+          managedTypes.addService(new ServiceTypeParser(type.getJavaClass()));
+        } catch (NotAService e) {
+          e.printStackTrace();
+        }
       }
     }
-    else {
-      for (final AnnotatedMethod method : type.getMethods()) {
-        if (method.isAnnotationPresent(Service.class)) {
-          managedTypes.addServiceMethod(type, method);
+    for (final AnnotatedMethod method : type.getMethods()) {
+      if (method.isAnnotationPresent(Service.class)) {
+        try {
+          managedTypes.addService(new ServiceMethodParser(method.getJavaMember()));
+        } catch (NotAService e) {
+          e.printStackTrace();
         }
       }
     }
@@ -384,7 +391,7 @@ public class CDIExtensionPoints implements Extension {
       this.beanManager = beanManager;
       this.bus = bus;
       this.scheduledExecutorService = scheduledExecutorService;
-      registered.addAll(managedTypes.getServiceEndpoints());
+      registered.addAll(managedTypes.getDelegateClasses());
 
       this.expiryTime = System.currentTimeMillis() + (timeOutInSeconds * 1000);
     }
@@ -393,7 +400,7 @@ public class CDIExtensionPoints implements Extension {
     public void run() {
       if (System.currentTimeMillis() > expiryTime) {
         scheduledExecutorService.shutdown();
-        throw new RuntimeException("failed to discover beans: " + managedTypes.getServiceEndpoints());
+        throw new RuntimeException("failed to discover beans: " + managedTypes.getDelegateClasses());
       }
 
       if (registered.isEmpty()) {
@@ -402,60 +409,32 @@ public class CDIExtensionPoints implements Extension {
         return;
       }
 
-      for (final AnnotatedType<?> type : managedTypes.getServiceEndpoints()) {
-        if (!registered.contains(type) || beanManager.getBeans(type.getJavaClass()).size() == 0) {
+      // As each delegate becomes available, register all the associated services (Type and method)
+      for (final Class<?> delegateClass : managedTypes.getDelegateClasses()) {
+        if (!registered.contains(delegateClass) || beanManager.getBeans(delegateClass).size() == 0) {
           continue;
         }
 
-        registered.remove(type);
+        registered.remove(delegateClass);
         
-        ServiceParser svcParser;
-        try {
-          svcParser = new ServiceTypeParser(type.getJavaClass());
-        }
-        catch (NotAService ex) {
-          // This shouldn't be possible
-          throw new RuntimeException(ex);
-        }
-
-        final Object callback = CDIServerUtil.lookupBean(beanManager, type.getJavaClass());
-        final String subjectName = svcParser.getServiceName();
-
-        if (!svcParser.hasCommandPoints()) {
-          bus.subscribe(subjectName, (MessageCallback) callback);
-        }
-        else {
-          bus.subscribeLocal(subjectName, new CommandBindingsCallback(svcParser.getCommandPoints(), callback, bus));
+        for (final ServiceParser svcParser : managedTypes.getDelegateServices(delegateClass)) {
+          final Object delegateInstance = CDIServerUtil.lookupBean(beanManager, delegateClass);
+          final MessageCallback callback = svcParser.getCallback(delegateInstance, bus);
+          
+          if (callback != null) {
+            if (svcParser.isLocal()) {
+              bus.subscribeLocal(svcParser.getServiceName(), callback);
+            }
+            else {
+              bus.subscribe(svcParser.getServiceName(), callback);
+            }
+          }
         }
       }
     }
   }
 
   private void subscribeServices(final BeanManager beanManager, final MessageBus bus) {
-    for (final Map.Entry<AnnotatedType, List<AnnotatedMethod>> entry : managedTypes.getServiceMethods().entrySet()) {
-      final Class<?> type = entry.getKey().getJavaClass();
-
-      for (final AnnotatedMethod method : entry.getValue()) {
-        final Service svc = method.getAnnotation(Service.class);
-        final String svcName = svc.value().equals("") ? method.getJavaMember().getName() : svc.value();
-
-        final Method callMethod = method.getJavaMember();
-
-        bus.subscribe(svcName, new MessageCallback() {
-
-          @Override
-          public void callback(final Message message) {
-            final Object targetBean = CDIServerUtil.lookupBean(beanManager, type);
-
-            try {
-              callMethod.invoke(targetBean, message);
-            } catch (Exception e) {
-              ErrorHelper.sendClientError(bus, message, "Error dispatching service", e);
-            }
-          }
-        });
-      }
-    }
 
     /**
      * Due to the lack of contract in CDI guaranteeing when beans will be available, we use an

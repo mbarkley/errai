@@ -119,6 +119,11 @@ public class ServiceTypeParser implements ServiceParser {
   }
 
   @Override
+  public String toString() {
+    return clazz.toString();
+  }
+
+  @Override
   public boolean hasRule() {
     return clazz.isAnnotationPresent(RequireRoles.class);
   }
@@ -129,12 +134,12 @@ public class ServiceTypeParser implements ServiceParser {
   }
 
   @Override
-  public MessageCallback getCallback(Object delegate, MessageBus bus) {
+  public MessageCallback getCallback(Object delegateInstance, MessageBus bus) {
     if (isCallback()) {
-      return (MessageCallback) delegate;
+      return (MessageCallback) delegateInstance;
     }
     else if (hasCommandPoints()) {
-      return new CommandBindingsCallback(getCommandPoints(), delegate, bus);
+      return new CommandBindingsCallback(getCommandPoints(), delegateInstance, bus);
     }
     else {
       return null;
