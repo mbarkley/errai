@@ -23,9 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.enterprise.inject.spi.AnnotatedMethod;
-import javax.enterprise.inject.spi.AnnotatedType;
-
 import org.jboss.errai.bus.server.util.ServiceParser;
 
 /**
@@ -38,32 +35,11 @@ import org.jboss.errai.bus.server.util.ServiceParser;
  */
 public class TypeRegistry {
 
-  private final List<AnnotatedType> serviceEndpoints = new ArrayList<AnnotatedType>();
-  private final Map<AnnotatedType, List<AnnotatedMethod>> serviceMethods = new HashMap<AnnotatedType, List<AnnotatedMethod>>();
   private final Set<Class<?>> remoteInterfaces = new HashSet<Class<?>>();
   private final Map<Class<?>, List<ServiceParser>> services = new HashMap<Class<?>, List<ServiceParser>>();
 
-  public void addServiceEndpoint(final AnnotatedType service) {
-    serviceEndpoints.add(service);
-  }
-
-  public void addServiceMethod(final AnnotatedType service, final AnnotatedMethod method) {
-    if (!serviceMethods.containsKey(service)) {
-      serviceMethods.put(service, new ArrayList<AnnotatedMethod>());
-    }
-    serviceMethods.get(service).add(method);
-  }
-
   public void addRemoteInterface(final Class<?> intf) {
     remoteInterfaces.add(intf);
-  }
-
-  public List<AnnotatedType> getServiceEndpoints() {
-    return serviceEndpoints;
-  }
-
-  public Map<AnnotatedType, List<AnnotatedMethod>> getServiceMethods() {
-    return serviceMethods;
   }
 
   public Set<Class<?>> getRemoteInterfaces() {
