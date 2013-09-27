@@ -11,6 +11,8 @@ import org.jboss.errai.common.client.protocols.MessageParts;
 import com.google.gwt.user.client.Timer;
 
 /**
+ * Test that annotated services (types or methods) are properly scanned and subscribed by ErraiBus.
+ * 
  * @author mbarkley <mbarkley@redhat.com>
  */
 public class ServiceAnnotationTests extends AbstractErraiTest {
@@ -64,14 +66,14 @@ public class ServiceAnnotationTests extends AbstractErraiTest {
   public void testMethodAnnotationCommandAndService() throws Exception {
     runServiceTest("commandService", "commandTest");
   }
-  
+
   /**
    * Test that type service works with inner method service.
    */
   public void testClassWithServiceAndMethodWithService1() throws Exception {
     runServiceTest("ClassWithServiceAndMethodWithService", null);
   }
-  
+
   /**
    * Test that method service works with enclosing type service.
    */

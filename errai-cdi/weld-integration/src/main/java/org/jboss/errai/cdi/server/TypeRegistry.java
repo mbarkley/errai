@@ -32,6 +32,7 @@ import org.jboss.errai.bus.server.util.ServiceParser;
  * @author Heiko Braun <hbraun@redhat.com>
  * @author Mike Brock
  * @author Christian Sadilek <csadilek@redhat.com>
+ * @author Max Barkley <mbarkley@redhat.com>
  */
 public class TypeRegistry {
 
@@ -46,14 +47,23 @@ public class TypeRegistry {
     return remoteInterfaces;
   }
   
+  /**
+   * @return All registered beans which are services or contain methods which are services.
+   */
   public Collection<Class<?>> getDelegateClasses() {
     return services.keySet();
   }
   
-  public Collection<ServiceParser> getDelegateServices(Object delegate) {
-    return services.get(delegate);
+  /**
+   * Get all the services associated with a delegate class.
+   */
+  public Collection<ServiceParser> getDelegateServices(Class<?> delegateClass) {
+    return services.get(delegateClass);
   }
   
+  /**
+   * Register a service.
+   */
   public void addService(ServiceParser service) {
     if (!services.containsKey(service.getDelegateClass()))
       services.put(service.getDelegateClass(), new ArrayList<ServiceParser>());

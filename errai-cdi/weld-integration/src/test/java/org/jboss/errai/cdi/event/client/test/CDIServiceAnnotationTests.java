@@ -11,6 +11,12 @@ import org.jboss.errai.common.client.protocols.MessageParts;
 
 import com.google.gwt.user.client.Timer;
 
+/**
+ * Test that annotated services (types or methods) are properly scanned and subscribed by
+ * CDIExtensionPoints.
+ * 
+ * @author mbarkley <mbarkley@redhat.com>
+ */
 public class CDIServiceAnnotationTests extends AbstractErraiTest {
 
   MessageBus bus = ErraiBus.get();
@@ -86,7 +92,7 @@ public class CDIServiceAnnotationTests extends AbstractErraiTest {
   public void testClassWithServiceAndMethodWithService1() throws Exception {
     runServiceTest("ClassWithServiceAndMethodWithService", null);
   }
-  
+
   /**
    * Test that method service works with enclosing type service.
    */

@@ -15,10 +15,21 @@ import org.jboss.errai.bus.server.annotations.security.RequireAuthentication;
 import org.jboss.errai.bus.server.annotations.security.RequireRoles;
 import org.jboss.errai.bus.server.io.CommandBindingsCallback;
 
+/**
+ * A {@link ServiceParser} implementation for types annotated with {@link Service}.
+ * 
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public class ServiceTypeParser extends ServiceParser {
   
   private final Class<?> clazz;
 
+  /**
+   * Create a {@link ServiceParser} for classes annotated with {@link Service}.
+   * 
+   * @param clazz A class annotated with {@link Service}.
+   * @throws NotAService Thrown if {@code clazz} does not have a {@link Service} annotation.
+   */
   public ServiceTypeParser(Class<?> clazz) throws NotAService {
     this.clazz = clazz;
 
@@ -33,6 +44,9 @@ public class ServiceTypeParser extends ServiceParser {
     this.commandPoints = Collections.unmodifiableMap(getCommandPoints(clazz));
   }
   
+  /**
+   * @return The {@link Remote} interface associated with this type service or {@code null} if none exists.
+   */
   public Class<?> getRemoteImplementation() {
     return getRemoteImplementation(clazz);
   }
@@ -49,7 +63,10 @@ public class ServiceTypeParser extends ServiceParser {
     return null;
   }
 
-  public static String resolveServiceName(final Class<?> type) {
+  /**
+   * Get the subject name of a service type.
+   */
+  private static String resolveServiceName(final Class<?> type) {
     String subjectName = type.getAnnotation(Service.class).value();
   
     if (subjectName.equals(""))

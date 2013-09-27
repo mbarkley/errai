@@ -13,10 +13,21 @@ import org.jboss.errai.bus.server.annotations.Service;
 import org.jboss.errai.bus.server.io.CommandBindingsCallback;
 import org.jboss.errai.bus.server.io.ServiceMethodCallback;
 
+/**
+ * A {@link ServiceParser} implementation for methods annotated with {@link Service}.
+ * 
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public class ServiceMethodParser extends ServiceParser {
 
   private final Method method;
 
+  /**
+   * Create a {@link ServiceParser} for methods annotated with {@link Service}.
+   * 
+   * @param method A method annotated with {@link Service}.
+   * @throws NotAService Thrown if {@code method} does not have a {@link Service} annotation.
+   */
   public ServiceMethodParser(Method method) throws NotAService {
     if (!method.isAnnotationPresent(Service.class)) {
       throw new NotAService("The method " + method.getName() + " is not a service.");
@@ -28,6 +39,9 @@ public class ServiceMethodParser extends ServiceParser {
     commandPoints = Collections.unmodifiableMap(getCommandPoints(method));
   }
   
+  /**
+   * Generate a map for any command points on this method.
+   */
   private static Map<String, Method> getCommandPoints(Method method) {
     Map<String, Method> commandPoints = new HashMap<String, Method>();
     if (method.isAnnotationPresent(Command.class)) {
