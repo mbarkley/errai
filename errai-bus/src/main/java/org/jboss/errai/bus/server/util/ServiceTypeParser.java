@@ -6,9 +6,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.jboss.errai.bus.client.api.Local;
+import org.jboss.errai.bus.client.api.messaging.MessageBus;
+import org.jboss.errai.bus.client.api.messaging.MessageCallback;
 import org.jboss.errai.bus.server.annotations.Command;
 import org.jboss.errai.bus.server.annotations.Remote;
 import org.jboss.errai.bus.server.annotations.Service;
+import org.jboss.errai.bus.server.annotations.security.RequireAuthentication;
+import org.jboss.errai.bus.server.annotations.security.RequireRoles;
+import org.jboss.errai.bus.server.io.CommandBindingsCallback;
 
 public class ServiceTypeParser implements ServiceParser {
   
@@ -101,6 +106,39 @@ public class ServiceTypeParser implements ServiceParser {
       }
     }
     return commandPoints;
+  }
+
+  @Override
+  public Class<?> getDelegateClass() {
+    return clazz;
+  }
+
+  @Override
+  public boolean isCallback() {
+    return MessageCallback.class.isAssignableFrom(clazz) && !hasCommandPoints();
+  }
+
+  @Override
+  public boolean hasRule() {
+    return clazz.isAnnotationPresent(RequireRoles.class);
+  }
+
+  @Override
+  public boolean hasAuthentication() {
+    return clazz.isAnnotationPresent(RequireAuthentication.class);
+  }
+
+  @Override
+  public MessageCallback getCallback(Object delegate, MessageBus bus) {
+    if (isCallback()) {
+      return (MessageCallback) delegate;
+    }
+    else if (hasCommandPoints()) {
+      return new CommandBindingsCallback(getCommandPoints(), delegate, bus);
+    }
+    else {
+      return null;
+    }
   }
   
 }

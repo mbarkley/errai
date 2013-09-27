@@ -28,13 +28,10 @@ import org.jboss.errai.bus.client.api.messaging.MessageCallback;
 import org.jboss.errai.bus.client.api.messaging.RequestDispatcher;
 import org.jboss.errai.bus.server.annotations.Remote;
 import org.jboss.errai.bus.server.annotations.Service;
-import org.jboss.errai.bus.server.annotations.security.RequireAuthentication;
 import org.jboss.errai.bus.server.annotations.security.RequireRoles;
-import org.jboss.errai.bus.server.io.CommandBindingsCallback;
 import org.jboss.errai.bus.server.io.RPCEndpointFactory;
 import org.jboss.errai.bus.server.io.RemoteServiceCallback;
 import org.jboss.errai.bus.server.io.ServiceInstanceProvider;
-import org.jboss.errai.bus.server.io.ServiceMethodCallback;
 import org.jboss.errai.bus.server.security.auth.rules.RolesRequiredRule;
 import org.jboss.errai.bus.server.service.bootstrap.BootstrapContext;
 import org.jboss.errai.bus.server.service.bootstrap.GuiceProviderProxy;
@@ -84,7 +81,6 @@ public class ServiceProcessor implements MetaDataProcessor<BootstrapContext> {
 
   private void processServiceClass(final Class<?> loadClass, final BootstrapContext context,
           final ErraiServiceConfiguratorImpl config) {
-    Object svc = null;
     ServiceParser svcParser;
     try {
       svcParser = new ServiceTypeParser(loadClass);
@@ -101,61 +97,14 @@ public class ServiceProcessor implements MetaDataProcessor<BootstrapContext> {
 
     Class<?> remoteImpl = ((ServiceTypeParser) svcParser).getRemoteImplementation();
     if (remoteImpl != null) {
-      svc = createRPCScaffolding(remoteImpl, loadClass, context);
+      createRPCScaffolding(remoteImpl, loadClass, context);
     }
 
-    if (MessageCallback.class.isAssignableFrom(loadClass)) {
-      final Class<? extends MessageCallback> clazz = loadClass.asSubclass(MessageCallback.class);
-      log.debug("discovered service: " + clazz.getName());
-      try {
-        svc = createServiceInjector(clazz, context, config, true);
-      } catch (Throwable t) {
-        t.printStackTrace();
-      }
-
-      if (!svcParser.hasCommandPoints()) {
-        // Subscribe the service to the bus.
-        if (svcParser.isLocal()) {
-          context.getBus().subscribeLocal(svcParser.getServiceName(), (MessageCallback) svc);
-        }
-        else {
-          context.getBus().subscribe(svcParser.getServiceName(), (MessageCallback) svc);
-        }
-      }
-    }
-
-    if (svc == null) {
-      svc = createServiceInjector(loadClass, context, config, false);
-    }
-
-    RolesRequiredRule rule = null;
-    if (loadClass.isAnnotationPresent(RequireRoles.class)) {
-      rule = new RolesRequiredRule(loadClass.getAnnotation(RequireRoles.class).value(), context.getBus());
-    }
-    else if (loadClass.isAnnotationPresent(RequireAuthentication.class)) {
-      rule = new RolesRequiredRule(new HashSet<Object>(), context.getBus());
-    }
-
-    if (svcParser.hasCommandPoints()) {
-      if (svcParser.isLocal()) {
-        context.getBus().subscribeLocal(svcParser.getServiceName(),
-                new CommandBindingsCallback(svcParser.getCommandPoints(), svc, context.getBus()));
-      }
-      else {
-        context.getBus().subscribe(svcParser.getServiceName(),
-                new CommandBindingsCallback(svcParser.getCommandPoints(), svc, context.getBus()));
-      }
-    }
-
-    if (rule != null) {
-      context.getBus().addRule(svcParser.getServiceName(), rule);
-    }
+    processService(svcParser, context);
   }
 
   private void processServiceMethod(final Method loadMethod, final BootstrapContext context,
           final ErraiServiceConfiguratorImpl config) {
-    Object svc = null;
-
     ServiceParser svcParser;
     try {
       svcParser = new ServiceMethodParser(loadMethod);
@@ -170,44 +119,56 @@ public class ServiceProcessor implements MetaDataProcessor<BootstrapContext> {
       return;
     }
 
-    if (loadMethod.getParameterTypes().length == 0 || loadMethod.getParameterTypes().length == 1
-            && loadMethod.getParameterTypes()[0].equals(Message.class)) {
-      log.debug("discovered service: " + loadMethod.getDeclaringClass().getName());
+    processService(svcParser, context);
+  }
+  
+  private void processService(ServiceParser svcParser, BootstrapContext context) {
+    Object svc = null;
+    ErraiServiceConfiguratorImpl config = (ErraiServiceConfiguratorImpl) context.getConfig();
+    Class<?> loadClass = svcParser.getDelegateClass();
+    
+    // Now try and get the appropriate injector
+    
+    // Will never return true for service methods
+    if (svcParser.isCallback()) {
+      final Class<? extends MessageCallback> clazz = loadClass.asSubclass(MessageCallback.class);
+      log.debug("discovered service: " + clazz.getName());
       try {
-        svc = createServiceInjector(loadMethod.getDeclaringClass(), context, config, false);
+        svc = createServiceInjector(clazz, context, config, true);
       } catch (Throwable t) {
         t.printStackTrace();
-      }
-
-      if (!svcParser.hasCommandPoints()) {
-        // Subscribe the service to the bus.
-        if (svcParser.isLocal()) {
-          context.getBus().subscribeLocal(svcParser.getServiceName(), new ServiceMethodCallback(svc, loadMethod));
-        }
-        else {
-          context.getBus().subscribe(svcParser.getServiceName(), new ServiceMethodCallback(svc, loadMethod));
-        }
       }
     }
 
     if (svc == null) {
-      svc = createServiceInjector(loadMethod.getDeclaringClass(), context, config, false);
+      svc = createServiceInjector(loadClass, context, config, false);
     }
 
-    if (svcParser.hasCommandPoints()) {
-      if (svcParser.isLocal()) {
-        context.getBus().subscribeLocal(svcParser.getServiceName(),
-                new CommandBindingsCallback(svcParser.getCommandPoints(), svc, context.getBus()));
-      }
-      else {
-        context.getBus().subscribe(svcParser.getServiceName(),
-                new CommandBindingsCallback(svcParser.getCommandPoints(), svc, context.getBus()));
+    RolesRequiredRule rule = null;
+    
+    // Will never return true for service methods
+    if (svcParser.hasRule()) {
+      rule = new RolesRequiredRule(loadClass.getAnnotation(RequireRoles.class).value(), context.getBus());
+    }
+    else if (svcParser.hasAuthentication()) {
+      rule = new RolesRequiredRule(new HashSet<Object>(), context.getBus());
+    }
+
+    // If we have created an injector, get a callback and register it
+    if (svc != null) {
+      MessageCallback callback = svcParser.getCallback(svc, context.getBus());
+      if (callback != null) {
+        if (svcParser.isLocal()) {
+          context.getBus().subscribeLocal(svcParser.getServiceName(), callback);
+        }
+        else {
+          context.getBus().subscribe(svcParser.getServiceName(), callback);
+        }
+        if (rule != null) {
+          context.getBus().addRule(svcParser.getServiceName(), rule);
+        }
       }
     }
-  }
-  
-  private void processService(ServiceParser svcParser) {
-    
   }
 
   /**
