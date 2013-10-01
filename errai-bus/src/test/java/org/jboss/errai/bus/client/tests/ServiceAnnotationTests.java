@@ -2,6 +2,8 @@ package org.jboss.errai.bus.client.tests;
 
 import org.jboss.errai.bus.client.ErraiBus;
 import org.jboss.errai.bus.client.api.base.MessageBuilder;
+import org.jboss.errai.bus.client.api.builder.MessageBuildParms;
+import org.jboss.errai.bus.client.api.builder.MessageBuildSendableWithReply;
 import org.jboss.errai.bus.client.api.messaging.Message;
 import org.jboss.errai.bus.client.api.messaging.MessageBus;
 import org.jboss.errai.bus.client.api.messaging.MessageCallback;
@@ -11,7 +13,8 @@ import org.jboss.errai.common.client.protocols.MessageParts;
 import com.google.gwt.user.client.Timer;
 
 /**
- * Test that annotated services (types or methods) are properly scanned and subscribed by ErraiBus.
+ * Test that annotated services (types or methods) are properly scanned and subscribed by
+ * the ErraiBus.
  * 
  * @author mbarkley <mbarkley@redhat.com>
  */
@@ -20,13 +23,24 @@ public class ServiceAnnotationTests extends AbstractErraiTest {
   MessageBus bus = ErraiBus.get();
   private boolean received;
   private Message receivedMessage;
-  public final static String REPLY_TO = "AnnotationTester";
+  public final static String REPLY_TO_BASE = "AnnotationTester";
+  public static String REPLY_TO;
+  private static Integer counter = 0;
 
   private final int POLL = 100;
   private final int TIMEOUT = 10000;
 
-  public ServiceAnnotationTests() {
-    super();
+  @Override
+  public String getModuleName() {
+    return "org.jboss.errai.bus.ServiceAnnotationTestModule";
+  }
+
+  @Override
+  protected void gwtSetUp() throws Exception {
+    super.gwtSetUp();
+    // Do this to enhance independence of tests
+    REPLY_TO = REPLY_TO_BASE + ++counter;
+
     bus.subscribe(REPLY_TO, new MessageCallback() {
       @Override
       public void callback(Message message) {
@@ -37,48 +51,63 @@ public class ServiceAnnotationTests extends AbstractErraiTest {
   }
 
   @Override
-  protected void gwtSetUp() throws Exception {
-    super.gwtSetUp();
+  protected void gwtTearDown() throws Exception {
+    super.gwtTearDown();
+    
+    bus.unsubscribeAll(REPLY_TO);
     received = false;
+    receivedMessage = null;
   }
 
-  @Override
-  public String getModuleName() {
-    return "org.jboss.errai.bus.ServiceAnnotationTestModule";
+  public void testClassWithServiceMethod() throws Exception {
+    runServiceTest("serviceMethod", null, null);
   }
 
-  public void testServiceMethodAnnotation() throws Exception {
-    runServiceTest("serviceMethod1", null);
+  public void testClassWithService() throws Exception {
+    runServiceTest("ClassWithService", null, null);
   }
 
-  public void testServiceMethodNamedAnnotation() throws Exception {
-    runServiceTest("namedMethodTest", null);
+  public void testClassWithMultipleServices() throws Exception {
+    runServiceTestAndThen("service1", null, null, new Runnable() {
+      @Override
+      public void run() {
+        runServiceTest("service2", null, null);
+      }
+    });
   }
 
-  public void testAnnotationClassServiceMethodCommandWithCallback() throws Exception {
-    runServiceTest("ClassServiceMethodCommandWithCallback", "commandTest");
+  public void testClassWithCommandMethod() throws Exception {
+    runServiceTest("ClassWithCommandMethod", "command", null);
   }
 
-  public void testAnnotationClassServiceMethodCommand() throws Exception {
-    runServiceTest("ClassServiceMethodAnnotation", "commandTest");
+  public void testNamedClassWithService() throws Exception {
+    runServiceTest("ANamedClassService", null, null);
   }
 
-  public void testMethodAnnotationCommandAndService() throws Exception {
-    runServiceTest("commandService", "commandTest");
+  public void testClassWithNamedServiceMethod() throws Exception {
+    runServiceTest("ANamedServiceMethod", null, null);
+  }
+
+  public void testClassWithNamedCommandMethod() throws Exception {
+    runServiceTest("ClassWithNamedCommandMethod", "ANamedCommandMethod", null);
+  }
+
+  public void testClassWithServiceAndCommandMethod() throws Exception {
+    runServiceTest("ClassWithServiceAndCommandMethod", "serviceAndCommandMethod", null);
   }
 
   /**
    * Test that type service works with inner method service.
    */
   public void testClassWithServiceAndMethodWithService1() throws Exception {
-    runServiceTest("ClassWithServiceAndMethodWithService", null);
+    runServiceTest("ClassWithServiceAndMethodWithService", null, null);
   }
 
   /**
    * Test that method service works with enclosing type service.
    */
   public void testClassWithServiceAndMethodWithService2() throws Exception {
-    runServiceTest("methodWithService", null);
+    runServiceTest("methodWithService", null, null);
   }
 
   /**
@@ -86,7 +115,7 @@ public class ServiceAnnotationTests extends AbstractErraiTest {
    * type.
    */
   public void testClassWithServiceAndMethodWithServiceAndCommand1() throws Exception {
-    runServiceTest("TheMethodsService", "command");
+    runServiceTest("TheMethodsService", "command", null);
   }
 
   /**
@@ -94,7 +123,7 @@ public class ServiceAnnotationTests extends AbstractErraiTest {
    * service.
    */
   public void testClassWithServiceAndMethodWithServiceAndCommand2() throws Exception {
-    runServiceTestAndThen("ClassWithServiceAndMethodWithServiceAndCommand", "command", new Runnable() {
+    runServiceTestAndThen("ClassWithServiceAndMethodWithServiceAndCommand", "command", null, new Runnable() {
 
       @Override
       public void run() {
@@ -108,31 +137,66 @@ public class ServiceAnnotationTests extends AbstractErraiTest {
     });
   }
 
-  public void testClassWithMultipleServices() throws Exception {
-    runServiceTestAndThen("service1", null, new Runnable() {
+  /**
+   * Test that local class service does not receive message from client.
+   */
+  public void testClassWithLocalService1() throws Exception {
+    runNonRespondingServiceTest("ClassWithLocalService");
+  }
+
+  /**
+   * Test that local class service does receive message relayed through server.
+   */
+  public void testClassWithLocalService2() throws Exception {
+    runServiceTest("LocalCDIAnnotationRouterService", null, "ClassWithLocalService");
+  }
+
+  /**
+   * Test that local method service does not receive message from client.
+   */
+  public void testMethodWithLocalService1() throws Exception {
+    runNonRespondingServiceTest("localMethodService");
+  }
+
+  /**
+   * Test that local method service does receive message relayed through server.
+   */
+  public void testMethodWithLocalService2() throws Exception {
+    runServiceTest("LocalCDIAnnotationRouterService", null, "localMethodService");
+  }
+
+  private void runNonRespondingServiceTest(String subject) {
+    delayTestFinish(TIMEOUT + 2 * POLL);
+    final long start = System.currentTimeMillis();
+
+    MessageBuilder.createMessage(subject).signalling().with(MessageParts.ReplyTo, REPLY_TO)
+            .errorsHandledBy(new ErrorCallback<Message>() {
+              @Override
+              public boolean error(Message message, Throwable throwable) {
+                throw new RuntimeException("error occurred with message: " + throwable.getMessage(), throwable);
+              }
+            }).sendNowWith(bus);
+
+    new Timer() {
+
       @Override
       public void run() {
-        received = false;
-        runServiceTestAndThen("service2", null, new Runnable() {
-          @Override
-          public void run() {
-            finishTest();
-          }
-        });
+        if (System.currentTimeMillis() - start > TIMEOUT && !received) {
+          cancel();
+          finishTest();
+        }
+        else if (received) {
+          cancel();
+          System.out.println(receivedMessage);
+          System.out.println(counter);
+          fail("Message should not have been received!");
+        }
       }
-    });
+    }.scheduleRepeating(POLL);
   }
 
-  public void testMethodWithNoParams() throws Exception {
-    runServiceTest("noParams", null);
-  }
-
-  public void testLocalServiceMethod() throws Exception {
-    runServiceTest("localServiceRelay", null);
-  }
-
-  private void runServiceTest(final String subject, String command) {
-    runServiceTestAndThen(subject, command, new Runnable() {
+  private void runServiceTest(final String subject, String command, String value) {
+    runServiceTestAndThen(subject, command, value, new Runnable() {
       @Override
       public void run() {
         finishTest();
@@ -140,17 +204,27 @@ public class ServiceAnnotationTests extends AbstractErraiTest {
     });
   }
 
-  private void runServiceTestAndThen(final String subject, String command, final Runnable finish) {
+  private void runServiceTestAndThen(final String subject, String command, String value, final Runnable finish) {
     delayTestFinish(TIMEOUT + 2 * POLL);
     final long start = System.currentTimeMillis();
 
-    (command == null ? MessageBuilder.createMessage(subject) : MessageBuilder.createMessage(subject).command(command))
-            .with(MessageParts.ReplyTo, REPLY_TO).errorsHandledBy(new ErrorCallback<Message>() {
-              @Override
-              public boolean error(Message message, Throwable throwable) {
-                throw new RuntimeException("Message could not be delivered", throwable);
-              }
-            }).sendGlobalWith(bus);
+    MessageBuildParms<MessageBuildSendableWithReply> message;
+
+    if (command != null) {
+      message = MessageBuilder.createMessage(subject).command(command);
+    }
+    else
+      message = MessageBuilder.createMessage(subject).signalling();
+
+    if (value != null)
+      message = message.withValue(value);
+
+    message.with(MessageParts.ReplyTo, REPLY_TO).errorsHandledBy(new ErrorCallback<Message>() {
+      @Override
+      public boolean error(Message message, Throwable throwable) {
+        throw new RuntimeException("error occurred with message: " + throwable.getMessage(), throwable);
+      }
+    }).sendNowWith(bus);
 
     new Timer() {
 
@@ -162,6 +236,8 @@ public class ServiceAnnotationTests extends AbstractErraiTest {
         }
         else if (received) {
           cancel();
+          System.out.println(receivedMessage);
+          System.out.println(counter);
           finish.run();
         }
       }
