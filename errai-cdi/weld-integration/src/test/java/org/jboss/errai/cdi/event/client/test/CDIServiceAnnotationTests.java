@@ -176,7 +176,7 @@ public class CDIServiceAnnotationTests extends AbstractErraiTest {
               public boolean error(Message message, Throwable throwable) {
                 throw new RuntimeException("error occurred with message: " + throwable.getMessage(), throwable);
               }
-            }).sendGlobalWith(bus);
+            }).sendNowWith(bus);
 
     new Timer() {
 
@@ -225,7 +225,7 @@ public class CDIServiceAnnotationTests extends AbstractErraiTest {
       public boolean error(Message message, Throwable throwable) {
         throw new RuntimeException("error occurred with message: " + throwable.getMessage(), throwable);
       }
-    }).sendGlobalWith(bus);
+    }).sendNowWith(bus);
 
     new Timer() {
 
