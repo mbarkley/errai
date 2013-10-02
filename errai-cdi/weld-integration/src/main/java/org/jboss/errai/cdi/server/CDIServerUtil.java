@@ -28,14 +28,16 @@ import java.lang.annotation.Annotation;
  */
 public class CDIServerUtil {
   @SuppressWarnings("unchecked")
-  public static <T> T lookupBean(final BeanManager beanManager, final Class<T> serviceType) {
-    final Bean<?> bean = beanManager.resolve(beanManager.getBeans(serviceType));
+  public static <T> T lookupBean(final BeanManager beanManager,
+      final Class<T> serviceType, Annotation... annotations) {
+    final Bean<?> bean = beanManager.resolve(beanManager.getBeans(serviceType, annotations));
 
     if (bean == null) {
       return null;
     }
 
-    return (T) beanManager.getReference(bean, serviceType, beanManager.createCreationalContext(bean));
+    return (T) beanManager.getReference(bean, serviceType,
+        beanManager.createCreationalContext(bean));
   }
 
   public static QueueSession getSession(final Message message) {

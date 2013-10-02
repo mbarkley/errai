@@ -397,6 +397,23 @@ public class CDIExtensionPoints implements Extension {
 
       this.expiryTime = System.currentTimeMillis() + (timeOutInSeconds * 1000);
     }
+    
+    private Annotation[] getQualifiers(Class<?> delegateClass) {
+      int length = 0;
+      for (Annotation anno : delegateClass.getAnnotations()) {
+        if (anno.annotationType().isAnnotationPresent(Qualifier.class))
+          length += 1;
+      }
+      
+      Annotation[] ret = new Annotation[length];
+      int i = 0;
+      for (Annotation anno : delegateClass.getAnnotations()) {
+        if (anno.annotationType().isAnnotationPresent(Qualifier.class))
+          ret[i++] = anno;
+      }
+      
+      return ret;
+    }
 
     @Override
     public void run() {
@@ -413,14 +430,14 @@ public class CDIExtensionPoints implements Extension {
 
       // As each delegate becomes available, register all the associated services (type and method)
       for (final Class<?> delegateClass : managedTypes.getDelegateClasses()) {
-        if (!registered.contains(delegateClass) || beanManager.getBeans(delegateClass).size() == 0) {
+        if (!registered.contains(delegateClass) || beanManager.getBeans(delegateClass, getQualifiers(delegateClass)).size() == 0) {
           continue;
         }
 
         registered.remove(delegateClass);
         
         for (final ServiceParser svcParser : managedTypes.getDelegateServices(delegateClass)) {
-          final Object delegateInstance = CDIServerUtil.lookupBean(beanManager, delegateClass);
+          final Object delegateInstance = CDIServerUtil.lookupBean(beanManager, delegateClass, getQualifiers(delegateClass));
           final MessageCallback callback = svcParser.getCallback(delegateInstance, bus);
           
           if (callback != null) {
