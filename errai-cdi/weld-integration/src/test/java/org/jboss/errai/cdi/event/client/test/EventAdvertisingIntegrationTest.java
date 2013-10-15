@@ -3,6 +3,10 @@ package org.jboss.errai.cdi.event.client.test;
 import java.util.ArrayList;
 import java.util.List;
 
+import junit.framework.AssertionFailedError;
+
+import org.jboss.errai.bus.client.ErraiBus;
+import org.jboss.errai.bus.client.api.base.MessageBuilder;
 import org.jboss.errai.bus.client.api.messaging.Message;
 import org.jboss.errai.bus.client.framework.ClientMessageBusImpl;
 import org.jboss.errai.cdi.client.event.LocalEventA;
@@ -13,9 +17,12 @@ import org.jboss.errai.enterprise.client.cdi.CDIProtocol;
 import org.jboss.errai.enterprise.client.cdi.api.CDI;
 import org.junit.Test;
 
+import com.google.gwt.user.client.Timer;
+
 /**
  * @author Christian Sadilek <csadilek@redhat.com>
  * @author Jonathan Fuerth <jfuerth@redhat.com>
+ * @author Max Barkely <mbarkley@redhat.com>
  */
 public class EventAdvertisingIntegrationTest extends AbstractErraiCDITest {
 
@@ -34,6 +41,7 @@ public class EventAdvertisingIntegrationTest extends AbstractErraiCDITest {
       public void send(Message message) {
         if (message.hasPart(CDIProtocol.BeanType) && message.getSubject().equals(CDI.SERVER_DISPATCHER_SUBJECT)) {
           messageBeanTypeLog.add(message.get(String.class, CDIProtocol.BeanType));
+          System.out.println("BeanType received: " + message.get(String.class, CDIProtocol.BeanType));
         }
         super.send(message);
       }
@@ -47,48 +55,160 @@ public class EventAdvertisingIntegrationTest extends AbstractErraiCDITest {
   @Override
   protected void gwtTearDown() throws Exception {
     UntestableFrameworkUtil.installAlternativeBusImpl(backupBus);
+    messageBeanTypeLog.clear();
+    super.gwtTearDown();
   }
 
   @Test
   public void testLocalEventNotInitiallyAdvertisedToServer() {
+    final long start = System.currentTimeMillis();
+    new Timer() {
+      @Override
+      public void run() {
+        try {
+          // this is the actual point of the test
+          assertFalse("Local event should not have been advertised to the server",
+                  messageBeanTypeLog.contains(LocalEventA.class.getName()));
 
-    // this is the actual point of the test
-    assertFalse("Local event should not have been advertised to the server", messageBeanTypeLog.contains(LocalEventA.class.getName()));
+          // this is an important safety check, because it would be too easy for the test to
+          // fake-pass if the implementation details change.
+          assertTrue("Portable event should have been advertised to the server",
+                  messageBeanTypeLog.contains(MyEventImpl.class.getName()));
 
-    // this is an important safety check, because it would be too easy for the test to fake-pass if the implementation details change.
-    assertTrue("Portable event should have been advertised to the server", messageBeanTypeLog.contains(MyEventImpl.class.getName()));
+          finishTest();
+        } catch (AssertionFailedError ex) {
+          if (System.currentTimeMillis() - start > 25000) {
+            cancel();
+            throw ex;
+          }
+        }
+      }
+    }.scheduleRepeating(500);
+    delayTestFinish(30000);
   }
 
   @Test
   public void testLocalEventNotReadvertisedToServer() {
-    CDI.resendSubscriptionRequestForAllEventTypes();
+    /*
+     * Test overview:
+     * - Wait for initial CDI Event Advertising to occur
+     * - Invalidate the Session Queue
+     * - Check for re-advertised CDI Events until timeout
+     */
+    
+    final long start = System.currentTimeMillis();
+    new Timer() {
+      @Override
+      public void run() {
+        if (!messageBeanTypeLog.contains(LocalEventA.class.getName())
+                && messageBeanTypeLog.contains(MyEventImpl.class.getName())) {
+          messageBeanTypeLog.clear();
+          cancel();
+          MessageBuilder.createMessage("queueSessionInvalidationService").done().sendNowWith(ErraiBus.get());
+          delayTestFinish(30000);
+          final long secondStart = System.currentTimeMillis();
+          new Timer() {
+            @Override
+            public void run() {
+              try {
+                // this is the actual point of the test
+                assertFalse("Local event should not have been advertised to the server",
+                        messageBeanTypeLog.contains(LocalEventA.class.getName()));
 
-    // this is the actual point of the test
-    assertFalse("Local event should not have been advertised to the server", messageBeanTypeLog.contains(LocalEventA.class.getName()));
+                // this is an important safety check, because it would be too easy for the test to
+                // fake-pass if the implementation details change.
+                assertTrue("Portable event should have been advertised to the server",
+                        messageBeanTypeLog.contains(MyEventImpl.class.getName()));
 
-    // this is an important safety check, because it would be too easy for the test to fake-pass if the implementation details change.
-    assertTrue("Portable event should have been advertised to the server", messageBeanTypeLog.contains(MyEventImpl.class.getName()));
+                finishTest();
+              } catch (AssertionFailedError ex) {
+                if (System.currentTimeMillis() - secondStart > 25000) {
+                  cancel();
+                  throw ex;
+                }
+              }
+            }
+          }.scheduleRepeating(500);
+        }
+        else if (System.currentTimeMillis() - start > 25000) {
+          cancel();
+          fail("Timed out while waiting for initial advertising of services");
+        }
+      }
+    }.scheduleRepeating(500);
+    delayTestFinish(30000);
   }
-  
+
   @Test
   public void testPortableLocalEventNotInitiallyAdvertisedToServer() {
-    
-    // this is the actual point of the test
-    assertFalse("Local event should not have been advertised to the server", messageBeanTypeLog.contains(PortableLocalEventA.class.getName()));
-
-    // this is an important safety check, because it would be too easy for the test to fake-pass if the implementation details change.
-    assertTrue("Portable event should have been advertised to the server", messageBeanTypeLog.contains(MyEventImpl.class.getName()));
+    final long start = System.currentTimeMillis();
+    new Timer() {
+      @Override
+      public void run() {
+        try {
+          // this is the actual point of the test
+          assertFalse("Local event should not have been advertised to the server",
+                  messageBeanTypeLog.contains(PortableLocalEventA.class.getName()));
+          System.out.println(messageBeanTypeLog);
+          // this is an important safety check, because it would be too easy for the test to
+          // fake-pass if the implementation details change.
+          assertTrue("Portable event should have been advertised to the server",
+                  messageBeanTypeLog.contains(MyEventImpl.class.getName()));
+          finishTest();
+        } catch (AssertionFailedError ex) {
+          if (System.currentTimeMillis() - start > 55000) {
+            cancel();
+            throw ex;
+          }
+        }
+      }
+    }.scheduleRepeating(500);
+    delayTestFinish(60000);
   }
-  
+
   @Test
   public void testPortableLocalEventNotReadvertisedToServer() {
-    CDI.resendSubscriptionRequestForAllEventTypes();
+    final long start = System.currentTimeMillis();
+    new Timer() {
+      @Override
+      public void run() {
+        if (!messageBeanTypeLog.contains(PortableLocalEventA.class.getName())
+                && messageBeanTypeLog.contains(MyEventImpl.class.getName())) {
+          messageBeanTypeLog.clear();
+          cancel();
+          MessageBuilder.createMessage("queueSessionInvalidationService").done().sendNowWith(ErraiBus.get());
+          delayTestFinish(30000);
+          final long secondStart = System.currentTimeMillis();
+          new Timer() {
+            @Override
+            public void run() {
+              try {
+                // this is the actual point of the test
+                assertFalse("Local event should not have been advertised to the server",
+                        messageBeanTypeLog.contains(PortableLocalEventA.class.getName()));
 
-    // this is the actual point of the test
-    assertFalse("Local event should not have been advertised to the server", messageBeanTypeLog.contains(PortableLocalEventA.class.getName()));
+                // this is an important safety check, because it would be too easy for the test to
+                // fake-pass if the implementation details change.
+                assertTrue("Portable event should have been advertised to the server",
+                        messageBeanTypeLog.contains(MyEventImpl.class.getName()));
 
-    // this is an important safety check, because it would be too easy for the test to fake-pass if the implementation details change.
-    assertTrue("Portable event should have been advertised to the server", messageBeanTypeLog.contains(MyEventImpl.class.getName()));
+                finishTest();
+              } catch (AssertionFailedError ex) {
+                if (System.currentTimeMillis() - secondStart > 25000) {
+                  cancel();
+                  throw ex;
+                }
+              }
+            }
+          }.scheduleRepeating(500);
+        }
+        else if (System.currentTimeMillis() - start > 25000) {
+          cancel();
+          fail("Timed out while waiting for initial advertising of services");
+        }
+      }
+    }.scheduleRepeating(500);
+    delayTestFinish(30000);
   }
 
 }
