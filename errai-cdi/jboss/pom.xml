@@ -23,6 +23,11 @@
     </dependency>
 
     <!-- JBoss -->
+    <dependency>
+      <groupId>org.jboss.as</groupId>
+      <artifactId>jboss-as-cli</artifactId>
+      <version>7.1.0.Final</version>
+    </dependency>
 
     <!-- GWT -->
     <dependency>
@@ -36,6 +41,7 @@
       <artifactId>gwt-dev</artifactId>
       <scope>provided</scope>
     </dependency>
+
   </dependencies>
 
 </project>
