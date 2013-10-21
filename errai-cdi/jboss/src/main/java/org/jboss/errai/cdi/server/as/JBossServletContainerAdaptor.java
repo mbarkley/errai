@@ -86,13 +86,27 @@ public class JBossServletContainerAdaptor extends ServletContainer {
 
   @Override
   public void refresh() throws UnableToCompleteException {
-    // TODO Auto-generated method stub
-
+    // Deploying again should override any previous deployment of the directory
+    try {
+      ctx.handle("deploy " + appRootDir.getAbsolutePath());
+    } catch (CommandLineException e) {
+      logger.log(Type.ERROR, "Failed to redeploy app at " + appRootDir.getAbsolutePath(), e);
+      throw new UnableToCompleteException();
+    }
   }
 
   @Override
   public void stop() throws UnableToCompleteException {
-    // TODO Auto-generated method stub
-
+    TreeLogger branch = null;
+    try {
+      ctx.handle(":shutdown");
+    } catch (CommandLineException e) {
+      branch = logger.branch(Type.ERROR, "Could not shutdown AS", e);
+    } finally {
+      ctx.disconnectController();
+      if (branch != null) {
+        throw new UnableToCompleteException();
+      }
+    }
   }
 }
