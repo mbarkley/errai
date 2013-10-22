@@ -26,12 +26,11 @@ public class CLI {
     File appRootDir = getFileFromName(args[1]);
 
     ServletContainerLauncher launcher = new JBossLauncher();
-    launcher.setBindAddress("127.0.0.1");
     ServletContainer container = launcher.start(null, port, appRootDir);
   }
 
-  private static File getFileFromName(String filePath) {
-    return new File(filePath);
+  private static File getFileFromName(String path) {
+    return new File(path);
   }
 
   private static int covertPortNum(String portString) {
