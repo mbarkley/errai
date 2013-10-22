@@ -103,8 +103,10 @@ public class JBossServletContainerAdaptor extends ServletContainer {
     } catch (CommandLineException e) {
       branch = logger.branch(Type.ERROR, "Could not shutdown AS", e);
     } finally {
-      ctx.disconnectController();
+      ctx.terminateSession();
       if (branch != null) {
+        // If an error occurred shutting down AS, attempt to kill process
+        jbossProcess.destroy();
         throw new UnableToCompleteException();
       }
     }
