@@ -143,9 +143,9 @@ public class JBossServletContainerAdaptor extends ServletContainer {
   public void refresh() throws UnableToCompleteException {
     try {
       branch(Type.INFO, String.format("Redeploying %s...", getAppName()));
-      
+
       ctx.handle(String.format("/deployment=%s:redeploy", getAppName()));
-      
+
       log(Type.INFO, String.format("%s redeployed", getAppName()));
       unbranch();
     } catch (CommandLineException e) {
@@ -158,23 +158,37 @@ public class JBossServletContainerAdaptor extends ServletContainer {
   public void stop() throws UnableToCompleteException {
     try {
       branch(Type.INFO, String.format("Removing %s from deployments...", getAppName()));
-      
+
       ctx.handle(String.format("/deployment=%s:remove", getAppName()));
-      
+
       log(Type.INFO, String.format("%s removed", getAppName()));
       unbranch();
     } catch (CommandLineException e) {
       log(Type.ERROR, "Could not shutdown AS", e);
       throw new UnableToCompleteException();
     } finally {
+      branch(Type.INFO, "Attempting to stop JBoss AS instance...");
+      /*
+       * There is a bug with Process#destroy where it will not reliably kill the JBoss instance. So
+       * instead we must try and send a shutdown signal. If that is not possible or does not work,
+       * we will log it's failure, advising the user to manually kill this process.
+       */
+      try {
+        if (ctx.getControllerHost() == null) {
+          ctx.handle("connect localhost:9999");
+        }
+        ctx.handle(":shutdown");
+
+        log(Type.INFO, "JBoss AS instance stopped");
+        unbranch();
+      } catch (CommandLineException e) {
+        log(Type.ERROR, "Could not shutdown JBoss AS instance. "
+                + "Restarting this container while a JBoss AS instance is still running will cause errors.");
+      }
+
       branch(Type.INFO, "Terminating command context...");
       ctx.terminateSession();
       log(Type.INFO, "Command context terminated");
-      unbranch();
-      
-      branch(Type.INFO, "Killing JBoss AS instance...");
-      jbossProcess.destroy();
-      log(Type.INFO, "JBoss AS instance killed");
       unbranch();
     }
   }
