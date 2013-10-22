@@ -27,6 +27,17 @@
       <groupId>org.jboss.as</groupId>
       <artifactId>jboss-as-cli</artifactId>
       <version>7.1.1.Final</version>
+      <exclusions>
+          <exclusion>
+              <groupId>org.jboss.xnio</groupId>
+              <artifactId>xnio-api</artifactId>
+          </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+        <groupId>org.jboss.xnio</groupId>
+        <artifactId>xnio-api</artifactId>
+        <version>3.0.3.GA</version>
     </dependency>
 
     <!-- GWT -->
