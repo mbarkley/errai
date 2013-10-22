@@ -9,6 +9,7 @@ import org.jboss.errai.cdi.server.as.JBossServletContainerAdaptor;
 import com.google.gwt.core.ext.ServletContainer;
 import com.google.gwt.core.ext.ServletContainerLauncher;
 import com.google.gwt.core.ext.TreeLogger;
+import com.google.gwt.core.ext.TreeLogger.Type;
 import com.google.gwt.core.ext.UnableToCompleteException;
 
 public class JBossLauncher extends ServletContainerLauncher {
@@ -21,7 +22,6 @@ public class JBossLauncher extends ServletContainerLauncher {
   @Override
   public ServletContainer start(TreeLogger logger, int port, File appRootDir) throws BindException, Exception {
     // Start JBoss AS
-    Process jbossProcess;
     try {
       ProcessBuilder builder = new ProcessBuilder(JBOSS_START);
       
@@ -31,7 +31,7 @@ public class JBossLauncher extends ServletContainerLauncher {
       // Inherit streams from parent to print to stdout and stderr
       builder.inheritIO();
       
-      jbossProcess = builder.start();
+      builder.start();
     } catch (IOException e) {
       logger.log(TreeLogger.Type.ERROR, "Failed to start JBoss AS process", e);
       throw new UnableToCompleteException();
@@ -41,10 +41,11 @@ public class JBossLauncher extends ServletContainerLauncher {
     try {
       Thread.sleep(5000);
     } catch (InterruptedException e1) {
-      // Don't care too much if this is interrupted...
+      // Don't care too much if this is interrupted... but I guess we'll log it
+      logger.log(Type.WARN, "Launcher was interrupted while waiting for JBoss AS to start", e1);
     }
     
-    return new JBossServletContainerAdaptor(port, appRootDir, logger, jbossProcess);
+    return new JBossServletContainerAdaptor(port, appRootDir, logger);
   }
 
 }

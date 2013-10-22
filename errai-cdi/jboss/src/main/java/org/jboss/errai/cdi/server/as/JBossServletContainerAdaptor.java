@@ -21,7 +21,6 @@ import com.google.gwt.core.ext.UnableToCompleteException;
  */
 public class JBossServletContainerAdaptor extends ServletContainer {
 
-  private final Process jbossProcess;
   private final CommandContext ctx;
 
   private final int port;
@@ -37,18 +36,14 @@ public class JBossServletContainerAdaptor extends ServletContainer {
    *          The exploded war directory to be deployed.
    * @param logger
    *          For logging events from this container.
-   * @param jbossProcess
-   *          The JBoss AS instance. This container may directly terminate this process in the event
-   *          of a critical error.
    * @throws UnableToCompleteException
    *           Thrown if this container cannot properly connect or deploy.
    */
-  public JBossServletContainerAdaptor(int port, File appRootDir, TreeLogger logger, Process jbossProcess)
+  public JBossServletContainerAdaptor(int port, File appRootDir, TreeLogger logger)
           throws UnableToCompleteException {
     // TODO configure JBoss AS instance to connect on this port
     this.port = port;
     this.appRootDir = appRootDir;
-    this.jbossProcess = jbossProcess;
     branches.add(logger);
 
     branch(Type.INFO, "Starting container initialization...");
@@ -113,21 +108,8 @@ public class JBossServletContainerAdaptor extends ServletContainer {
       }
 
     } catch (UnableToCompleteException e) {
-      branch(Type.INFO, "Destroying resources...");
-      if (ctx != null) {
-        branch(Type.INFO, "Terminating command context...");
-
-        ctx.terminateSession();
-
-        log(Type.INFO, "Command context terminated");
-        unbranch();
-      }
-      branch(Type.INFO, "Killing JBoss AS instance...");
-
-      jbossProcess.destroy();
-
-      log(Type.INFO, "Process killed");
-      unbranch();
+      branch(Type.INFO, "Attempting to stop container...");
+      stopHelper();
 
       throw e;
     }
@@ -167,30 +149,34 @@ public class JBossServletContainerAdaptor extends ServletContainer {
       log(Type.ERROR, "Could not shutdown AS", e);
       throw new UnableToCompleteException();
     } finally {
-      branch(Type.INFO, "Attempting to stop JBoss AS instance...");
-      /*
-       * There is a bug with Process#destroy where it will not reliably kill the JBoss instance. So
-       * instead we must try and send a shutdown signal. If that is not possible or does not work,
-       * we will log it's failure, advising the user to manually kill this process.
-       */
-      try {
-        if (ctx.getControllerHost() == null) {
-          ctx.handle("connect localhost:9999");
-        }
-        ctx.handle(":shutdown");
-
-        log(Type.INFO, "JBoss AS instance stopped");
-        unbranch();
-      } catch (CommandLineException e) {
-        log(Type.ERROR, "Could not shutdown JBoss AS instance. "
-                + "Restarting this container while a JBoss AS instance is still running will cause errors.");
-      }
-
-      branch(Type.INFO, "Terminating command context...");
-      ctx.terminateSession();
-      log(Type.INFO, "Command context terminated");
-      unbranch();
+      stopHelper();
     }
+  }
+  
+  private void stopHelper() {
+    branch(Type.INFO, "Attempting to stop JBoss AS instance...");
+    /*
+     * There is a problem with Process#destroy where it will not reliably kill the JBoss instance. So
+     * instead we must try and send a shutdown signal. If that is not possible or does not work,
+     * we will log it's failure, advising the user to manually kill this process.
+     */
+    try {
+      if (ctx.getControllerHost() == null) {
+        ctx.handle("connect localhost:9999");
+      }
+      ctx.handle(":shutdown");
+
+      log(Type.INFO, "JBoss AS instance stopped");
+      unbranch();
+    } catch (CommandLineException e) {
+      log(Type.ERROR, "Could not shutdown JBoss AS instance. "
+              + "Restarting this container while a JBoss AS instance is still running will cause errors.");
+    }
+
+    branch(Type.INFO, "Terminating command context...");
+    ctx.terminateSession();
+    log(Type.INFO, "Command context terminated");
+    unbranch();
   }
 
   /**
