@@ -43,9 +43,10 @@ public class JBossServletContainerAdaptor extends ServletContainer {
 
     // Connect to AS instance
     try {
-      ctx.handle("connect");
+      ctx.handle("connect localhost:9999");
     } catch (CommandLineException e) {
       logger.log(Type.ERROR, "Could not connect to AS", e);
+      throw new UnableToCompleteException();
     }
 
     // Deploy web app
@@ -57,10 +58,10 @@ public class JBossServletContainerAdaptor extends ServletContainer {
        * archive : true iff the an archived file, false iff an exploded archive
        * enabled : true iff war should be automatically scanned and deployed
        */
-      ctx.handle(String.format("/deployment='%s':add(content=[{'path'=>'%s','archive'=>false}], enabled=false)",
-              appRootDir.getName(), appRootDir.getAbsolutePath()));
+      ctx.handle(String.format("/deployment=%s:add(content=[{\"path\"=>\"%s\",\"archive\"=>false}], enabled=false)",
+              getAppName(), appRootDir.getAbsolutePath()));
       // Deploy the resource
-      ctx.handle(String.format("/deployment='%s':deploy", appRootDir.getName()));
+      ctx.handle(String.format("/deployment=%s:deploy", getAppName()));
     } catch (CommandLineException e) {
       logger.log(Type.ERROR, "Could not deploy " + appRootDir.getAbsolutePath(), e);
       throw new UnableToCompleteException();
@@ -77,7 +78,7 @@ public class JBossServletContainerAdaptor extends ServletContainer {
   public void refresh() throws UnableToCompleteException {
     // Deploying again should override any previous deployment of the directory
     try {
-      ctx.handle("deploy " + appRootDir.getAbsolutePath());
+      ctx.handle(String.format("/deployment=%s:redeploy", getAppName()));
     } catch (CommandLineException e) {
       logger.log(Type.ERROR, "Failed to redeploy app at " + appRootDir.getAbsolutePath(), e);
       throw new UnableToCompleteException();
@@ -89,8 +90,8 @@ public class JBossServletContainerAdaptor extends ServletContainer {
     TreeLogger branch = null;
     try {
       // Undeploy and remove resource
-      ctx.handle(String.format("/deployment=%s:undeploy", appRootDir.getName()));
-      ctx.handle(String.format("/deployment=%s:remove", appRootDir.getName()));
+      ctx.handle(String.format("/deployment=%s:undeploy", getAppName()));
+      ctx.handle(String.format("/deployment=%s:remove", getAppName()));
       // Shutdown the AS
       ctx.handle(":shutdown");
     } catch (CommandLineException e) {
@@ -103,5 +104,9 @@ public class JBossServletContainerAdaptor extends ServletContainer {
         throw new UnableToCompleteException();
       }
     }
+  }
+  
+  private String getAppName() {
+    return appRootDir.getName() + ".war";
   }
 }

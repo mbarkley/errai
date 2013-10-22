@@ -23,7 +23,10 @@ public class JBossLauncher extends ServletContainerLauncher {
     // Start JBoss AS
     Process jbossProcess;
     try {
-      jbossProcess = Runtime.getRuntime().exec(JBOSS_START);
+      ProcessBuilder builder = new ProcessBuilder(JBOSS_START);
+      // Add JBOSS_HOME to environment
+      builder.environment().put("JBOSS_HOME", JBOSS_HOME);
+      jbossProcess = builder.start();
     } catch (IOException e) {
       logger.log(TreeLogger.Type.ERROR, "Failed to start JBoss AS process", e);
       throw new UnableToCompleteException();
