@@ -15,6 +15,7 @@ import com.google.gwt.core.ext.UnableToCompleteException;
 
 public class JBossLauncher extends ServletContainerLauncher {
 
+  // TODO start instance using tmp xml config file copied from standalone.xml
   // TODO remove hard-coding
   private final String JBOSS_HOME = "/home/yyz/mbarkley/Documents/errai-projects/errai/errai-cdi/jboss/src/main/resources/jboss-as-7.1.1.Final";
   // TODO make portable
