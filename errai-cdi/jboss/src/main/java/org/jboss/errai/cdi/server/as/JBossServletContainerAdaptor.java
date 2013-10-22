@@ -1,7 +1,6 @@
 package org.jboss.errai.cdi.server.as;
 
 import java.io.File;
-import java.io.IOException;
 
 import org.jboss.as.cli.CliInitializationException;
 import org.jboss.as.cli.CommandContext;
@@ -20,40 +19,18 @@ import com.google.gwt.core.ext.UnableToCompleteException;
  */
 public class JBossServletContainerAdaptor extends ServletContainer {
 
-  // TODO remove hard-coding
-  private final String JBOSS_HOME =
-          "/home/yyz/mbarkley/Documents/errai-projects/errai/errai-cdi/jboss/src/main/resources/jboss-as-7.1.1.Final";
-  // TODO make portable
-  private final String JBOSS_START = JBOSS_HOME + "/bin/standalone.sh";
-  private final int MANAGEMENT_PORT = 9999;
-  private final String JBOSS_BIND_NAME = "localhost";
+  private final Process jbossProcess;
+  private final CommandContext ctx;
 
-  private Process jbossProcess;
-  private CommandContext ctx;
+  private final int port;
+  private final TreeLogger logger;
+  private final File appRootDir;
 
-  private int port;
-  private TreeLogger logger;
-  private File appRootDir;
-
-  public JBossServletContainerAdaptor(int port, File appRootDir, TreeLogger logger) throws UnableToCompleteException {
+  public JBossServletContainerAdaptor(int port, File appRootDir, TreeLogger logger, Process jbossProcess) throws UnableToCompleteException {
     this.port = port;
     this.appRootDir = appRootDir;
     this.logger = logger;
-
-    // Start JBoss AS
-    try {
-      jbossProcess = Runtime.getRuntime().exec(JBOSS_START);
-    } catch (IOException e) {
-      logger.log(TreeLogger.Type.ERROR, "Failed to start JBoss AS process", e);
-      throw new UnableToCompleteException();
-    }
-
-    // TODO figure how to identify when AS is up
-    try {
-      Thread.sleep(5000);
-    } catch (InterruptedException e1) {
-      // Don't care too much if this is interrupted...
-    }
+    this.jbossProcess = jbossProcess;
 
     // Start CLI Context
     try {
@@ -70,8 +47,14 @@ public class JBossServletContainerAdaptor extends ServletContainer {
       logger.log(Type.ERROR, "Could not connect to AS", e);
     }
 
+    // Deploy web app
     try {
-      ctx.handle("deploy " + appRootDir.getAbsolutePath());
+      // Need to add deployment resource to specify exploded archive
+      ctx.handle(String.format(
+              "/deployment='%s':add(runtime-name='%s',content=[{'path'=>'%s','archive'=>false}], enabled=false)",
+              appRootDir.getName(), appRootDir.getAbsolutePath()));
+      // Deploy the resource
+      ctx.handle(String.format("/deployment='%s':deploy", appRootDir.getName()));
     } catch (CommandLineException e) {
       logger.log(Type.ERROR, "Could not deploy " + appRootDir.getAbsolutePath(), e);
       throw new UnableToCompleteException();
