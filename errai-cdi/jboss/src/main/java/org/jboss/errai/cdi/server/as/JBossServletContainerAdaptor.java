@@ -39,9 +39,7 @@ public class JBossServletContainerAdaptor extends ServletContainer {
    * @throws UnableToCompleteException
    *           Thrown if this container cannot properly connect or deploy.
    */
-  public JBossServletContainerAdaptor(int port, File appRootDir, TreeLogger logger)
-          throws UnableToCompleteException {
-    // TODO configure JBoss AS instance to connect on this port
+  public JBossServletContainerAdaptor(int port, File appRootDir, TreeLogger logger) throws UnableToCompleteException {
     this.port = port;
     this.appRootDir = appRootDir;
     branches.add(logger);
@@ -72,6 +70,26 @@ public class JBossServletContainerAdaptor extends ServletContainer {
         unbranch();
       } catch (CommandLineException e) {
         branch(Type.ERROR, "Could not connect to AS", e);
+        throw new UnableToCompleteException();
+      }
+
+      try {
+        branch(Type.INFO, String.format("Setting AS to listen for http requests on port %d...", port));
+
+        ctx.handle(String.format(
+                "/socket-binding-group=standard-sockets/socket-binding=http:write-attribute(name=port,value=%d)", port));
+        ctx.handle(":reload");
+        // Give the server time to reload
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          log(Type.WARN, "Interrupted while waiting for JBoss AS to reload", e);
+        }
+
+        log(Type.INFO, "Port change successful");
+        unbranch();
+      } catch (CommandLineException e1) {
+        branch(Type.ERROR, String.format("Could not change the http port to %d", port), e1);
         throw new UnableToCompleteException();
       }
 
@@ -152,12 +170,12 @@ public class JBossServletContainerAdaptor extends ServletContainer {
       stopHelper();
     }
   }
-  
+
   private void stopHelper() {
     branch(Type.INFO, "Attempting to stop JBoss AS instance...");
     /*
-     * There is a problem with Process#destroy where it will not reliably kill the JBoss instance. So
-     * instead we must try and send a shutdown signal. If that is not possible or does not work,
+     * There is a problem with Process#destroy where it will not reliably kill the JBoss instance.
+     * So instead we must try and send a shutdown signal. If that is not possible or does not work,
      * we will log it's failure, advising the user to manually kill this process.
      */
     try {

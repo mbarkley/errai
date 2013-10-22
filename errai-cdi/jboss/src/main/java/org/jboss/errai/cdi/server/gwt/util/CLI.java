@@ -30,6 +30,9 @@ public class CLI {
       @Override
       public void log(Type type, String msg, Throwable caught, HelpInfo helpInfo) {
         System.out.println(String.format("[%s] %s", type.toString().toUpperCase(), msg));
+        if (caught != null) {
+          caught.printStackTrace(System.err);
+        }
       }
       
       @Override
