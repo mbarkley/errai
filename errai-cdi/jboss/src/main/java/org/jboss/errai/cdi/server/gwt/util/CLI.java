@@ -12,7 +12,7 @@ import com.google.gwt.core.ext.TreeLogger;
 public class CLI {
 
   /**
-   * Start a JBoss AS Embedded instance.
+   * Start a JBoss AS Embedded instance, deploy a resource, and then close the instance.
    * 
    * @param Arguments
    *          should be of form: {port_number} {war_directory}
@@ -50,7 +50,18 @@ public class CLI {
     };
 
     ServletContainerLauncher launcher = new JBossLauncher();
+    
+    System.out.print("Starting container...");
     ServletContainer container = launcher.start(logger, port, appRootDir);
+    System.out.println("Container started");
+    
+    System.out.println("Refreshing deployment...");
+    container.refresh();
+    System.out.println("Deployment refreshed");
+    
+    System.out.println("Stopping container...");
+    container.stop();
+    System.out.println("Container is stopped");
   }
 
   private static File getFileFromName(String path) {
