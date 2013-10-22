@@ -26,7 +26,8 @@ public class JBossServletContainerAdaptor extends ServletContainer {
   private final TreeLogger logger;
   private final File appRootDir;
 
-  public JBossServletContainerAdaptor(int port, File appRootDir, TreeLogger logger, Process jbossProcess) throws UnableToCompleteException {
+  public JBossServletContainerAdaptor(int port, File appRootDir, TreeLogger logger, Process jbossProcess)
+          throws UnableToCompleteException {
     this.port = port;
     this.appRootDir = appRootDir;
     this.logger = logger;
@@ -49,9 +50,14 @@ public class JBossServletContainerAdaptor extends ServletContainer {
 
     // Deploy web app
     try {
-      // Need to add deployment resource to specify exploded archive
-      ctx.handle(String.format(
-              "/deployment='%s':add(runtime-name='%s',content=[{'path'=>'%s','archive'=>false}], enabled=false)",
+      /*
+       * Need to add deployment resource to specify exploded archive
+       * 
+       * path : the absolute path the deployment file/directory
+       * archive : true iff the an archived file, false iff an exploded archive
+       * enabled : true iff war should be automatically scanned and deployed
+       */
+      ctx.handle(String.format("/deployment='%s':add(content=[{'path'=>'%s','archive'=>false}], enabled=false)",
               appRootDir.getName(), appRootDir.getAbsolutePath()));
       // Deploy the resource
       ctx.handle(String.format("/deployment='%s':deploy", appRootDir.getName()));
@@ -82,6 +88,10 @@ public class JBossServletContainerAdaptor extends ServletContainer {
   public void stop() throws UnableToCompleteException {
     TreeLogger branch = null;
     try {
+      // Undeploy and remove resource
+      ctx.handle(String.format("/deployment=%s:undeploy", appRootDir.getName()));
+      ctx.handle(String.format("/deployment=%s:remove", appRootDir.getName()));
+      // Shutdown the AS
       ctx.handle(":shutdown");
     } catch (CommandLineException e) {
       branch = logger.branch(Type.ERROR, "Could not shutdown AS", e);
