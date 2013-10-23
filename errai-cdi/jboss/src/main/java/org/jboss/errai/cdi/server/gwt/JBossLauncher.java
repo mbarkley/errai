@@ -18,7 +18,6 @@ public class JBossLauncher extends ServletContainerLauncher {
   private final String JBOSS_HOME;
   // TODO make portable
   private final String JBOSS_START;
-  public Process process;
   
   public JBossLauncher() {
     JBOSS_HOME = Thread.currentThread().getContextClassLoader().getResource("jboss-as-7.1.1.Final").getPath();
@@ -33,6 +32,7 @@ public class JBossLauncher extends ServletContainerLauncher {
     branches.add(logger);
 
     branches.add(branches.peek().branch(Type.INFO, "Starting launcher..."));
+    Process process;
     try {
       branches.add(branches.peek().branch(Type.INFO, String.format("Preparing JBoss AS instance (%s)", JBOSS_START)));
       ProcessBuilder builder = new ProcessBuilder(JBOSS_START);
@@ -62,7 +62,7 @@ public class JBossLauncher extends ServletContainerLauncher {
 
     branches.add(branches.peek().branch(Type.INFO, "Creating servlet container controller..."));
     try {
-      JBossServletContainerAdaptor controller = new JBossServletContainerAdaptor(port, appRootDir, branches.peek());
+      JBossServletContainerAdaptor controller = new JBossServletContainerAdaptor(port, appRootDir, branches.peek(), process);
       branches.pop().log(Type.INFO, "Controller created");
       return controller;
     } catch (UnableToCompleteException e) {

@@ -26,6 +26,7 @@ public class JBossServletContainerAdaptor extends ServletContainer {
   private final int port;
   private final Stack<TreeLogger> branches = new Stack<TreeLogger>();
   private final File appRootDir;
+  private final Process jbossProcess;
 
   /**
    * Initialize the command context for a remote JBoss AS instance.
@@ -39,10 +40,12 @@ public class JBossServletContainerAdaptor extends ServletContainer {
    * @throws UnableToCompleteException
    *           Thrown if this container cannot properly connect or deploy.
    */
-  public JBossServletContainerAdaptor(int port, File appRootDir, TreeLogger logger) throws UnableToCompleteException {
+  public JBossServletContainerAdaptor(int port, File appRootDir, TreeLogger logger, Process jbossProcess)
+          throws UnableToCompleteException {
     this.port = port;
     this.appRootDir = appRootDir;
     branches.add(logger);
+    this.jbossProcess = jbossProcess;
 
     branch(Type.INFO, "Starting container initialization...");
 

@@ -1,6 +1,7 @@
 package org.jboss.errai.cdi.server.gwt.util;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.util.Arrays;
 
 import org.jboss.errai.cdi.server.gwt.JBossLauncher;
@@ -59,7 +60,11 @@ public class CLI {
     
     System.out.println("Stopping container...");
     container.stop();
-    ((JBossLauncher) launcher).process.waitFor();
+    
+    Field f = container.getClass().getDeclaredField("jbossProcess");
+    f.setAccessible(true);
+    ((Process) f.get(container)).waitFor();
+    
     System.out.println("Container is stopped");
   }
 
