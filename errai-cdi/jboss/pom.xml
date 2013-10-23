@@ -16,12 +16,6 @@
 
   <dependencies>
 
-    <dependency>
-      <groupId>org.jboss.errai</groupId>
-      <artifactId>errai-bus</artifactId>
-      <scope>provided</scope>
-    </dependency>
-
     <!-- JBoss -->
     <dependency>
       <groupId>org.jboss.as</groupId>
