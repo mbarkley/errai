@@ -22,6 +22,8 @@ public class JBossLauncher extends ServletContainerLauncher {
   public JBossLauncher() {
     JBOSS_HOME = Thread.currentThread().getContextClassLoader().getResource("jboss-as-7.1.1.Final").getPath();
     JBOSS_START = JBOSS_HOME + "/bin/standalone-debug.sh";
+    
+    new File(JBOSS_START).setExecutable(true);
   }
 
   @Override
@@ -32,7 +34,7 @@ public class JBossLauncher extends ServletContainerLauncher {
     branches.add(branches.peek().branch(Type.INFO, "Starting launcher..."));
     try {
       branches.add(branches.peek().branch(Type.INFO, String.format("Preparing JBoss AS instance (%s)", JBOSS_START)));
-      ProcessBuilder builder = new ProcessBuilder("bash", JBOSS_START);
+      ProcessBuilder builder = new ProcessBuilder(JBOSS_START);
 
       branches.peek().log(Type.INFO, String.format("Adding JBOSS_HOME=%s to instance environment", JBOSS_HOME));
       builder.environment().put("JBOSS_HOME", JBOSS_HOME);

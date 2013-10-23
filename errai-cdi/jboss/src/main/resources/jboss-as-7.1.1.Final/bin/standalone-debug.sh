@@ -1,5 +1,16 @@
 #!/usr/bin/bash
 
+# Define function for cleaning up tmp files and folders
+function clean() {
+	echo "[$0] Cleaning up JBoss AS..."
+	rm -fv $JBOSS_HOME/standalone/configuration/standalone-dev.xml
+	rm -rfv $JBOSS_HOME/standalone/tmp
+	rm -rfv $JBOSS_HOME/standalone/data
+	rm -rfv $JBOSS_HOME/standalone/log
+	rm -rfv $JBOSS_HOME/standalone/configuration/standalone_xml_history
+	echo "[$0] JBoss AS cleaned"
+}
+
 # Get control port from args
 if [ $# -lt 2 ]; then
 	CONTROL_PORT=8001
@@ -17,7 +28,8 @@ export JAVA_OPTS="-Xrunjdwp:transport=dt_socket,address=${CONTROL_PORT},server=y
 cp $JBOSS_HOME/standalone/configuration/standalone-full.xml $JBOSS_HOME/standalone/configuration/standalone-dev.xml
 
 # Remove config file on exit
-trap "rm $JBOSS_HOME/standalone/configuration/standalone-dev.xml" SIGHUP SIGINT SIGQUIT
+trap 'clean' EXIT SIGTERM SIGINT
 
 # Run standalone jboss
 /home/yyz/mbarkley/jboss-as-7.1.1.Final/bin/standalone.sh -c standalone-dev.xml
+
