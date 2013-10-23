@@ -15,11 +15,14 @@ import com.google.gwt.core.ext.UnableToCompleteException;
 
 public class JBossLauncher extends ServletContainerLauncher {
 
-  // TODO start instance using tmp xml config file copied from standalone.xml
-  // TODO remove hard-coding
-  private final String JBOSS_HOME = "/home/yyz/mbarkley/Documents/errai-projects/errai/errai-cdi/jboss/src/main/resources/jboss-as-7.1.1.Final";
+  private final String JBOSS_HOME;
   // TODO make portable
-  private final String JBOSS_START = JBOSS_HOME + "/bin/standalone.sh";
+  private final String JBOSS_START;
+  
+  public JBossLauncher() {
+    JBOSS_HOME = Thread.currentThread().getContextClassLoader().getResource("jboss-as-7.1.1.Final").getPath();
+    JBOSS_START = JBOSS_HOME + "/bin/standalone-debug.sh";
+  }
 
   @Override
   public ServletContainer start(TreeLogger logger, int port, File appRootDir) throws BindException, Exception {
@@ -29,7 +32,7 @@ public class JBossLauncher extends ServletContainerLauncher {
     branches.add(branches.peek().branch(Type.INFO, "Starting launcher..."));
     try {
       branches.add(branches.peek().branch(Type.INFO, String.format("Preparing JBoss AS instance (%s)", JBOSS_START)));
-      ProcessBuilder builder = new ProcessBuilder(JBOSS_START);
+      ProcessBuilder builder = new ProcessBuilder("bash", JBOSS_START);
 
       branches.peek().log(Type.INFO, String.format("Adding JBOSS_HOME=%s to instance environment", JBOSS_HOME));
       builder.environment().put("JBOSS_HOME", JBOSS_HOME);
