@@ -18,6 +18,7 @@ public class JBossLauncher extends ServletContainerLauncher {
   private final String JBOSS_HOME;
   // TODO make portable
   private final String JBOSS_START;
+  public Process process;
   
   public JBossLauncher() {
     JBOSS_HOME = Thread.currentThread().getContextClassLoader().getResource("jboss-as-7.1.1.Final").getPath();
@@ -42,7 +43,7 @@ public class JBossLauncher extends ServletContainerLauncher {
       branches.peek().log(Type.INFO, "Redirecting stdout and stderr to share with this process");
       builder.inheritIO();
 
-      builder.start();
+      process = builder.start();
       branches.peek().log(Type.INFO, "Executing AS instance...");
     } catch (IOException e) {
       branches.pop().log(TreeLogger.Type.ERROR, "Failed to start JBoss AS process", e);

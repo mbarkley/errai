@@ -59,6 +59,7 @@ public class CLI {
     
     System.out.println("Stopping container...");
     container.stop();
+    ((JBossLauncher) launcher).process.waitFor();
     System.out.println("Container is stopped");
   }
 
