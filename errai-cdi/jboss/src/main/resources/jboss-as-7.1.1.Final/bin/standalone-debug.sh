@@ -13,5 +13,11 @@ fi
 # Set debug environment variable
 export JAVA_OPTS="-Xrunjdwp:transport=dt_socket,address=${CONTROL_PORT},server=y,suspend=n"
 
+# Create new temporary config file to avoid accidentally persisting deployments between runs
+cp $JBOSS_HOME/standalone/configuration/standalone-full.xml $JBOSS_HOME/standalone/configuration/standalone-dev.xml
+
+# Remove config file on exit
+trap "rm $JBOSS_HOME/standalone/configuration/standalone-dev.xml" SIGHUP SIGINT SIGQUIT
+
 # Run standalone jboss
-/home/yyz/mbarkley/jboss-as-7.1.1.Final/bin/standalone.sh -c standalone-embed.xml
+/home/yyz/mbarkley/jboss-as-7.1.1.Final/bin/standalone.sh -c standalone-dev.xml
