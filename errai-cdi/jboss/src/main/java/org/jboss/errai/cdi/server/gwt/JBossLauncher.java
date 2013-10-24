@@ -1,15 +1,12 @@
 package org.jboss.errai.cdi.server.gwt;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.net.BindException;
 import java.util.Stack;
 
 import org.jboss.errai.cdi.server.as.JBossServletContainerAdaptor;
+import org.jboss.errai.cdi.server.gwt.util.CopyUtil;
 
 import com.google.gwt.core.ext.ServletContainer;
 import com.google.gwt.core.ext.ServletContainerLauncher;
@@ -92,9 +89,18 @@ public class JBossLauncher extends ServletContainerLauncher {
     branches.pop();
 
     branches.push(branches.peek().branch(Type.INFO, "Creating servlet container controller..."));
+
+    // Create tmp directory
+    final File tmpAppDir = File.createTempFile(appRootDir.getName(), ".tmp");
+    if (!tmpAppDir.delete() || !tmpAppDir.mkdir()) {
+      branches.peek().log(Type.ERROR,
+              String.format("Failed to make temporary deployment directory %s", tmpAppDir.getAbsolutePath()));
+      throw new UnableToCompleteException();
+    }
+
     try {
-      JBossServletContainerAdaptor controller = new JBossServletContainerAdaptor(port, appRootDir, branches.peek(),
-              process);
+      JBossServletContainerAdaptor controller = new JBossServletContainerAdaptor(port, appRootDir, tmpAppDir,
+              branches.peek(), process);
       branches.pop().log(Type.INFO, "Controller created");
       return controller;
     } catch (UnableToCompleteException e) {
@@ -126,18 +132,7 @@ public class JBossLauncher extends ServletContainerLauncher {
 
     to.createNewFile();
 
-    BufferedReader reader = new BufferedReader(new FileReader(from));
-    BufferedWriter writer = new BufferedWriter(new FileWriter(to));
-
-    final char[] buf = new char[1024];
-    int len = reader.read(buf);
-    while (len > 0) {
-      writer.write(buf, 0, len);
-      len = reader.read(buf);
-    }
-
-    reader.close();
-    writer.close();
+    CopyUtil.copyFile(to, from);
   }
 
   // TODO make portable

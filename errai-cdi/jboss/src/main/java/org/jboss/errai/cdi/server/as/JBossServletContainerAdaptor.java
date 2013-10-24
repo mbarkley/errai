@@ -1,12 +1,15 @@
 package org.jboss.errai.cdi.server.as;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Stack;
 
 import org.jboss.as.cli.CliInitializationException;
 import org.jboss.as.cli.CommandContext;
 import org.jboss.as.cli.CommandContextFactory;
 import org.jboss.as.cli.CommandLineException;
+import org.jboss.errai.cdi.server.gwt.util.CopyUtil;
+import org.jboss.errai.cdi.server.gwt.util.CopyUtil.Filter;
 
 import com.google.gwt.core.ext.ServletContainer;
 import com.google.gwt.core.ext.TreeLogger;
@@ -26,6 +29,8 @@ public class JBossServletContainerAdaptor extends ServletContainer {
   private final int port;
   private final Stack<TreeLogger> branches = new Stack<TreeLogger>();
   private final File appRootDir;
+  private final File appCopyDir;
+  @SuppressWarnings("unused")
   private final Process jbossProcess;
 
   /**
@@ -35,19 +40,24 @@ public class JBossServletContainerAdaptor extends ServletContainer {
    *          The port to which the JBoss instance binds. (not yet implemented!)
    * @param appRootDir
    *          The exploded war directory to be deployed.
+   * @param appCopyDir
+   *          An empty (existing) directory, for which this process has write permission
    * @param logger
    *          For logging events from this container.
    * @throws UnableToCompleteException
    *           Thrown if this container cannot properly connect or deploy.
    */
-  public JBossServletContainerAdaptor(int port, File appRootDir, TreeLogger logger, Process jbossProcess)
-          throws UnableToCompleteException {
+  public JBossServletContainerAdaptor(int port, File appRootDir, File appCopyDir, TreeLogger logger,
+          Process jbossProcess) throws UnableToCompleteException {
     this.port = port;
     this.appRootDir = appRootDir;
+    this.appCopyDir = appCopyDir;
     branches.add(logger);
     this.jbossProcess = jbossProcess;
 
     branch(Type.INFO, "Starting container initialization...");
+
+    updateTmpWarDir();
 
     CommandContext ctx = null;
     try {
@@ -198,6 +208,24 @@ public class JBossServletContainerAdaptor extends ServletContainer {
     ctx.terminateSession();
     log(Type.INFO, "Command context terminated");
     unbranch();
+  }
+
+  private void updateTmpWarDir() throws UnableToCompleteException {
+    log(Type.INFO,
+            String.format("Copying app from %s to %s", appRootDir.getAbsolutePath(), appCopyDir.getAbsolutePath()));
+    try {
+      CopyUtil.recursiveCopy(appCopyDir, appRootDir, new Filter() {
+        @Override
+        public boolean include(File orig) {
+          return !orig.getAbsolutePath().contains("client" + File.separator + "local");
+        }
+      });
+    } catch (IOException e) {
+      log(Type.ERROR,
+              String.format("Could not copy deployment from %s to %s", appRootDir.getAbsolutePath(),
+                      appCopyDir.getAbsolutePath()), e);
+      throw new UnableToCompleteException();
+    }
   }
 
   /**
