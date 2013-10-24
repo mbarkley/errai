@@ -1,10 +1,10 @@
 package org.jboss.errai.cdi.server.gwt.util;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 /**
@@ -56,10 +56,10 @@ public class CopyUtil {
    *          The file to be copied from.
    */
   public static void copyFile(File to, File from) throws IOException {
-    BufferedReader reader = new BufferedReader(new FileReader(from));
-    BufferedWriter writer = new BufferedWriter(new FileWriter(to));
+    BufferedInputStream reader = new BufferedInputStream(new FileInputStream(from));
+    BufferedOutputStream writer = new BufferedOutputStream(new FileOutputStream(to));
 
-    final char[] buf = new char[BUF_SIZE];
+    final byte[] buf = new byte[BUF_SIZE];
     int len = reader.read(buf);
     while (len > 0) {
       writer.write(buf, 0, len);
