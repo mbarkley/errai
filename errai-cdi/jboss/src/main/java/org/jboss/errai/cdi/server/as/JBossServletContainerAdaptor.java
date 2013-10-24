@@ -1,6 +1,10 @@
 package org.jboss.errai.cdi.server.as;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Stack;
 
@@ -217,9 +221,28 @@ public class JBossServletContainerAdaptor extends ServletContainer {
       CopyUtil.recursiveCopy(appCopyDir, appRootDir, new Filter() {
         @Override
         public boolean include(File orig) {
-          return !orig.getAbsolutePath().contains("client" + File.separator + "local");
+          return !orig.getAbsolutePath().contains("client" + File.separator + "local")
+                  && !orig.getName().equals("classlist.mf");
         }
       });
+      // handle classlist separately
+      File oldClassDir = new File(new File(appRootDir, "WEB-INF"), "classes");
+      File newClassDir = new File(new File(appCopyDir, "WEB-INF"), "classes");
+      
+      File oldClassList = new File(oldClassDir, "classlist.mf");
+      File newClassList = new File(newClassDir, "classlist.mf");
+      newClassList.createNewFile();
+      
+      BufferedReader reader = new BufferedReader(new FileReader(oldClassList));
+      BufferedWriter writer = new BufferedWriter(new FileWriter(newClassList));
+      String line;
+      while ((line = reader.readLine()) != null) {
+        if (!line.contains("client.local"))
+          // TODO make portable
+          writer.append(line + "\n");
+      }
+      reader.close();
+      writer.close();
     } catch (IOException e) {
       log(Type.ERROR,
               String.format("Could not copy deployment from %s to %s", appRootDir.getAbsolutePath(),
