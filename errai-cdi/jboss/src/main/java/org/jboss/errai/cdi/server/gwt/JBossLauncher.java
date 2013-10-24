@@ -40,11 +40,11 @@ public class JBossLauncher extends ServletContainerLauncher {
     final String TEMPLATE_CONFIG_FILE = System.getProperty(TEMPLATE_CONFIG_FILE_PROPERTY, "standalone-full.xml");
 
     if (JBOSS_HOME == null) {
-      branches.peek().log(
-              Type.ERROR,
-              String.format(
-                      "No value for %s was found: The root directory of your JBoss installation must be given to the JVM",
-                      JBOSS_HOME_PROPERTY));
+      branches.peek()
+              .log(Type.ERROR,
+                      String.format(
+                              "No value for %s was found: The root directory of your JBoss installation must be given to the JVM",
+                              JBOSS_HOME_PROPERTY));
       throw new UnableToCompleteException();
     }
 
@@ -103,7 +103,8 @@ public class JBossLauncher extends ServletContainerLauncher {
     }
   }
 
-  private void copyConfigFile(String fromName, String toName, String jBossHome) throws IOException, UnableToCompleteException {
+  private void copyConfigFile(String fromName, String toName, String jBossHome) throws IOException,
+          UnableToCompleteException {
     File configDir = new File(jBossHome, "standalone/configuration");
     File from = new File(configDir, fromName);
     File to = new File(configDir, toName);
@@ -116,7 +117,13 @@ public class JBossLauncher extends ServletContainerLauncher {
                               from.getAbsolutePath(), TEMPLATE_CONFIG_FILE_PROPERTY));
       throw new UnableToCompleteException();
     }
-    
+
+    if (to.exists()) {
+      branches.peek().log(Type.WARN,
+              String.format("Temporary config file %s already exists and will be deleted", to.getAbsolutePath()));
+      to.delete();
+    }
+
     to.createNewFile();
 
     BufferedReader reader = new BufferedReader(new FileReader(from));
