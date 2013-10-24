@@ -1,6 +1,7 @@
 package org.jboss.errai.cdi.server.gwt.util;
 
 import java.io.File;
+import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
@@ -26,19 +27,22 @@ public class CLI {
 
     int port = covertPortNum(args[0]);
     File appRootDir = getFileFromName(args[1]);
+    final PrintStream stream = new PrintStream(File.createTempFile("CLI", ".log"));
     TreeLogger logger = new TreeLogger() {
       
       @Override
       public void log(Type type, String msg, Throwable caught, HelpInfo helpInfo) {
-        System.out.println(String.format("[%s] %s", type.toString().toUpperCase(), msg));
+        if (!isLoggable(type))
+          return;
+        stream.println(String.format("[%s] %s", type.toString().toUpperCase(), msg));
         if (caught != null) {
-          caught.printStackTrace(System.err);
+          caught.printStackTrace(stream);
         }
       }
       
       @Override
       public boolean isLoggable(Type type) {
-        return true;
+        return type.equals(Type.INFO) || type.equals(Type.ERROR) || type.equals(Type.WARN);
       }
       
       @Override
@@ -50,7 +54,7 @@ public class CLI {
 
     ServletContainerLauncher launcher = new JBossLauncher();
     
-    System.out.print("Starting container...");
+    System.out.println("Starting container...");
     ServletContainer container = launcher.start(logger, port, appRootDir);
     System.out.println("Container started");
     
