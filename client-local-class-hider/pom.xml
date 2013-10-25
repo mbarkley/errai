@@ -4,7 +4,7 @@
 
   <groupId>org.jboss.errai</groupId>
   <artifactId>client-local-class-hider</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>3.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>client-local-class-hider</name>
