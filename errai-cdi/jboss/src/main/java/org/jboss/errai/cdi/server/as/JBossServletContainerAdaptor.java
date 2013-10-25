@@ -33,7 +33,6 @@ public class JBossServletContainerAdaptor extends ServletContainer {
   private final int port;
   private final Stack<TreeLogger> branches = new Stack<TreeLogger>();
   private final File appRootDir;
-  private final File appCopyDir;
   @SuppressWarnings("unused")
   private final Process jbossProcess;
 
@@ -44,24 +43,18 @@ public class JBossServletContainerAdaptor extends ServletContainer {
    *          The port to which the JBoss instance binds. (not yet implemented!)
    * @param appRootDir
    *          The exploded war directory to be deployed.
-   * @param appCopyDir
-   *          An empty (existing) directory, for which this process has write permission
    * @param logger
    *          For logging events from this container.
    * @throws UnableToCompleteException
    *           Thrown if this container cannot properly connect or deploy.
    */
-  public JBossServletContainerAdaptor(int port, File appRootDir, File appCopyDir, TreeLogger logger,
-          Process jbossProcess) throws UnableToCompleteException {
+  public JBossServletContainerAdaptor(int port, File appRootDir, TreeLogger logger, Process jbossProcess) throws UnableToCompleteException {
     this.port = port;
     this.appRootDir = appRootDir;
-    this.appCopyDir = appCopyDir;
     branches.add(logger);
     this.jbossProcess = jbossProcess;
 
     branch(Type.INFO, "Starting container initialization...");
-
-    updateTmpWarDir();
 
     CommandContext ctx = null;
     try {
@@ -118,10 +111,10 @@ public class JBossServletContainerAdaptor extends ServletContainer {
          * file, false iff an exploded archive enabled : true iff war should be automatically
          * scanned and deployed
          */
-        branch(Type.INFO, String.format("Adding deployment %s at %s...", getAppName(), appCopyDir.getAbsolutePath()));
+        branch(Type.INFO, String.format("Adding deployment %s at %s...", getAppName(), appRootDir.getAbsolutePath()));
 
         ctx.handle(String.format("/deployment=%s:add(content=[{\"path\"=>\"%s\",\"archive\"=>false}], enabled=false)",
-                getAppName(), appCopyDir.getAbsolutePath()));
+                getAppName(), appRootDir.getAbsolutePath()));
 
         log(Type.INFO, "Deployment resource added");
         unbranch();
@@ -212,43 +205,6 @@ public class JBossServletContainerAdaptor extends ServletContainer {
     ctx.terminateSession();
     log(Type.INFO, "Command context terminated");
     unbranch();
-  }
-
-  private void updateTmpWarDir() throws UnableToCompleteException {
-    log(Type.INFO,
-            String.format("Copying app from %s to %s", appRootDir.getAbsolutePath(), appCopyDir.getAbsolutePath()));
-    try {
-      CopyUtil.recursiveCopy(appCopyDir, appRootDir, new Filter() {
-        @Override
-        public boolean include(File orig) {
-          return !orig.getAbsolutePath().contains("client" + File.separator + "local")
-                  && !orig.getName().equals("classlist.mf");
-        }
-      });
-      // handle classlist separately
-      File oldClassDir = new File(new File(appRootDir, "WEB-INF"), "classes");
-      File newClassDir = new File(new File(appCopyDir, "WEB-INF"), "classes");
-      
-      File oldClassList = new File(oldClassDir, "classlist.mf");
-      File newClassList = new File(newClassDir, "classlist.mf");
-      newClassList.createNewFile();
-      
-      BufferedReader reader = new BufferedReader(new FileReader(oldClassList));
-      BufferedWriter writer = new BufferedWriter(new FileWriter(newClassList));
-      String line;
-      while ((line = reader.readLine()) != null) {
-        if (!line.contains("client.local"))
-          // TODO make portable
-          writer.append(line + "\n");
-      }
-      reader.close();
-      writer.close();
-    } catch (IOException e) {
-      log(Type.ERROR,
-              String.format("Could not copy deployment from %s to %s", appRootDir.getAbsolutePath(),
-                      appCopyDir.getAbsolutePath()), e);
-      throw new UnableToCompleteException();
-    }
   }
 
   /**

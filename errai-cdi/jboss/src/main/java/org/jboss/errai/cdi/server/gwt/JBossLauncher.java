@@ -64,6 +64,7 @@ public class JBossLauncher extends ServletContainerLauncher {
       branches.peek().log(Type.INFO, String.format("Adding JBOSS_HOME=%s to instance environment", JBOSS_HOME));
       // Necessary for JBoss AS instance to startup
       builder.environment().put("JBOSS_HOME", JBOSS_HOME);
+
       // Allows JVM to be debugged
       builder.environment().put("JAVA_OPTS",
               String.format("-Xrunjdwp:transport=dt_socket,address=%s,server=y,suspend=n", DEBUG_PORT));
@@ -90,17 +91,9 @@ public class JBossLauncher extends ServletContainerLauncher {
 
     branches.push(branches.peek().branch(Type.INFO, "Creating servlet container controller..."));
 
-    // Create tmp directory
-    final File tmpAppDir = File.createTempFile(appRootDir.getName(), ".tmp");
-    if (!tmpAppDir.delete() || !tmpAppDir.mkdir()) {
-      branches.peek().log(Type.ERROR,
-              String.format("Failed to make temporary deployment directory %s", tmpAppDir.getAbsolutePath()));
-      throw new UnableToCompleteException();
-    }
-
     try {
-      JBossServletContainerAdaptor controller = new JBossServletContainerAdaptor(port, appRootDir, tmpAppDir,
-              branches.peek(), process);
+      JBossServletContainerAdaptor controller = new JBossServletContainerAdaptor(port, appRootDir, branches.peek(),
+              process);
       branches.pop().log(Type.INFO, "Controller created");
       return controller;
     } catch (UnableToCompleteException e) {
