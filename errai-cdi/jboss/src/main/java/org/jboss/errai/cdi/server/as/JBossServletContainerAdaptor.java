@@ -118,10 +118,10 @@ public class JBossServletContainerAdaptor extends ServletContainer {
          * file, false iff an exploded archive enabled : true iff war should be automatically
          * scanned and deployed
          */
-        branch(Type.INFO, String.format("Adding deployment %s at %s...", getAppName(), appRootDir.getAbsolutePath()));
+        branch(Type.INFO, String.format("Adding deployment %s at %s...", getAppName(), appCopyDir.getAbsolutePath()));
 
         ctx.handle(String.format("/deployment=%s:add(content=[{\"path\"=>\"%s\",\"archive\"=>false}], enabled=false)",
-                getAppName(), appRootDir.getAbsolutePath()));
+                getAppName(), appCopyDir.getAbsolutePath()));
 
         log(Type.INFO, "Deployment resource added");
         unbranch();
