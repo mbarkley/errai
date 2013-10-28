@@ -1,19 +1,12 @@
 package org.jboss.errai.cdi.server.as;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.Stack;
 
 import org.jboss.as.cli.CliInitializationException;
 import org.jboss.as.cli.CommandContext;
 import org.jboss.as.cli.CommandContextFactory;
 import org.jboss.as.cli.CommandLineException;
-import org.jboss.errai.cdi.server.gwt.util.CopyUtil;
-import org.jboss.errai.cdi.server.gwt.util.CopyUtil.Filter;
 
 import com.google.gwt.core.ext.ServletContainer;
 import com.google.gwt.core.ext.TreeLogger;
