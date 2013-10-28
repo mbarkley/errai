@@ -20,6 +20,7 @@ public class JBossLauncher extends ServletContainerLauncher {
   private final String JBOSS_HOME_PROPERTY = "errai.jboss.home";
   private final String JBOSS_DEBUG_PORT_PROPERTY = "errai.jboss.debug.port";
   private final String TEMPLATE_CONFIG_FILE_PROPERTY = "errai.jboss.config.file";
+  private final String CLASS_HIDING_JAVA_AGENT_PROPERTY = "errai.jboss.javaagent.path";
 
   private final String TMP_CONFIG_FILE = "standalone-errai-dev.xml";
 
@@ -35,6 +36,7 @@ public class JBossLauncher extends ServletContainerLauncher {
     final String JBOSS_HOME = System.getProperty(JBOSS_HOME_PROPERTY);
     final String DEBUG_PORT = System.getProperty(JBOSS_DEBUG_PORT_PROPERTY, "8001");
     final String TEMPLATE_CONFIG_FILE = System.getProperty(TEMPLATE_CONFIG_FILE_PROPERTY, "standalone-full.xml");
+    final String CLASS_HIDING_JAVA_AGENT = System.getProperty(CLASS_HIDING_JAVA_AGENT_PROPERTY);
 
     if (JBOSS_HOME == null) {
       branches.peek()
@@ -42,6 +44,14 @@ public class JBossLauncher extends ServletContainerLauncher {
                       String.format(
                               "No value for %s was found: The root directory of your JBoss installation must be given to the JVM",
                               JBOSS_HOME_PROPERTY));
+      throw new UnableToCompleteException();
+    }
+    if (CLASS_HIDING_JAVA_AGENT == null) {
+      branches.peek()
+              .log(Type.ERROR,
+                      String.format(
+                              "The local path the artifact errai.org.jboss:class-local-class-hider:jar must be given as the property %s",
+                              CLASS_HIDING_JAVA_AGENT_PROPERTY));
       throw new UnableToCompleteException();
     }
 
@@ -66,8 +76,10 @@ public class JBossLauncher extends ServletContainerLauncher {
       builder.environment().put("JBOSS_HOME", JBOSS_HOME);
 
       // Allows JVM to be debugged
-      builder.environment().put("JAVA_OPTS",
-              String.format("-Xrunjdwp:transport=dt_socket,address=%s,server=y,suspend=n", DEBUG_PORT));
+      builder.environment().put(
+              "JAVA_OPTS",
+              String.format("-Xrunjdwp:transport=dt_socket,address=%s,server=y,suspend=n -javaagent:%s", DEBUG_PORT,
+                      CLASS_HIDING_JAVA_AGENT));
 
       branches.peek().log(Type.INFO, "Redirecting stdout and stderr to share with this process");
       builder.inheritIO();
