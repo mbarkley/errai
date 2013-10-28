@@ -136,6 +136,7 @@ public class JBossLauncher extends ServletContainerLauncher {
     }
 
     to.createNewFile();
+    to.deleteOnExit();
 
     CopyUtil.copyFile(to, from);
   }
