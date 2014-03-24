@@ -1,0 +1,3 @@
+org.jboss.errai.processor.DataFieldAnnotationChecker
+org.jboss.errai.processor.EventHandlerAnnotationChecker
+org.jboss.errai.processor.TemplatedAnnotationChecker
