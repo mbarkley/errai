@@ -17,12 +17,12 @@ package org.jboss.errai.processor;
  */
 
 import static org.junit.Assert.*;
-import static org.junit.matchers.JUnitMatchers.*;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.tools.Diagnostic;
@@ -41,6 +41,13 @@ import javax.tools.ToolProvider;
  */
 public abstract class AbstractProcessorTest {
 
+  /**
+   * Warning messages that don't count against {@link #assertSuccessfulCompilation(List)}.
+   */
+  private Set<String> ignorableWarnings = new HashSet<String>(
+          Arrays.asList(
+                  "bootstrap class path not set in conjunction with -source 1.6"));
+  
   /**
    * Compile a unit of source code with the specified annotation processor
    * 
@@ -64,9 +71,9 @@ public abstract class AbstractProcessorTest {
       final String path = this.getClass().getResource("/" + compilationUnit).getPath();
       final Iterable<? extends JavaFileObject> compilationUnits = fileManager.getJavaFileObjects(path);
 
-      // Compile with provide annotation processor
+      // Compile with provided annotation processor
       final CompilationTask task = compiler
-              .getTask(null, fileManager, diagnosticListener, null, null, compilationUnits);
+              .getTask(null, fileManager, diagnosticListener, Arrays.asList("-source", "1.6", "-target", "1.6"), null, compilationUnits);
       task.setProcessors(Arrays.asList(getProcessorUnderTest()));
       task.call();
 
@@ -80,15 +87,15 @@ public abstract class AbstractProcessorTest {
   }
 
   /**
-   * Assert that compilation was successful
-   * 
-   * @param diagnostics
+   * Checks that there are no unignorable errors or warnings in the given list of diagnostics.
    */
   public void assertSuccessfulCompilation(final List<Diagnostic<? extends JavaFileObject>> diagnostics) {
-    if (diagnostics.size() > 0) {
-      StringBuilder sb = new StringBuilder(100);
-      for (Diagnostic<? extends JavaFileObject> msg : diagnostics) {
-        sb.append(msg.getKind())
+    StringBuilder sb = new StringBuilder(100);
+    for (Diagnostic<? extends JavaFileObject> msg : diagnostics) {
+      if (ignorableWarnings.contains(msg.getMessage(null))) {
+        continue;
+      }
+      sb.append(msg.getKind())
         .append(" ")
         .append(msg.getLineNumber())
         .append(":")
@@ -96,7 +103,8 @@ public abstract class AbstractProcessorTest {
         .append(": ")
         .append(msg.getMessage(null))
         .append("\n");
-      }
+    }
+    if (sb.length() > 0) {
       fail("Expected no warnings or errors; got:\n" + sb);
     }
   }
