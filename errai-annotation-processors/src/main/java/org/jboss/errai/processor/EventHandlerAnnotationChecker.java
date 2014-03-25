@@ -45,12 +45,13 @@ public class EventHandlerAnnotationChecker extends AbstractProcessor {
         
         AnnotationMirror eventHandlerAnnotation = getAnnotation(target, TypeNames.EVENT_HANDLER);
         TypeElement enclosingClassElement = (TypeElement) target.getEnclosingElement();
+        boolean hasSinkNative = hasAnnotation(target, TypeNames.SINK_NATIVE);
         
         AnnotationValue eventHandlerAnnotationValue = getAnnotationParamValueWithoutDefaults(target, TypeNames.EVENT_HANDLER, "value");
         
         // if there is no annotation parameter value, this method handles events from the templated widget itself: nothing more to check.
         // if the method is also annotated with @SinkNative, the values refer to template elements and we can't (easily) check them
-        if (eventHandlerAnnotationValue != null && !hasAnnotation(target, TypeNames.SINK_NATIVE)) {
+        if (eventHandlerAnnotationValue != null && !hasSinkNative) {
           @SuppressWarnings("unchecked")
           List<AnnotationValue> eventHandlerAnnotationValues = (List<AnnotationValue>) eventHandlerAnnotationValue.getValue();
           for (AnnotationValue av : eventHandlerAnnotationValues) {
@@ -65,15 +66,18 @@ public class EventHandlerAnnotationChecker extends AbstractProcessor {
         }
         
         List<? extends VariableElement> methodParams = ((ExecutableElement) target).getParameters();
-        if (methodParams.isEmpty()) {
-          if (hasAnnotation(target, TypeNames.SINK_NATIVE)) {
+        TypeMirror requiredArgType = hasSinkNative ?
+                elements.getTypeElement(TypeNames.GWT_OPAQUE_DOM_EVENT).asType() :
+                types.getDeclaredType(elements.getTypeElement(TypeNames.GWT_EVENT), types.getWildcardType(null, null));
+        if (methodParams.size() != 1 || !types.isAssignable(methodParams.get(0).asType(), requiredArgType)) {
+          if (hasSinkNative) {
             processingEnv.getMessager().printMessage(
-                    Kind.ERROR, "Native event handling methods must take exactly one argument of type Event",
+                    Kind.ERROR, "Native event handling methods must take exactly one argument of type " + requiredArgType,
                     target);
           }
           else {
             processingEnv.getMessager().printMessage(
-                    Kind.ERROR, "Event handling methods must take exactly one argument of a subtype of GwtEvent",
+                    Kind.ERROR, "Event handling methods must take exactly one argument of a concrete subtype of " + requiredArgType,
                     target);
           }
         }

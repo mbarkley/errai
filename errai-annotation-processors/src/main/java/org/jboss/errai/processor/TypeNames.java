@@ -16,7 +16,9 @@ public class TypeNames {
   static final String GWT_WIDGET = "com.google.gwt.user.client.ui.Widget";
   static final String GWT_ELEMENT = "com.google.gwt.dom.client.Element";
   static final String GWT_COMPOSITE = "com.google.gwt.user.client.ui.Composite";
-
+  static final String GWT_OPAQUE_DOM_EVENT = "com.google.gwt.user.client.Event";
+  static final String GWT_EVENT = "com.google.gwt.event.shared.GwtEvent";
+  
   static final String TEMPLATED = "org.jboss.errai.ui.shared.api.annotations.Templated";
   static final String DATA_FIELD = "org.jboss.errai.ui.shared.api.annotations.DataField";
   static final String EVENT_HANDLER = "org.jboss.errai.ui.shared.api.annotations.EventHandler";

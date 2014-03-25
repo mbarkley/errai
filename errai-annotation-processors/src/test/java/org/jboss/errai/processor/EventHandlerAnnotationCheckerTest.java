@@ -58,9 +58,17 @@ public class EventHandlerAnnotationCheckerTest extends AbstractProcessorTest {
   public void shouldPrintErrorWhenEventHandlerMethodHasNoArgs() throws FileNotFoundException {
     final List<Diagnostic<? extends JavaFileObject>> diagnostics = compile(
             "org/jboss/errai/processor/testcase/EventHandlerNoArguments.java");
+    assertCompilationMessage(diagnostics, Kind.ERROR, 19, 8, "one argument of a concrete subtype of com.google.gwt.event.shared.GwtEvent");
+    assertCompilationMessage(diagnostics, Kind.ERROR, 25, 8, "exactly one argument of type com.google.gwt.user.client.Event");
+  }
 
-    assertCompilationMessage(diagnostics, Kind.ERROR, 19, 8, "one argument of a subtype of GwtEvent");
-    assertCompilationMessage(diagnostics, Kind.ERROR, 25, 8, "one argument of type Event");
+  @Test
+  public void shouldPrintErrorWhenEventHandlerMethodHasWrongArgTypes() throws FileNotFoundException {
+    final List<Diagnostic<? extends JavaFileObject>> diagnostics = compile(
+            "org/jboss/errai/processor/testcase/EventHandlerWrongArgumentTypes.java");
+
+    assertCompilationMessage(diagnostics, Kind.ERROR, 19, 8, "one argument of a concrete subtype of com.google.gwt.event.shared.GwtEvent");
+    assertCompilationMessage(diagnostics, Kind.ERROR, 25, 8, "exactly one argument of type com.google.gwt.user.client.Event");
   }
 
   @Test
