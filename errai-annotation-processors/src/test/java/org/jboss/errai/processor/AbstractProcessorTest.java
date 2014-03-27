@@ -44,13 +44,14 @@ public abstract class AbstractProcessorTest {
   /**
    * Warning messages that don't count against {@link #assertSuccessfulCompilation(List)}.
    */
-  private Set<String> ignorableWarnings = new HashSet<String>(
+  private final Set<String> ignorableWarnings = new HashSet<String>(
           Arrays.asList(
-                  "bootstrap class path not set in conjunction with -source 1.6"));
-  
+                  "bootstrap class path not set in conjunction with -source 1.6",
+                  "Implicitly compiled files were not subject to annotation processing."));
+
   /**
    * Compile a unit of source code with the specified annotation processor
-   * 
+   *
    * @param annotationProcessor
    *          the annotation processor that should participate in the
    *          compilation
@@ -91,9 +92,13 @@ public abstract class AbstractProcessorTest {
    */
   public void assertSuccessfulCompilation(final List<Diagnostic<? extends JavaFileObject>> diagnostics) {
     StringBuilder sb = new StringBuilder(100);
+
+    nextMessage:
     for (Diagnostic<? extends JavaFileObject> msg : diagnostics) {
-      if (ignorableWarnings.contains(msg.getMessage(null))) {
-        continue;
+      for (String ignorableWarning : ignorableWarnings) {
+        if (msg.getMessage(null).contains(ignorableWarning)) {
+          continue nextMessage;
+        }
       }
       sb.append(msg.getKind())
         .append(" ")
@@ -111,7 +116,7 @@ public abstract class AbstractProcessorTest {
 
   /**
    * Assert that compilation failed
-   * 
+   *
    * @param diagnostics
    */
   public void assertFailedCompilation(final List<Diagnostic<? extends JavaFileObject>> diagnostics) {
