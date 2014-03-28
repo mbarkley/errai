@@ -18,7 +18,7 @@ import org.jboss.errai.demo.todo.shared.TodoItem;
 import org.jboss.errai.demo.todo.shared.TodoListService;
 import org.jboss.errai.jpa.sync.client.local.ClientSyncManager;
 import org.jboss.errai.jpa.sync.client.shared.SyncResponse;
-import org.jboss.errai.security.client.local.identity.Identity;
+import org.jboss.errai.security.client.local.identity.LoginBuilder;
 import org.jboss.errai.security.shared.api.annotation.RestrictedAccess;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.ui.client.widget.ListWidget;
@@ -68,7 +68,7 @@ public class TodoListPage extends Composite {
   @Inject private TransitionTo<SharePage> sharePageTransition;
   @Inject private @DataField Anchor logoutLink;
 
-  @Inject private Identity identity;
+  @Inject private LoginBuilder identity;
 
   @PageShowing
   private void onPageShowing() {

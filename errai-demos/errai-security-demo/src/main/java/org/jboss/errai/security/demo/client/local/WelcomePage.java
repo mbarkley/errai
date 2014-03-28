@@ -24,7 +24,7 @@ import org.jboss.errai.bus.client.api.BusErrorCallback;
 import org.jboss.errai.bus.client.api.messaging.Message;
 import org.jboss.errai.common.client.api.RemoteCallback;
 import org.jboss.errai.ioc.client.api.AfterInitialization;
-import org.jboss.errai.security.client.local.identity.Identity;
+import org.jboss.errai.security.client.local.identity.LoginBuilder;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.security.shared.event.LoggedInEvent;
 import org.jboss.errai.security.shared.event.LoggedOutEvent;
@@ -57,7 +57,7 @@ public class WelcomePage extends Composite {
   private Label userLabel;
 
   @Inject
-  private Identity identity;
+  private LoginBuilder identity;
 
   @Inject
   TransitionTo<Messages> startButtonClicked;

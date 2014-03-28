@@ -24,7 +24,7 @@ import org.jboss.errai.common.client.api.RemoteCallback;
 import org.jboss.errai.enterprise.client.jaxrs.api.RestErrorCallback;
 import org.jboss.errai.security.client.local.callback.DefaultRestSecurityErrorCallback;
 import org.jboss.errai.security.client.local.context.SecurityContext;
-import org.jboss.errai.security.client.local.identity.Identity;
+import org.jboss.errai.security.client.local.identity.LoginBuilder;
 import org.jboss.errai.security.demo.client.shared.MessageService;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.ui.nav.client.local.Page;
@@ -44,7 +44,7 @@ import com.google.gwt.user.client.ui.Label;
 @Page
 public class Messages extends Composite {
   @Inject
-  private Identity identity;
+  private LoginBuilder identity;
 
   @Inject
   private Caller<MessageService> messageServiceCaller;

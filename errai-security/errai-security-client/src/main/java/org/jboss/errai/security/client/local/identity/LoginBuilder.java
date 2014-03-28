@@ -29,7 +29,7 @@ import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.security.shared.service.AuthenticationService;
 
 /**
- * Identity holds the username and password and performs the authentication
+ * Holds the username and password and performs the authentication
  * tasks.
  * 
  * @author edewit@redhat.com
@@ -37,7 +37,7 @@ import org.jboss.errai.security.shared.service.AuthenticationService;
  */
 @Bindable
 @Dependent
-public class Identity implements Serializable {
+public class LoginBuilder implements Serializable {
 
   private class CallbackWrapper<T> implements RemoteCallback<T> {
     private final RemoteCallback<T> callback;

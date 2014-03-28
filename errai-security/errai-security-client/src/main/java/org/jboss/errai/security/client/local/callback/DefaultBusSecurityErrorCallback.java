@@ -36,12 +36,12 @@ import org.jboss.errai.ui.nav.client.local.api.SecurityError;
  * @author Max Barkley <mbarkley@redhat.com>
  */
 @ApplicationScoped
-public class DefaultSecurityErrorCallback {
+public class DefaultBusSecurityErrorCallback {
   
   private final SecurityContext context;
   
   @Inject
-  public DefaultSecurityErrorCallback(final SecurityContext context) {
+  public DefaultBusSecurityErrorCallback(final SecurityContext context) {
     this.context = context;
   }
 
