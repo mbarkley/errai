@@ -14,23 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.jboss.errai.security.shared.api.identity;
+package org.jboss.errai.security.shared.api;
 
 import org.jboss.errai.common.client.api.annotations.MapsTo;
 import org.jboss.errai.common.client.api.annotations.Portable;
 
 /**
- * Role represents the role a user has.
+ * Role represents the role a user belongs to. Also commonly known as a "group."
+ * 
  * @author edewit@redhat.com
  */
 @Portable
-public class Role {
+public class RoleImpl implements Role {
   private final String name;
 
-  public Role(@MapsTo("role") String name) {
+  public RoleImpl(@MapsTo("role") String name) {
     this.name = name;
   }
 
+  @Override
   public String getName() {
     return name;
   }
@@ -38,9 +40,9 @@ public class Role {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof Role)) return false;
+    if (!(o instanceof RoleImpl)) return false;
 
-    Role role = (Role) o;
+    RoleImpl role = (RoleImpl) o;
     return name.equals(role.name);
   }
 

@@ -16,27 +16,35 @@
  */
 package org.jboss.errai.security.server;
 
+import static org.jboss.errai.security.shared.api.identity.User.StandardUserProperties.*;
+
+import java.io.Serializable;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
 import org.jboss.errai.bus.server.annotations.Service;
-import org.jboss.errai.security.shared.api.identity.Role;
+import org.jboss.errai.security.shared.api.Role;
+import org.jboss.errai.security.shared.api.RoleImpl;
 import org.jboss.errai.security.shared.api.identity.User;
+import org.jboss.errai.security.shared.api.identity.UserImpl;
 import org.jboss.errai.security.shared.exception.AuthenticationException;
 import org.jboss.errai.security.shared.service.AuthenticationService;
 import org.picketlink.Identity;
 import org.picketlink.credential.DefaultLoginCredentials;
 import org.picketlink.idm.RelationshipManager;
 import org.picketlink.idm.credential.Password;
+import org.picketlink.idm.model.Attribute;
 import org.picketlink.idm.model.basic.Grant;
+import org.picketlink.idm.query.AttributeParameter;
 import org.picketlink.idm.query.RelationshipQuery;
 
 /**
  * PicketLink version of the AuthenticationService and default implementation.
- * To change implementations put a alternatives into your beans.xml
  *
  * @author edewit@redhat.com
  */
@@ -46,7 +54,7 @@ public class PicketLinkAuthenticationService implements AuthenticationService {
 
   @Inject
   private Identity identity;
-  
+
   @Inject
   private RelationshipManager relationshipManager;
 
@@ -62,7 +70,7 @@ public class PicketLinkAuthenticationService implements AuthenticationService {
       throw new AuthenticationException();
     }
 
-    final User user = createUser((org.picketlink.idm.model.basic.User) identity.getAccount(), getRoles());
+    final User user = createUser((org.picketlink.idm.model.basic.User) identity.getAccount(), getRolesOfCurrentUser());
     return user;
   }
 
@@ -72,15 +80,33 @@ public class PicketLinkAuthenticationService implements AuthenticationService {
    * @param roles The roles the given user has.
    * @return our user
    */
-  private User createUser(org.picketlink.idm.model.basic.User picketLinkUser, Set<Role> roles) {
-    User user = new User();
-    user.setLoginName(picketLinkUser.getLoginName());
-    user.setLastName(picketLinkUser.getLastName());
-    user.setFirstName(picketLinkUser.getFirstName());
-    user.setEmail(picketLinkUser.getEmail());
-    user.setRoles(roles);
+  private User createUser(org.picketlink.idm.model.basic.User picketLinkUser, Set<? extends Role> roles) {
+    User user = new UserImpl(picketLinkUser.getLoginName(), roles, translatePicketLinkAttributes(picketLinkUser.getAttributesMap()));
     return user;
   }
+
+  private Map<String, String> translatePicketLinkAttributes(
+          Map<String, Attribute<? extends Serializable>> attributesMap) {
+    Map<String, String> result = new HashMap<String, String>();
+    for (Map.Entry<String, Attribute<? extends Serializable>> entry : attributesMap.entrySet()) {
+      if (entry.getValue() != null) {
+        if (entry.getKey().equals(((AttributeParameter) org.picketlink.idm.model.basic.User.FIRST_NAME).getName())) {
+          result.put(FIRST_NAME, entry.getValue().toString());
+        }
+        else if (entry.getKey().equals(((AttributeParameter) org.picketlink.idm.model.basic.User.LAST_NAME).getName())) {
+          result.put(LAST_NAME, entry.getValue().toString());
+        }
+        else if (entry.getKey().equals(((AttributeParameter) org.picketlink.idm.model.basic.User.EMAIL).getName())) {
+          result.put(EMAIL, entry.getValue().toString());
+        }
+        else {
+          result.put(entry.getKey(), entry.getValue().toString());
+        }
+      }
+    }
+    return result;
+  }
+
 
   @Override
   public boolean isLoggedIn() {
@@ -95,12 +121,12 @@ public class PicketLinkAuthenticationService implements AuthenticationService {
   @Override
   public User getUser() {
     if (identity.isLoggedIn()) {
-      return createUser((org.picketlink.idm.model.basic.User) identity.getAccount(), getRoles());
+      return createUser((org.picketlink.idm.model.basic.User) identity.getAccount(), getRolesOfCurrentUser());
     }
     return null;
   }
 
-  public Set<Role> getRoles() {
+  private Set<Role> getRolesOfCurrentUser() {
     Set<Role> roles = new HashSet<Role>();
 
     if (identity.isLoggedIn()) {
@@ -108,7 +134,7 @@ public class PicketLinkAuthenticationService implements AuthenticationService {
               relationshipManager.createRelationshipQuery(Grant.class);
       query.setParameter(Grant.ASSIGNEE, identity.getAccount());
       for (final Grant grant : query.getResultList()) {
-        roles.add(new Role(grant.getRole().getName()));
+        roles.add(new RoleImpl(grant.getRole().getName()));
       }
     }
 

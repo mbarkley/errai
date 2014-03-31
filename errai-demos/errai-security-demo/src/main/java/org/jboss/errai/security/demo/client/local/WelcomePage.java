@@ -16,6 +16,8 @@
  */
 package org.jboss.errai.security.demo.client.local;
 
+import static org.jboss.errai.security.shared.api.identity.User.StandardUserProperties.*;
+
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
@@ -73,10 +75,10 @@ public class WelcomePage extends Composite {
 
       @Override
       public void callback(final User user) {
-        userLabel.setText(user != null ? user.getFirstName() : ANONYMOUS);
+        userLabel.setText(user != null ? user.getProperty(FIRST_NAME) : ANONYMOUS);
       }
     }, new BusErrorCallback() {
-      
+
       @Override
       public boolean error(Message message, Throwable throwable) {
         userLabel.setText(ANONYMOUS);
@@ -87,7 +89,7 @@ public class WelcomePage extends Composite {
 
   @SuppressWarnings("unused")
   private void onLoggedIn(@Observes LoggedInEvent loggedInEvent) {
-    userLabel.setText(loggedInEvent.getUser().getFirstName());
+    userLabel.setText(loggedInEvent.getUser().getProperty(FIRST_NAME));
   }
 
   @SuppressWarnings("unused")

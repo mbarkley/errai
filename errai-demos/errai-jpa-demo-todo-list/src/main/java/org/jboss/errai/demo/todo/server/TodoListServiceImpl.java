@@ -36,7 +36,7 @@ public class TodoListServiceImpl implements TodoListService {
     final ArrayList<SharedList> sharedLists = new ArrayList<SharedList>();
     org.jboss.errai.security.shared.api.identity.User currentUser = service.getUser();
     final TypedQuery<User> query = entityManager.createNamedQuery("sharedWithMe", User.class);
-    query.setParameter("loginName", currentUser.getLoginName());
+    query.setParameter("loginName", currentUser.getIdentifier());
 
     final Map<String, User> userNames = Maps.uniqueIndex(query.getResultList(), new Function<User, String>() {
       @Override

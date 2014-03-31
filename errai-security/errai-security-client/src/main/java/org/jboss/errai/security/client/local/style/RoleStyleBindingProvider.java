@@ -26,8 +26,8 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import org.jboss.errai.security.client.local.context.ActiveUserCache;
+import org.jboss.errai.security.shared.api.Role;
 import org.jboss.errai.security.shared.api.annotation.RestrictedAccess;
-import org.jboss.errai.security.shared.api.identity.Role;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.ui.shared.api.style.AnnotationStyleBindingExecutor;
 import org.jboss.errai.ui.shared.api.style.StyleBindingsRegistry;
@@ -66,8 +66,8 @@ public class RoleStyleBindingProvider {
       }
     });
   }
-  
-  private boolean hasRoles(final Collection<Role> userRoles, final String[] requiredRoles) {
+
+  private boolean hasRoles(final Collection<? extends Role> userRoles, final String[] requiredRoles) {
     final Set<String> userRolesByName = new HashSet<String>();
     for (final Role role : userRoles) {
       userRolesByName.add(role.getName());
@@ -77,7 +77,7 @@ public class RoleStyleBindingProvider {
       if (!userRolesByName.contains(requiredRoles[i]))
         return false;
     }
-    
+
     return true;
   }
 

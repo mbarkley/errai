@@ -21,6 +21,7 @@ import org.jboss.errai.jpa.sync.client.shared.SyncResponse;
 import org.jboss.errai.security.client.local.identity.LoginBuilder;
 import org.jboss.errai.security.shared.api.annotation.RestrictedAccess;
 import org.jboss.errai.security.shared.api.identity.User;
+import org.jboss.errai.security.shared.api.identity.User.StandardUserProperties;
 import org.jboss.errai.ui.client.widget.ListWidget;
 import org.jboss.errai.ui.nav.client.local.DefaultPage;
 import org.jboss.errai.ui.nav.client.local.Page;
@@ -77,7 +78,7 @@ public class TodoListPage extends Composite {
       @Override
       public void callback(final User result) {
         user = result;
-        username.setText(user.getFirstName());
+        username.setText(user.getProperty(StandardUserProperties.FIRST_NAME));
         errorLabel.setVisible(false);
         refreshItems();
 
@@ -89,7 +90,7 @@ public class TodoListPage extends Composite {
         }).getSharedTodoLists();
       }
     }, new BusErrorCallback() {
-      
+
       @Override
       public boolean error(Message message, Throwable throwable) {
         logoutTransition.go();
@@ -101,7 +102,7 @@ public class TodoListPage extends Composite {
   private void refreshItems() {
     System.out.println("Todo List Demo: refreshItems()");
     TypedQuery<TodoItem> query = em.createNamedQuery("currentItemsForUser", TodoItem.class);
-    query.setParameter("userId", user.getLoginName());
+    query.setParameter("userId", user.getIdentifier());
     itemContainer.setItems(query.getResultList());
   }
 
@@ -114,7 +115,7 @@ public class TodoListPage extends Composite {
   void onNewItem(KeyDownEvent event) {
     if (event.getNativeKeyCode() == KeyCodes.KEY_ENTER && !newItemBox.getText().trim().equals("")) {
       TodoItem item = new TodoItem();
-      item.setLoginName(user.getLoginName());
+      item.setLoginName(user.getIdentifier());
       item.setText(newItemBox.getText());
       em.persist(item);
       em.flush();
@@ -126,7 +127,7 @@ public class TodoListPage extends Composite {
   @EventHandler("archiveButton")
   void archive(ClickEvent event) {
     TypedQuery<TodoItem> query = em.createNamedQuery("currentItemsForUser", TodoItem.class);
-    query.setParameter("userId", user.getLoginName());
+    query.setParameter("userId", user.getIdentifier());
     for (TodoItem item : query.getResultList()) {
       if (item.isDone()) {
         item.setArchived(true);
@@ -139,25 +140,25 @@ public class TodoListPage extends Composite {
   @EventHandler("syncButton")
   void sync(ClickEvent event) {
     Map<String,Object> params = new HashMap<String, Object>();
-    params.put("userId", user.getLoginName());
+    params.put("userId", user.getIdentifier());
     syncManager.coldSync("allItemsForUser", TodoItem.class, params,
             new RemoteCallback<List<SyncResponse<TodoItem>>>() {
-              @Override
-              public void callback(List<SyncResponse<TodoItem>> response) {
-                syncButton.setEnabled(true);
-                System.out.println("Got data sync complete event!");
-                refreshItems();
-              }
-            },
-            new BusErrorCallback() {
-              @Override
-              public boolean error(Message message, Throwable throwable) {
-                syncButton.setEnabled(true);
-                errorLabel.setText("Sync failed: " + throwable);
-                errorLabel.setVisible(true);
-                return false;
-              }
-            });
+      @Override
+      public void callback(List<SyncResponse<TodoItem>> response) {
+        syncButton.setEnabled(true);
+        System.out.println("Got data sync complete event!");
+        refreshItems();
+      }
+    },
+    new BusErrorCallback() {
+      @Override
+      public boolean error(Message message, Throwable throwable) {
+        syncButton.setEnabled(true);
+        errorLabel.setText("Sync failed: " + throwable);
+        errorLabel.setVisible(true);
+        return false;
+      }
+    });
     syncButton.setEnabled(false);
     System.out.println("Initiated cold sync");
   }

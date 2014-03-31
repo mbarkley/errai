@@ -24,7 +24,7 @@ import org.jboss.errai.bus.client.api.BusErrorCallback;
 import org.jboss.errai.bus.client.api.base.MessageBuilder;
 import org.jboss.errai.common.client.api.RemoteCallback;
 import org.jboss.errai.databinding.client.api.Bindable;
-import org.jboss.errai.security.shared.api.identity.Role;
+import org.jboss.errai.security.shared.api.RoleImpl;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.security.shared.service.AuthenticationService;
 
@@ -94,7 +94,7 @@ public class LoginBuilder implements Serializable {
           return;
         }
         for (String roleName : roleNames) {
-          final Role role = new Role(roleName);
+          final RoleImpl role = new RoleImpl(roleName);
           if (!user.getRoles().contains(role)) {
             callbackWrapper.callback(false);
             return;

@@ -25,7 +25,7 @@ import org.jboss.errai.ioc.client.lifecycle.api.LifecycleEvent;
 import org.jboss.errai.ioc.client.lifecycle.api.LifecycleListener;
 import org.jboss.errai.security.client.local.context.ActiveUserCache;
 import org.jboss.errai.security.client.local.context.SecurityContext;
-import org.jboss.errai.security.shared.api.identity.Role;
+import org.jboss.errai.security.shared.api.Role;
 import org.jboss.errai.ui.nav.client.local.UniquePageRole;
 import org.jboss.errai.ui.nav.client.local.api.LoginPage;
 import org.jboss.errai.ui.nav.client.local.api.SecurityError;
@@ -39,9 +39,9 @@ import com.google.gwt.user.client.ui.IsWidget;
  * @author Max Barkley <mbarkley@redhat.com>
  */
 public class PageRoleLifecycleListener<W extends IsWidget> implements LifecycleListener<W> {
-  
-  private Set<String> roles;
-  
+
+  private final Set<String> roles;
+
   public PageRoleLifecycleListener(final String... roles) {
     this.roles = new HashSet<String>();
 
@@ -65,7 +65,7 @@ public class PageRoleLifecycleListener<W extends IsWidget> implements LifecycleL
         destination = LoginPage.class;
       else
         destination = SecurityError.class;
-      
+
       securityContext.navigateToPage(destination);
     }
   }
@@ -74,20 +74,20 @@ public class PageRoleLifecycleListener<W extends IsWidget> implements LifecycleL
   public boolean isObserveableEventType(final Class<? extends LifecycleEvent<W>> eventType) {
     return eventType.equals(Access.class);
   }
-  
-  private boolean containsRoles(final Collection<Role> userRoles, final Set<String> requiredRoles) {
+
+  private boolean containsRoles(final Collection<? extends Role> userRoles, final Set<String> requiredRoles) {
     if (userRoles == null && requiredRoles != null && !requiredRoles.isEmpty())
       return false;
 
     final Set<String> userRolesByName = new HashSet<String>();
     for (final Role role : userRoles)
       userRolesByName.add(role.getName());
-    
+
     for (final String role : requiredRoles) {
       if (!userRolesByName.contains(role))
         return false;
     }
-    
+
     return true;
   }
 

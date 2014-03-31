@@ -19,7 +19,7 @@ package org.jboss.errai.security.res;
 import java.util.List;
 
 import org.jboss.errai.bus.client.framework.AbstractRpcProxy;
-import org.jboss.errai.security.shared.api.identity.Role;
+import org.jboss.errai.security.shared.api.Role;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.security.shared.service.AuthenticationService;
 

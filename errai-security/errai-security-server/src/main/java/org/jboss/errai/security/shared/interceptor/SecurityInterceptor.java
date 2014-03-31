@@ -19,8 +19,9 @@ package org.jboss.errai.security.shared.interceptor;
 import java.lang.annotation.Annotation;
 import java.util.Collection;
 
+import org.jboss.errai.security.shared.api.Role;
+import org.jboss.errai.security.shared.api.RoleImpl;
 import org.jboss.errai.security.shared.api.annotation.RestrictedAccess;
-import org.jboss.errai.security.shared.api.identity.Role;
 
 /**
  * Base class for the security interceptors
@@ -28,9 +29,9 @@ import org.jboss.errai.security.shared.api.identity.Role;
  */
 public abstract class SecurityInterceptor {
 
-  protected boolean hasAllRoles(Collection<Role> roles, String[] roleNames) {
+  protected boolean hasAllRoles(Collection<? extends Role> roles, String[] roleNames) {
     for (String roleName : roleNames) {
-      final Role role = new Role(roleName);
+      final RoleImpl role = new RoleImpl(roleName);
       if (!roles.contains(role)) {
         return false;
       }

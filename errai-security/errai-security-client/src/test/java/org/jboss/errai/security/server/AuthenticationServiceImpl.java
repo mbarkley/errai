@@ -23,8 +23,10 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Alternative;
 
 import org.jboss.errai.bus.server.annotations.Service;
-import org.jboss.errai.security.shared.api.identity.Role;
+import org.jboss.errai.security.shared.api.Role;
+import org.jboss.errai.security.shared.api.RoleImpl;
 import org.jboss.errai.security.shared.api.identity.User;
+import org.jboss.errai.security.shared.api.identity.UserImpl;
 import org.jboss.errai.security.shared.service.AuthenticationService;
 
 @Service
@@ -32,15 +34,11 @@ import org.jboss.errai.security.shared.service.AuthenticationService;
 @Alternative
 public class AuthenticationServiceImpl implements AuthenticationService {
 
-  private String username;
   private User user;
 
   @Override
   public User login(String username, String password) {
-    this.username = username;
-    user = new User(username);
-    user.setRoles(getRoles());
-
+    user = new UserImpl(username, makeUpFakeRolesBasedOnUsername(username));
     return user;
   }
 
@@ -52,7 +50,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
   @Override
   public void logout() {
     user = null;
-    username = null;
   }
 
   @Override
@@ -60,14 +57,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     return user;
   }
 
-  public Set<Role> getRoles() {
+  private static Set<Role> makeUpFakeRolesBasedOnUsername(String username) {
     final Set<Role> roles = new HashSet<Role>();
-    if (isLoggedIn()) {
-      if (username.equals("admin")) {
-        roles.add(new Role("admin"));
-      }
-      roles.add(new Role("user"));
+    if (username.equals("admin")) {
+      roles.add(new RoleImpl("admin"));
     }
+    roles.add(new RoleImpl("user"));
 
     return roles;
   }
