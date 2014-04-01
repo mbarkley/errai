@@ -16,16 +16,11 @@
  */
 package org.jboss.errai.security.client.local.nav;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
-
 import org.jboss.errai.ioc.client.lifecycle.api.Access;
 import org.jboss.errai.ioc.client.lifecycle.api.LifecycleEvent;
 import org.jboss.errai.ioc.client.lifecycle.api.LifecycleListener;
 import org.jboss.errai.security.client.local.context.ActiveUserCache;
 import org.jboss.errai.security.client.local.context.SecurityContext;
-import org.jboss.errai.security.shared.api.Role;
 import org.jboss.errai.ui.nav.client.local.UniquePageRole;
 import org.jboss.errai.ui.nav.client.local.api.LoginPage;
 import org.jboss.errai.ui.nav.client.local.api.SecurityError;
@@ -40,14 +35,10 @@ import com.google.gwt.user.client.ui.IsWidget;
  */
 public class PageRoleLifecycleListener<W extends IsWidget> implements LifecycleListener<W> {
 
-  private final Set<String> roles;
+  private final String[] roles;
 
-  public PageRoleLifecycleListener(final String... roles) {
-    this.roles = new HashSet<String>();
-
-    for (int i = 0; i < roles.length; i++) {
-      this.roles.add(roles[i]);
-    }
+  public PageRoleLifecycleListener(final String... rolesRequiredByPage) {
+    this.roles = rolesRequiredByPage;
   }
 
   @Override
@@ -57,7 +48,7 @@ public class PageRoleLifecycleListener<W extends IsWidget> implements LifecycleL
     final ActiveUserCache userCache = securityContext.getActiveUserCache();
 
     if (!userCache.isValid() || !userCache.hasUser()
-            || !containsRoles(userCache.getUser().getRoles(), roles)) {
+            || !userCache.getUser().hasAllRoles(roles)) {
       event.veto();
 
       final Class<? extends UniquePageRole> destination;
@@ -73,22 +64,6 @@ public class PageRoleLifecycleListener<W extends IsWidget> implements LifecycleL
   @Override
   public boolean isObserveableEventType(final Class<? extends LifecycleEvent<W>> eventType) {
     return eventType.equals(Access.class);
-  }
-
-  private boolean containsRoles(final Collection<? extends Role> userRoles, final Set<String> requiredRoles) {
-    if (userRoles == null && requiredRoles != null && !requiredRoles.isEmpty())
-      return false;
-
-    final Set<String> userRolesByName = new HashSet<String>();
-    for (final Role role : userRoles)
-      userRolesByName.add(role.getName());
-
-    for (final String role : requiredRoles) {
-      if (!userRolesByName.contains(role))
-        return false;
-    }
-
-    return true;
   }
 
 }

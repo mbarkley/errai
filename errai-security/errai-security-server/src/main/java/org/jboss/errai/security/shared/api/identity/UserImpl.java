@@ -3,14 +3,13 @@ package org.jboss.errai.security.shared.api.identity;
 import static java.util.Collections.*;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
-import org.jboss.errai.common.client.api.Assert;
 import org.jboss.errai.common.client.api.annotations.MapsTo;
 import org.jboss.errai.common.client.api.annotations.Portable;
 import org.jboss.errai.security.shared.api.Role;
@@ -20,8 +19,8 @@ public class UserImpl implements User, Serializable {
 
   private static final long serialVersionUID = 3172905561115755369L;
 
-  private final List<Role> roles = new ArrayList<Role>();
   private final String name;
+  private final Set<Role> roles;
   private final Map<String, String> properties = new HashMap<String, String>();
 
   public UserImpl(final String name) {
@@ -29,8 +28,7 @@ public class UserImpl implements User, Serializable {
   }
 
   public UserImpl(final String name, final Collection<? extends Role> roles) {
-    this.name = name;
-    this.roles.addAll(roles);
+    this(name, roles, Collections.<String,String> emptyMap());
   }
 
   public UserImpl(
@@ -38,21 +36,39 @@ public class UserImpl implements User, Serializable {
           @MapsTo("roles") final Collection<? extends Role> roles,
           @MapsTo("properties") final Map<String, String> properties) {
     this.name = name;
-    this.roles.addAll(roles);
+    this.roles = Collections.unmodifiableSet(new HashSet<Role>(roles));
     this.properties.putAll(properties);
   }
 
   @Override
-  public List<Role> getRoles() {
+  public Set<Role> getRoles() {
     return roles;
   }
 
   @Override
-  public boolean hasRole(final Role role) {
-    Assert.notNull(role);
-    for (final Role activeRole : roles) {
-      if (activeRole.getName().equals(role.getName())) {
-        return true;
+  public boolean hasAllRoles(String ... roleNames) {
+    for (String roleName : roleNames) {
+      boolean foundThisOne = false;
+      for (Role role : roles) {
+        if (roleName.equals(role.getName())) {
+          foundThisOne = true;
+          break;
+        }
+      }
+      if (!foundThisOne) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
+  public boolean hasAnyRoles(String ... roleNames) {
+    for (Role role : roles) {
+      for (String roleName : roleNames) {
+        if (roleName.equals(role.getName())) {
+          return true;
+        }
       }
     }
     return false;

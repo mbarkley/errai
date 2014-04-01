@@ -24,7 +24,6 @@ import org.jboss.errai.bus.client.api.BusErrorCallback;
 import org.jboss.errai.bus.client.api.base.MessageBuilder;
 import org.jboss.errai.common.client.api.RemoteCallback;
 import org.jboss.errai.databinding.client.api.Bindable;
-import org.jboss.errai.security.shared.api.RoleImpl;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.security.shared.service.AuthenticationService;
 
@@ -78,7 +77,7 @@ public class LoginBuilder implements Serializable {
   public void getUser(final RemoteCallback<User> callback) {
     MessageBuilder.createCall(new CallbackWrapper<User>(callback), AuthenticationService.class).getUser();
   }
-  
+
   public void getUser(final RemoteCallback<User> callback, final BusErrorCallback errorCallback) {
     MessageBuilder.createCall(callback, errorCallback, AuthenticationService.class).getUser();
   }
@@ -93,23 +92,16 @@ public class LoginBuilder implements Serializable {
           callbackWrapper.callback(false);
           return;
         }
-        for (String roleName : roleNames) {
-          final RoleImpl role = new RoleImpl(roleName);
-          if (!user.getRoles().contains(role)) {
-            callbackWrapper.callback(false);
-            return;
-          }
-        }
-        callbackWrapper.callback(true);
+        callbackWrapper.callback(user.hasAllRoles(roleNames));
       }
     };
-    
+
     if (errorCallback == null)
       MessageBuilder.createCall(permissionCallback, AuthenticationService.class).getUser();
     else
       MessageBuilder.createCall(permissionCallback, errorCallback, AuthenticationService.class).getUser();
   }
-  
+
   public void hasPermission(final RemoteCallback<Boolean> callback) {
     hasPermission(callback, null);
   }

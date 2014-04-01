@@ -16,6 +16,8 @@
  */
 package org.jboss.errai.security.client.local.interceptors;
 
+import java.lang.annotation.Annotation;
+
 import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
 
@@ -29,7 +31,6 @@ import org.jboss.errai.security.client.local.context.SecurityContext;
 import org.jboss.errai.security.shared.api.annotation.RestrictedAccess;
 import org.jboss.errai.security.shared.exception.UnauthenticatedException;
 import org.jboss.errai.security.shared.exception.UnauthorizedException;
-import org.jboss.errai.security.shared.interceptor.SecurityInterceptor;
 import org.jboss.errai.security.shared.util.AnnotationUtils;
 
 /**
@@ -43,11 +44,11 @@ import org.jboss.errai.security.shared.util.AnnotationUtils;
  */
 @FeatureInterceptor(RestrictedAccess.class)
 @Dependent
-public class ClientSecurityRoleInterceptor extends SecurityInterceptor implements
-        RemoteCallInterceptor<RemoteCallContext> {
-  
+public class ClientSecurityRoleInterceptor implements
+RemoteCallInterceptor<RemoteCallContext> {
+
   private final SecurityContext securityContext;
-  
+
   @Inject
   public ClientSecurityRoleInterceptor(final SecurityContext securityContext) {
     this.securityContext = securityContext;
@@ -59,14 +60,14 @@ public class ClientSecurityRoleInterceptor extends SecurityInterceptor implement
             AnnotationUtils.mergeRoles(
                     getRestrictedAccessAnnotation(callContext.getTypeAnnotations()),
                     getRestrictedAccessAnnotation(callContext.getAnnotations())),
-            callContext);
+                    callContext);
   }
 
-  private void securityCheck(final String[] values, final RemoteCallContext callContext) {
+  private void securityCheck(final String[] requiredRoleNames, final RemoteCallContext callContext) {
     final ActiveUserCache userCache = securityContext.getActiveUserCache();
     if (userCache.isValid()) {
       if (userCache.hasUser()) {
-        if (hasAllRoles(userCache.getUser().getRoles(), values)) {
+        if (userCache.getUser().hasAllRoles(requiredRoleNames)) {
           callContext.proceed(new RemoteCallback<Object>() {
 
             @Override
@@ -96,6 +97,15 @@ public class ClientSecurityRoleInterceptor extends SecurityInterceptor implement
     else {
       callContext.proceed();
     }
+  }
+
+  private RestrictedAccess getRestrictedAccessAnnotation(Annotation[] annotations) {
+    for (Annotation annotation : annotations) {
+      if (annotation instanceof RestrictedAccess) {
+        return (RestrictedAccess) annotation;
+      }
+    }
+    return null;
   }
 
 }

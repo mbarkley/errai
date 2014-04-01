@@ -17,8 +17,8 @@
 package org.jboss.errai.security.shared.api.identity;
 
 import java.io.Serializable;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.jboss.errai.security.shared.api.Role;
 
@@ -43,9 +43,10 @@ public interface User extends Serializable {
 
   String getIdentifier();
 
-  List<Role> getRoles();
+  Set<Role> getRoles();
 
-  boolean hasRole(final Role role);
+  boolean hasAllRoles(String ... roleNames);
+  boolean hasAnyRoles(String ... roleNames);
 
   Map<String, String> getProperties();
 

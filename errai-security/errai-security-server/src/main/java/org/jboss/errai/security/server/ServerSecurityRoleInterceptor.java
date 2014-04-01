@@ -28,7 +28,6 @@ import org.jboss.errai.security.shared.api.annotation.RestrictedAccess;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.security.shared.exception.UnauthenticatedException;
 import org.jboss.errai.security.shared.exception.UnauthorizedException;
-import org.jboss.errai.security.shared.interceptor.SecurityInterceptor;
 import org.jboss.errai.security.shared.service.AuthenticationService;
 
 /**
@@ -40,7 +39,7 @@ import org.jboss.errai.security.shared.service.AuthenticationService;
  */
 @RestrictedAccess
 @Interceptor
-public class ServerSecurityRoleInterceptor extends SecurityInterceptor {
+public class ServerSecurityRoleInterceptor {
 
   private final AuthenticationService authenticationService;
 
@@ -57,7 +56,7 @@ public class ServerSecurityRoleInterceptor extends SecurityInterceptor {
     if (user == null) {
       throw new UnauthenticatedException();
     }
-    else if (!hasAllRoles(user.getRoles(), annotation.roles())) {
+    else if (!user.hasAllRoles(annotation.roles())) {
       throw new UnauthorizedException();
     }
     else {

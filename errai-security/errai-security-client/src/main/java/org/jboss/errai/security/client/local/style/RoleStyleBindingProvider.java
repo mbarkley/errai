@@ -17,16 +17,12 @@
 package org.jboss.errai.security.client.local.style;
 
 import java.lang.annotation.Annotation;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import org.jboss.errai.security.client.local.context.ActiveUserCache;
-import org.jboss.errai.security.shared.api.Role;
 import org.jboss.errai.security.shared.api.annotation.RestrictedAccess;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.ui.shared.api.style.AnnotationStyleBindingExecutor;
@@ -59,26 +55,13 @@ public class RoleStyleBindingProvider {
       @Override
       public void invokeBinding(final Element element, final Annotation annotation) {
         final User user = userProvider.getUser();
-        if (user == null || user.getRoles() == null || !hasRoles(user.getRoles(), ((RestrictedAccess) annotation).roles()))
+        if (user == null || !user.hasAllRoles(((RestrictedAccess) annotation).roles())) {
           element.getStyle().setDisplay(Display.NONE);
-        else
+        }
+        else {
           element.getStyle().clearDisplay();
+        }
       }
     });
   }
-
-  private boolean hasRoles(final Collection<? extends Role> userRoles, final String[] requiredRoles) {
-    final Set<String> userRolesByName = new HashSet<String>();
-    for (final Role role : userRoles) {
-      userRolesByName.add(role.getName());
-    }
-
-    for (int i = 0; i < requiredRoles.length; i++) {
-      if (!userRolesByName.contains(requiredRoles[i]))
-        return false;
-    }
-
-    return true;
-  }
-
 }
