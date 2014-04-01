@@ -3,7 +3,12 @@ package org.jboss.errai.security.shared.api.identity;
 import static org.junit.Assert.*;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
+import org.jboss.errai.marshalling.client.Marshalling;
+import org.jboss.errai.marshalling.client.MarshallingSessionProviderFactory;
+import org.jboss.errai.marshalling.server.MappingContextSingleton;
 import org.jboss.errai.security.shared.api.RoleImpl;
 import org.junit.Test;
 
@@ -38,5 +43,25 @@ public class UserTest {
     assertFalse(user.hasAllRoles("a", "f"));
     assertFalse(user.hasAllRoles("a", "b", "f", "c"));
     assertTrue(user.hasAllRoles());
+  }
+
+  @Test
+  public void userShouldBePortable() {
+    Map<String, String> randomProperties = new HashMap<String, String>();
+    randomProperties.put("rand1", "RAND1");
+    randomProperties.put("rand2", "RAND2");
+    randomProperties.put("rand3", "RAND3");
+    User user = new UserImpl("test", Arrays.asList(new RoleImpl("a"), new RoleImpl("b"), new RoleImpl("c")), randomProperties);
+
+    if (!MarshallingSessionProviderFactory.isMarshallingSessionProviderRegistered()) {
+      MappingContextSingleton.loadDynamicMarshallers();
+    }
+
+    String userAsJson = Marshalling.toJSON(user);
+    User unmarshalledUser = (User) Marshalling.fromJSON(userAsJson);
+
+    assertEquals(user.getIdentifier(), unmarshalledUser.getIdentifier());
+    assertEquals(user.getRoles(), unmarshalledUser.getRoles());
+    assertEquals(user.getProperties(), unmarshalledUser.getProperties());
   }
 }
