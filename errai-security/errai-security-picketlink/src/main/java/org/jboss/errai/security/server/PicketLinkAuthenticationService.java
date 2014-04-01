@@ -40,7 +40,6 @@ import org.picketlink.idm.RelationshipManager;
 import org.picketlink.idm.credential.Password;
 import org.picketlink.idm.model.Attribute;
 import org.picketlink.idm.model.basic.Grant;
-import org.picketlink.idm.query.AttributeParameter;
 import org.picketlink.idm.query.RelationshipQuery;
 
 /**
@@ -81,28 +80,20 @@ public class PicketLinkAuthenticationService implements AuthenticationService {
    * @return our user
    */
   private User createUser(org.picketlink.idm.model.basic.User picketLinkUser, Set<? extends Role> roles) {
-    User user = new UserImpl(picketLinkUser.getLoginName(), roles, translatePicketLinkAttributes(picketLinkUser.getAttributesMap()));
+    User user = new UserImpl(picketLinkUser.getLoginName(), roles, translatePicketLinkAttributes(picketLinkUser));
     return user;
   }
 
   private Map<String, String> translatePicketLinkAttributes(
-          Map<String, Attribute<? extends Serializable>> attributesMap) {
+          org.picketlink.idm.model.basic.User picketLinkUser) {
     Map<String, String> result = new HashMap<String, String>();
-    for (Map.Entry<String, Attribute<? extends Serializable>> entry : attributesMap.entrySet()) {
-      if (entry.getValue() != null) {
-        if (entry.getKey().equals(((AttributeParameter) org.picketlink.idm.model.basic.User.FIRST_NAME).getName())) {
-          result.put(FIRST_NAME, entry.getValue().toString());
-        }
-        else if (entry.getKey().equals(((AttributeParameter) org.picketlink.idm.model.basic.User.LAST_NAME).getName())) {
-          result.put(LAST_NAME, entry.getValue().toString());
-        }
-        else if (entry.getKey().equals(((AttributeParameter) org.picketlink.idm.model.basic.User.EMAIL).getName())) {
-          result.put(EMAIL, entry.getValue().toString());
-        }
-        else {
-          result.put(entry.getKey(), entry.getValue().toString());
-        }
-      }
+
+    result.put(FIRST_NAME, picketLinkUser.getFirstName());
+    result.put(LAST_NAME, picketLinkUser.getLastName());
+    result.put(EMAIL, picketLinkUser.getEmail());
+
+    for (Map.Entry<String, Attribute<? extends Serializable>> entry : picketLinkUser.getAttributesMap().entrySet()) {
+      result.put(entry.getKey(), entry.getValue() == null ? null : entry.getValue().toString());
     }
     return result;
   }
