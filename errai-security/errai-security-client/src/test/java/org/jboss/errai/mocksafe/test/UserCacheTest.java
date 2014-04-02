@@ -31,7 +31,7 @@ import org.jboss.errai.security.client.local.context.ActiveUserCache;
 import org.jboss.errai.security.client.local.context.SecurityContext;
 import org.jboss.errai.security.client.local.context.impl.BasicUserCacheImpl;
 import org.jboss.errai.security.client.local.context.impl.SecurityContextImpl;
-import org.jboss.errai.security.client.local.identity.LocalStorageHandler;
+import org.jboss.errai.security.client.local.identity.UserStorageHandler;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.security.shared.api.identity.UserImpl;
 import org.jboss.errai.security.shared.event.LoggedInEvent;
@@ -54,7 +54,7 @@ import org.slf4j.Logger;
 public class UserCacheTest {
 
   @Mock
-  private LocalStorageHandler storageHandler;
+  private UserStorageHandler userStorageHandler;
   @Mock
   private Caller<AuthenticationService> caller;
   @Mock
@@ -114,7 +114,7 @@ public class UserCacheTest {
   public void testRpcOverridesStoredUser() throws Exception {
     final User expected = new UserImpl("eve");
 
-    when(storageHandler.getUser()).thenReturn(new UserImpl("adam"));
+    when(userStorageHandler.getUser()).thenReturn(new UserImpl("adam"));
     when(caller.call(any(RemoteCallback.class))).then(new AuthServiceAnswer(expected));
 
     loadMethod.invoke(userCache);
@@ -125,21 +125,21 @@ public class UserCacheTest {
     rpcMethod.invoke(securityContext);
 
     assertEquals(expected, userCache.getUser());
-    verify(storageHandler).setUser(expected);
+    verify(userStorageHandler).setUser(expected);
   }
 
   @Test
   public void testRpcHappensWithNoStoredUser() throws Exception {
     final User expected = new UserImpl("adam");
 
-    when(storageHandler.getUser()).thenReturn(null);
+    when(userStorageHandler.getUser()).thenReturn(null);
     when(caller.call(any(RemoteCallback.class))).then(new AuthServiceAnswer(expected));
 
     loadMethod.invoke(userCache);
     rpcMethod.invoke(securityContext);
 
     verify(caller).call(any(RemoteCallback.class));
-    verify(storageHandler).setUser(expected);
+    verify(userStorageHandler).setUser(expected);
     assertEquals(expected, userCache.getUser());
   }
 
@@ -147,17 +147,17 @@ public class UserCacheTest {
   public void testStorageDoesNotOverrideActiveUser() throws Exception {
     final User expected = new UserImpl("adam");
 
-    when(storageHandler.getUser()).thenReturn(new UserImpl("eve"));
+    when(userStorageHandler.getUser()).thenReturn(new UserImpl("eve"));
 
     userCache.setUser(expected);
     assertTrue(userCache.isValid());
-    verify(storageHandler).setUser(expected);
+    verify(userStorageHandler).setUser(expected);
 
     loadMethod.invoke(userCache);
 
     assertEquals(expected, userCache.getUser());
-    verify(storageHandler, new Times(0)).getUser();
-    verify(storageHandler).setUser(expected);
+    verify(userStorageHandler, new Times(0)).getUser();
+    verify(userStorageHandler).setUser(expected);
   }
 
   @Test
@@ -165,21 +165,21 @@ public class UserCacheTest {
     final User expected = new UserImpl("adam");
     userCache.setUser(expected);
 
-    verify(storageHandler).setUser(expected);
+    verify(userStorageHandler).setUser(expected);
   }
 
   @Test
   public void testStorageWhenNullUserSet() throws Exception {
     userCache.setUser(null);
 
-    verify(storageHandler).setUser(null);
+    verify(userStorageHandler).setUser(null);
   }
 
   @Test
   public void testStorageRemovedWhenCacheInvalidated() throws Exception {
     userCache.invalidateCache();
 
-    verify(storageHandler).setUser(null);
+    verify(userStorageHandler).setUser(null);
   }
 
 }

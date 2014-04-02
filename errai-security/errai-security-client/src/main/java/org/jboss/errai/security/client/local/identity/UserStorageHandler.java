@@ -18,8 +18,27 @@ package org.jboss.errai.security.client.local.identity;
 
 import org.jboss.errai.security.shared.api.identity.User;
 
-public interface LocalStorageHandler {
+/**
+ * Contract for things that can remember the current user (identifier, roles,
+ * properties) in some way that can persist between browser sessions.
+ */
+public interface UserStorageHandler {
+
+  /**
+   * Returns the locally persisted user if one can be found.
+   * 
+   * @return the persisted user, or null if none can be found.
+   */
   User getUser();
 
+  /**
+   * Persists the given user locally, using whatever means this implementation
+   * supports.
+   * 
+   * @param user
+   *          the user instance to remember for later, or null to forget the
+   *          current user (clears any existing information about a user out
+   *          of the persistent store).
+   */
   void setUser(final User user);
 }

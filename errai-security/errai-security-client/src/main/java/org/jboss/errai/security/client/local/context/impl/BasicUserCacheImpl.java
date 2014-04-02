@@ -22,7 +22,7 @@ import javax.inject.Inject;
 
 import org.jboss.errai.security.client.local.context.ActiveUserCache;
 import org.jboss.errai.security.client.local.context.Simple;
-import org.jboss.errai.security.client.local.identity.LocalStorageHandler;
+import org.jboss.errai.security.client.local.identity.UserStorageHandler;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.slf4j.Logger;
 
@@ -40,7 +40,7 @@ public class BasicUserCacheImpl implements ActiveUserCache {
   private Logger logger;
 
   @Inject
-  private LocalStorageHandler storageHandler;
+  private UserStorageHandler userStorageHandler;
 
   private boolean valid = false;
 
@@ -61,7 +61,7 @@ public class BasicUserCacheImpl implements ActiveUserCache {
     logger.debug("PostConstruct invoked.");
     if (!isValid()) {
       logger.debug("Checking for user in local storage.");
-      final User storedUser = storageHandler.getUser();
+      final User storedUser = userStorageHandler.getUser();
 
       if (storedUser != null) {
         setActiveUser(storedUser, false);
@@ -74,7 +74,7 @@ public class BasicUserCacheImpl implements ActiveUserCache {
     valid = true;
     activeUser = user;
     if (localStorage) {
-      storageHandler.setUser(user);
+      userStorageHandler.setUser(user);
     }
   }
 
@@ -93,7 +93,7 @@ public class BasicUserCacheImpl implements ActiveUserCache {
     logger.debug("Invalidating cache.");
     valid = false;
     activeUser = null;
-    storageHandler.setUser(null);
+    userStorageHandler.setUser(null);
   }
 
 }

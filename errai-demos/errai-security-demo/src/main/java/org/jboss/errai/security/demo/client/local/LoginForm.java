@@ -34,6 +34,7 @@ import org.jboss.errai.ui.shared.api.annotations.DataField;
 import org.jboss.errai.ui.shared.api.annotations.EventHandler;
 import org.jboss.errai.ui.shared.api.annotations.Model;
 import org.jboss.errai.ui.shared.api.annotations.Templated;
+import org.slf4j.Logger;
 
 import com.google.gwt.dom.client.Style;
 import com.google.gwt.event.dom.client.ClickEvent;
@@ -49,13 +50,15 @@ import com.google.gwt.user.client.ui.TextBox;
 @Dependent
 public class LoginForm extends Composite {
 
+  @Inject Logger logger;
+
   @Inject
   TransitionTo<WelcomePage> welcomePage;
 
   @Inject
   @Model
   LoginBuilder identity;
-  
+
   @Inject
   private SecurityContext securityContext;
 
@@ -65,7 +68,7 @@ public class LoginForm extends Composite {
   private TextBox username;
 
   @DataField
-  private Element form = DOM.createDiv();
+  private final Element form = DOM.createDiv();
 
   @Inject
   @Bound
@@ -86,7 +89,7 @@ public class LoginForm extends Composite {
   @EventHandler("login")
   private void loginClicked(ClickEvent event) {
     identity.login(new RemoteCallback<User>() {
-      
+
       @Override
       public void callback(final User response) {
         if (response != null) {
@@ -96,6 +99,7 @@ public class LoginForm extends Composite {
     }, new BusErrorCallback() {
       @Override
       public boolean error(Message message, Throwable throwable) {
+        logger.error("Login failure reason: ", throwable);
         alert.getStyle().setDisplay(Style.Display.BLOCK);
         return false;
       }

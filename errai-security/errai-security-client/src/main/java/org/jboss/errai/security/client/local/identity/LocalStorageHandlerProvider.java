@@ -21,17 +21,23 @@ import javax.inject.Singleton;
 
 import org.jboss.errai.ioc.client.api.IOCProvider;
 import org.jboss.errai.marshalling.client.Marshalling;
+import org.jboss.errai.marshalling.client.api.MarshallerFramework;
+import org.jboss.errai.security.client.local.context.SecurityContext;
 import org.jboss.errai.security.client.local.context.SecurityProperties;
 import org.jboss.errai.security.shared.api.identity.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.gwt.core.shared.GWT;
-import com.google.gwt.storage.client.Storage;
+import com.google.gwt.user.client.Cookies;
 
 @IOCProvider
 @Singleton
-public class LocalStorageHandlerProvider implements Provider<LocalStorageHandler> {
+public class LocalStorageHandlerProvider implements Provider<UserStorageHandler> {
 
-  private class NoopStorageHandler implements LocalStorageHandler {
+  private static final Logger logger = LoggerFactory.getLogger(LocalStorageHandlerProvider.class);
+
+  private static class NoopStorageHandler implements UserStorageHandler {
     @Override
     public User getUser() {
       return null;
@@ -42,49 +48,59 @@ public class LocalStorageHandlerProvider implements Provider<LocalStorageHandler
     }
   }
 
-  private class LocalStorageHandlerImpl implements LocalStorageHandler {
+  private static class UserCookieStorageHandlerImpl implements UserStorageHandler {
 
-    private static final String storageKey = "errai-active-user";
+    // magic incantation. ooga booga!
+    static {
+      // ensure that the marshalling framework has been initialized
+      MarshallerFramework.initializeDefaultSessionProvider();
+    }
 
     @Override
     public User getUser() {
-      final Storage storage = Storage.getLocalStorageIfSupported();
       try {
-        final String json = storage.getItem(storageKey);
+        final String json = Cookies.getCookie(SecurityContext.USER_COOKIE_NAME);
         if (json != null) {
-          return Marshalling.fromJSON(json, User.class);
+          User user = (User) Marshalling.fromJSON(json, Object.class);
+          logger.debug("Found " + user + " in cookie cache!");
+          return user;
         }
         else {
           return null;
         }
       }
       catch (RuntimeException e) {
-        storage.removeItem(storageKey);
+        logger.warn("Failed to retrieve current user from a cookie.", e);
+        Cookies.removeCookie(SecurityContext.USER_COOKIE_NAME);
         return null;
       }
     }
 
     @Override
     public void setUser(final User user) {
-      final Storage storage = Storage.getLocalStorageIfSupported();
-
       if (user != null) {
-        final String json = Marshalling.toJSON(user);
-        storage.setItem(storageKey, json);
+        try {
+          logger.debug("Storing " + user + " in cookie cache.");
+          final String json = Marshalling.toJSON(user);
+          Cookies.setCookie(SecurityContext.USER_COOKIE_NAME, json);
+        }
+        catch (RuntimeException ex) {
+          logger.warn("Failed to store user in cookie cache. Subsequent visits to this app will redirect to login screen even if the session is still valid.", ex);
+        }
       }
       else {
-        storage.removeItem(storageKey);
+        Cookies.removeCookie(SecurityContext.USER_COOKIE_NAME);
       }
     }
 
   }
-  
+
   private final SecurityProperties properties = GWT.create(SecurityProperties.class);
 
   @Override
-  public LocalStorageHandler get() {
-    if (Storage.isLocalStorageSupported() && properties.isLocalStorageOfUserAllowed()) {
-      return new LocalStorageHandlerImpl();
+  public UserStorageHandler get() {
+    if (Cookies.isCookieEnabled() && properties.isLocalStorageOfUserAllowed()) {
+      return new UserCookieStorageHandlerImpl();
     }
     else {
       return new NoopStorageHandler();

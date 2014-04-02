@@ -120,7 +120,7 @@ public class UserImpl implements User, Serializable {
 
   @Override
   public String toString() {
-    return "SubjectImpl [roles=" + roles + ", name=" + name + ", properties="
+    return "UserImpl [id=" + name + ", roles=" + roles + ", properties="
             + properties + "]";
   }
 
