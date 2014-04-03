@@ -17,6 +17,7 @@
 package org.jboss.errai.security.shared.api.identity;
 
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
@@ -28,10 +29,15 @@ import org.jboss.errai.security.shared.api.Role;
  */
 public interface User extends Serializable {
 
-  public static final String ANONYMOUS = "Anonymous";
+  /**
+   * Represents a user who is not logged in. This user has no properties and a
+   * {@link Role#NOBODY single role}.
+   */
+  public static final User ANONYMOUS = new UserImpl("ANONYMOUS", Arrays.asList(Role.NOBODY));
 
   /**
-   * A set of standard property names that most other security identity systems are likely to have information about.
+   * A set of standard property names that most other security identity systems
+   * are likely to have information about.
    * 
    * @see User#getProperty(String, String)
    */
@@ -45,8 +51,9 @@ public interface User extends Serializable {
 
   Set<Role> getRoles();
 
-  boolean hasAllRoles(String ... roleNames);
-  boolean hasAnyRoles(String ... roleNames);
+  boolean hasAllRoles(String... roleNames);
+
+  boolean hasAnyRoles(String... roleNames);
 
   Map<String, String> getProperties();
 

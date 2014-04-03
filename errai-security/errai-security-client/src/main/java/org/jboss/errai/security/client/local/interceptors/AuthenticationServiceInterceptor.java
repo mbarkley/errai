@@ -85,7 +85,7 @@ public class AuthenticationServiceInterceptor implements RemoteCallInterceptor<R
   }
 
   private void logout(final RemoteCallContext callContext) {
-    securityContext.getActiveUserCache().setUser(null);
+    securityContext.getActiveUserCache().setUser(User.ANONYMOUS);
     callContext.proceed();
   }
 

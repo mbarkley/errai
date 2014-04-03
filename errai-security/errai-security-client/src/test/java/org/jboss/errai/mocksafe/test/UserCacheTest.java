@@ -169,8 +169,8 @@ public class UserCacheTest {
   }
 
   @Test
-  public void testStorageWhenNullUserSet() throws Exception {
-    userCache.setUser(null);
+  public void testStorageWhenAnonymousUserSet() throws Exception {
+    userCache.setUser(User.ANONYMOUS);
 
     verify(userStorageHandler).setUser(null);
   }

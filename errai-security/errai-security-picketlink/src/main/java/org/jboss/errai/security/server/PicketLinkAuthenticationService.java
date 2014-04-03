@@ -114,7 +114,7 @@ public class PicketLinkAuthenticationService implements AuthenticationService {
     if (identity.isLoggedIn()) {
       return createUser((org.picketlink.idm.model.basic.User) identity.getAccount(), getRolesOfCurrentUser());
     }
-    return null;
+    return User.ANONYMOUS;
   }
 
   private Set<Role> getRolesOfCurrentUser() {

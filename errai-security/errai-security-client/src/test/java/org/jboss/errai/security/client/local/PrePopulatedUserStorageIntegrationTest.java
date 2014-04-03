@@ -49,7 +49,7 @@ public class PrePopulatedUserStorageIntegrationTest extends AbstractSecurityInte
 
       @Override
       public void run() {
-        assertNull(securityContext.getActiveUserCache().getUser());
+        assertEquals(User.ANONYMOUS, securityContext.getActiveUserCache().getUser());
         assertNull(Cookies.getCookie(SecurityContext.USER_COOKIE_NAME));
         finishTest();
       }

@@ -90,7 +90,7 @@ public class SecurityRoleInterceptorTest {
     // when
     when(context.getTarget()).thenReturn(new Service());
     when(context.getMethod()).thenReturn(getAnnotatedServiceMethod());
-    when(authenticationService.getUser()).thenReturn(null);
+    when(authenticationService.getUser()).thenReturn(User.ANONYMOUS);
     interceptor.aroundInvoke(context);
 
     fail("exception shoudl have been thrown");

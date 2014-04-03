@@ -20,6 +20,7 @@ import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
+import org.jboss.errai.common.client.api.Assert;
 import org.jboss.errai.security.client.local.context.ActiveUserCache;
 import org.jboss.errai.security.client.local.context.Simple;
 import org.jboss.errai.security.client.local.identity.UserStorageHandler;
@@ -44,7 +45,7 @@ public class BasicUserCacheImpl implements ActiveUserCache {
 
   private boolean valid = false;
 
-  private User activeUser;
+  private User activeUser = User.ANONYMOUS;
 
   @Override
   public User getUser() {
@@ -53,6 +54,7 @@ public class BasicUserCacheImpl implements ActiveUserCache {
 
   @Override
   public void setUser(User user) {
+    Assert.notNull("User should not be null. Use User.ANONYMOUS instead.", user);
     setActiveUser(user, true);
   }
 
@@ -74,13 +76,9 @@ public class BasicUserCacheImpl implements ActiveUserCache {
     valid = true;
     activeUser = user;
     if (localStorage) {
-      userStorageHandler.setUser(user);
+      final User toPersist = (!user.equals(User.ANONYMOUS)) ? user : null;
+      userStorageHandler.setUser(toPersist);
     }
-  }
-
-  @Override
-  public boolean hasUser() {
-    return getUser() != null;
   }
 
   @Override
@@ -92,8 +90,13 @@ public class BasicUserCacheImpl implements ActiveUserCache {
   public void invalidateCache() {
     logger.debug("Invalidating cache.");
     valid = false;
-    activeUser = null;
+    activeUser = User.ANONYMOUS;
     userStorageHandler.setUser(null);
+  }
+
+  @Override
+  public boolean hasUser() {
+    return !User.ANONYMOUS.equals(activeUser);
   }
 
 }

@@ -52,13 +52,17 @@ import org.jboss.errai.security.shared.api.identity.User;
 public interface ActiveUserCache {
 
   /**
+   * When this returns {@code false}, calls to {@link ActiveUserCache#getUser()}
+   * will return {@link User#ANONYMOUS}.
+   * 
    * @return True iff there is a cached {@link User} available from a recent
    *         login.
    */
   public boolean hasUser();
 
   /**
-   * @return The currently logged in {@link User}, or {@literal null}.
+   * @return The currently logged in {@link User}. Never returns {@code null}.
+   *         If no user is logged in, returns {@link User#ANONYMOUS}.
    */
   public User getUser();
 

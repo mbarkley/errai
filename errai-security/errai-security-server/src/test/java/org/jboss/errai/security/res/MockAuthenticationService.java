@@ -36,7 +36,7 @@ public class MockAuthenticationService extends AbstractRpcProxy implements Authe
 
   @Override
   public User login(String username, String password) {
-    return null;
+    return User.ANONYMOUS;
   }
 
   @Override
@@ -51,6 +51,6 @@ public class MockAuthenticationService extends AbstractRpcProxy implements Authe
 
   @Override
   public User getUser() {
-    return null;
+    return User.ANONYMOUS;
   }
 }

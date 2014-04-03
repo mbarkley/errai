@@ -85,7 +85,7 @@ public class SecurityStyleTest extends AbstractErraiCDITest {
       public void run() {
         final TemplatedStyleWidget widget = bm.lookupBean(TemplatedStyleWidget.class).getInstance();
         // Make sure we are not logged in as anyone.
-        securityContext.getActiveUserCache().setUser(null);
+        securityContext.getActiveUserCache().setUser(User.ANONYMOUS);
 
         assertTrue(widget.getControl().isVisible());
         assertFalse(widget.getUserAnchor().isVisible());

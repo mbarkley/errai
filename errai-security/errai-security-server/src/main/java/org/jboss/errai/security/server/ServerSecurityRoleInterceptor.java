@@ -53,7 +53,7 @@ public class ServerSecurityRoleInterceptor {
     final User user = authenticationService.getUser();
     final RestrictedAccess annotation = getRestrictedAccessAnnotation(context.getTarget().getClass(),
             context.getMethod());
-    if (user == null) {
+    if (User.ANONYMOUS.equals(user)) {
       throw new UnauthenticatedException();
     }
     else if (!user.hasAllRoles(annotation.roles())) {

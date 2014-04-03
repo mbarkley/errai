@@ -19,7 +19,9 @@ package org.jboss.errai.security.shared.api;
 import java.io.Serializable;
 
 public interface Role extends Serializable {
+  
+  public static final Role NOBODY = new RoleImpl("NOBODY");
 
-    String getName();
+  String getName();
 
 }

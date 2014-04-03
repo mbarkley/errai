@@ -75,8 +75,8 @@ public class BusSecurityInterceptorTest extends AbstractSecurityInterceptorTest 
     CDI.addPostInitTask(new Runnable() {
       @Override
       public void run() {
-        // Explicitly set active user to null to validate cache.
-        provider.setUser(null);
+        // Invalidate cache
+        provider.setUser(User.ANONYMOUS);
         assertTrue(provider.isValid());
         createCall(new RemoteCallback<Void>() {
           @Override
@@ -107,8 +107,8 @@ public class BusSecurityInterceptorTest extends AbstractSecurityInterceptorTest 
                 IOC.getBeanManager().lookupBean(TestLoginPage.class).getInstance();
         assertEquals(0, page.getPageLoadCounter());
 
-        // Explicitly set active user to null to validate cache.
-        provider.setUser(null);
+        // Invalidate cache
+        provider.setUser(User.ANONYMOUS);
         assertTrue(provider.isValid());
         createCall(new RemoteCallback<Void>() {
           @Override
@@ -134,8 +134,8 @@ public class BusSecurityInterceptorTest extends AbstractSecurityInterceptorTest 
     CDI.addPostInitTask(new Runnable() {
       @Override
       public void run() {
-        // Explicitly set active user to null to validate cache.
-        provider.setUser(null);
+        // Invalidate cache
+        provider.setUser(User.ANONYMOUS);
         assertTrue(provider.isValid());
 
         createCall(new RemoteCallback<Void>() {
@@ -230,8 +230,8 @@ public class BusSecurityInterceptorTest extends AbstractSecurityInterceptorTest 
     CDI.addPostInitTask(new Runnable() {
       @Override
       public void run() {
-        // Explicitly set active user to null to validate cache.
-        provider.setUser(null);
+        // Invalidate cache
+        provider.setUser(User.ANONYMOUS);
         assertTrue(provider.isValid());
 
         assertEquals(0, counter.getCount());
@@ -267,8 +267,8 @@ public class BusSecurityInterceptorTest extends AbstractSecurityInterceptorTest 
                 IOC.getBeanManager().lookupBean(TestLoginPage.class).getInstance();
         assertEquals(0, page.getPageLoadCounter());
 
-        // Explicitly set active user to null to validate cache.
-        provider.setUser(null);
+        // Invalidate cache
+        provider.setUser(User.ANONYMOUS);
         assertTrue(provider.isValid());
 
         assertEquals(0, counter.getCount());
@@ -297,8 +297,8 @@ public class BusSecurityInterceptorTest extends AbstractSecurityInterceptorTest 
     CDI.addPostInitTask(new Runnable() {
       @Override
       public void run() {
-        // Explicitly set active user to null to validate cache.
-        provider.setUser(null);
+        // Invalidate cache
+        provider.setUser(User.ANONYMOUS);
         assertTrue(provider.isValid());
 
         assertEquals(0, counter.getCount());

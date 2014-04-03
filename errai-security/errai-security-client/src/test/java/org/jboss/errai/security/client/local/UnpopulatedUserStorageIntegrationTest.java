@@ -41,7 +41,7 @@ public class UnpopulatedUserStorageIntegrationTest extends AbstractErraiCDITest 
         final SecurityContext securityContext = IOC.getBeanManager().lookupBean(SecurityContext.class).getInstance();
 
         // ensure we're starting with a clean slate
-        assertNull(securityContext.getActiveUserCache().getUser());
+        assertEquals(User.ANONYMOUS, securityContext.getActiveUserCache().getUser());
 
         MessageBuilder.createCall(new RemoteCallback<User>() {
           @Override

@@ -34,7 +34,7 @@ import org.jboss.errai.security.shared.service.AuthenticationService;
 @Alternative
 public class AuthenticationServiceImpl implements AuthenticationService {
 
-  private User user;
+  private User user = User.ANONYMOUS;
 
   @Override
   public User login(String username, String password) {
@@ -44,12 +44,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
   @Override
   public boolean isLoggedIn() {
-    return user != null;
+    return !user.equals(User.ANONYMOUS);
   }
 
   @Override
   public void logout() {
-    user = null;
+    user = User.ANONYMOUS;
   }
 
   @Override
