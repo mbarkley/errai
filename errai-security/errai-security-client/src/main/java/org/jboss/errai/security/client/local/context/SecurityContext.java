@@ -26,8 +26,6 @@ import org.jboss.errai.ui.nav.client.local.UniquePageRole;
  */
 public interface SecurityContext {
 
-  public static final String USER_COOKIE_NAME = "errai-active-user";
-
   /**
    * Navigate to the page with a given role, caching the current page so that it
    * may be revisited later.

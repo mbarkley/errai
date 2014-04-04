@@ -4,6 +4,7 @@ import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.marshalling.client.Marshalling;
 import org.jboss.errai.marshalling.client.api.MarshallerFramework;
 import org.jboss.errai.security.client.local.context.SecurityContext;
+import org.jboss.errai.security.shared.api.UserCookieEncoder;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.security.shared.api.identity.UserImpl;
 
@@ -28,7 +29,7 @@ public class PrePopulatedUserStorageIntegrationTest extends AbstractSecurityInte
   protected void gwtSetUp() throws Exception {
     MarshallerFramework.initializeDefaultSessionProvider();
     prePopulatedUser = new UserImpl("remembered");
-    Cookies.setCookie(SecurityContext.USER_COOKIE_NAME, Marshalling.toJSON(prePopulatedUser));
+    Cookies.setCookie(UserCookieEncoder.USER_COOKIE_NAME, Marshalling.toJSON(prePopulatedUser));
     super.gwtSetUp();
   }
 
@@ -50,7 +51,7 @@ public class PrePopulatedUserStorageIntegrationTest extends AbstractSecurityInte
       @Override
       public void run() {
         assertEquals(User.ANONYMOUS, securityContext.getActiveUserCache().getUser());
-        assertNull(Cookies.getCookie(SecurityContext.USER_COOKIE_NAME));
+        assertNull(Cookies.getCookie(UserCookieEncoder.USER_COOKIE_NAME));
         finishTest();
       }
     });
