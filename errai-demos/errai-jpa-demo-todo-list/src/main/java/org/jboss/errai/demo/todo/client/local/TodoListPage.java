@@ -19,9 +19,9 @@ import org.jboss.errai.demo.todo.shared.TodoListService;
 import org.jboss.errai.demo.todo.shared.TodoListUser;
 import org.jboss.errai.jpa.sync.client.local.ClientSyncManager;
 import org.jboss.errai.jpa.sync.client.shared.SyncResponse;
-import org.jboss.errai.security.client.local.identity.LoginBuilder;
 import org.jboss.errai.security.shared.api.annotation.RestrictedAccess;
 import org.jboss.errai.security.shared.api.identity.User;
+import org.jboss.errai.security.shared.service.AuthenticationService;
 import org.jboss.errai.ui.client.widget.ListWidget;
 import org.jboss.errai.ui.nav.client.local.DefaultPage;
 import org.jboss.errai.ui.nav.client.local.Page;
@@ -69,11 +69,11 @@ public class TodoListPage extends Composite {
   @Inject private TransitionTo<SharePage> sharePageTransition;
   @Inject private @DataField Anchor logoutLink;
 
-  @Inject private LoginBuilder loginBuilder;
+  @Inject private Caller<AuthenticationService> authCaller;
 
   @PageShowing
   private void onPageShowing() {
-    loginBuilder.getUser(new RemoteCallback<User>() {
+    authCaller.call(new RemoteCallback<User>() {
 
       @Override
       public void callback(final User result) {
@@ -101,7 +101,7 @@ public class TodoListPage extends Composite {
         logoutTransition.go();
         return false;
       }
-    });
+    }).getUser();
   }
 
   private void refreshItems() {
@@ -171,8 +171,13 @@ public class TodoListPage extends Composite {
   @EventHandler("logoutLink")
   void logout(ClickEvent event) {
     syncManager.clear();
-    loginBuilder.logout();
-    logoutTransition.go();
+    authCaller.call(new RemoteCallback<Void>() {
+
+      @Override
+      public void callback(Void response) {
+        logoutTransition.go();
+      }
+    }).logout();
   }
 
   @EventHandler("shareButton")

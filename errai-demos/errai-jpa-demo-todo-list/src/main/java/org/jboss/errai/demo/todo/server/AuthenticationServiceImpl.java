@@ -10,8 +10,11 @@ import javax.persistence.EntityManager;
 import org.jboss.errai.bus.server.annotations.Service;
 import org.jboss.errai.demo.todo.shared.TodoListUser;
 import org.jboss.errai.security.shared.exception.AuthenticationException;
+import org.jboss.errai.security.shared.exception.FailedAuthenticationException;
 import org.jboss.errai.security.shared.service.AuthenticationService;
 import org.picketlink.Identity;
+import org.picketlink.Identity.AuthenticationResult;
+import org.picketlink.authentication.UserAlreadyLoggedInException;
 import org.picketlink.credential.DefaultLoginCredentials;
 import org.picketlink.idm.model.basic.User;
 
@@ -28,14 +31,27 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     credentials.setUserId(username);
     credentials.setPassword(password);
     
-    if (identity.login() == Identity.AuthenticationResult.SUCCESS) {
+    final AuthenticationResult result;
+    
+    try {
+      result = identity.login();
+    }
+    catch (UserAlreadyLoggedInException ex) {
+      throw new UserAlreadyLoggedInException("Already logged in as "
+              + ((User) identity.getAccount()).getLoginName());
+    }
+    catch (RuntimeException ex) {
+      throw new AuthenticationException("An error occurred during authentication.", ex);
+    }
+
+    if (result == Identity.AuthenticationResult.SUCCESS) {
       final User picketLinkUser = (User) identity.getAccount();
       final TodoListUser todoListUser = lookupTodoListUser(picketLinkUser.getEmail());
 
       return todoListUser;
     }
     else {
-      throw new AuthenticationException();
+      throw new FailedAuthenticationException();
     }
   }
 

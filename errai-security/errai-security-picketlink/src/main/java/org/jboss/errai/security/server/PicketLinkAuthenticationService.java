@@ -16,7 +16,9 @@
  */
 package org.jboss.errai.security.server;
 
-import static org.jboss.errai.security.shared.api.identity.User.StandardUserProperties.*;
+import static org.jboss.errai.security.shared.api.identity.User.StandardUserProperties.EMAIL;
+import static org.jboss.errai.security.shared.api.identity.User.StandardUserProperties.FIRST_NAME;
+import static org.jboss.errai.security.shared.api.identity.User.StandardUserProperties.LAST_NAME;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -32,9 +34,13 @@ import org.jboss.errai.security.shared.api.Role;
 import org.jboss.errai.security.shared.api.RoleImpl;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.security.shared.api.identity.UserImpl;
+import org.jboss.errai.security.shared.exception.AlreadyLoggedInException;
 import org.jboss.errai.security.shared.exception.AuthenticationException;
+import org.jboss.errai.security.shared.exception.FailedAuthenticationException;
 import org.jboss.errai.security.shared.service.AuthenticationService;
 import org.picketlink.Identity;
+import org.picketlink.Identity.AuthenticationResult;
+import org.picketlink.authentication.UserAlreadyLoggedInException;
 import org.picketlink.credential.DefaultLoginCredentials;
 import org.picketlink.idm.RelationshipManager;
 import org.picketlink.idm.credential.Password;
@@ -65,8 +71,21 @@ public class PicketLinkAuthenticationService implements AuthenticationService {
     credentials.setUserId(username);
     credentials.setCredential(new Password(password));
 
-    if (identity.login() != Identity.AuthenticationResult.SUCCESS) {
-      throw new AuthenticationException();
+    final AuthenticationResult result;
+    
+    try {
+      result = identity.login();
+    }
+    catch (UserAlreadyLoggedInException ex) {
+      throw new AlreadyLoggedInException("Already logged in as "
+              + ((org.picketlink.idm.model.basic.User) identity.getAccount()).getLoginName());
+    }
+    catch (RuntimeException ex) {
+      throw new AuthenticationException("An error occurred while authenticating.", ex);
+    }
+
+    if (result != Identity.AuthenticationResult.SUCCESS) {
+      throw new FailedAuthenticationException();
     }
 
     final User user = createUser((org.picketlink.idm.model.basic.User) identity.getAccount(), getRolesOfCurrentUser());

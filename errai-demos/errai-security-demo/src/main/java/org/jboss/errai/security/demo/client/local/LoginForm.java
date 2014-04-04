@@ -21,18 +21,17 @@ import javax.inject.Inject;
 
 import org.jboss.errai.bus.client.api.BusErrorCallback;
 import org.jboss.errai.bus.client.api.messaging.Message;
+import org.jboss.errai.common.client.api.Caller;
 import org.jboss.errai.common.client.api.RemoteCallback;
 import org.jboss.errai.security.client.local.context.SecurityContext;
-import org.jboss.errai.security.client.local.identity.LoginBuilder;
 import org.jboss.errai.security.shared.api.identity.User;
+import org.jboss.errai.security.shared.service.AuthenticationService;
 import org.jboss.errai.ui.nav.client.local.Page;
 import org.jboss.errai.ui.nav.client.local.PageShowing;
 import org.jboss.errai.ui.nav.client.local.TransitionTo;
 import org.jboss.errai.ui.nav.client.local.api.LoginPage;
-import org.jboss.errai.ui.shared.api.annotations.Bound;
 import org.jboss.errai.ui.shared.api.annotations.DataField;
 import org.jboss.errai.ui.shared.api.annotations.EventHandler;
-import org.jboss.errai.ui.shared.api.annotations.Model;
 import org.jboss.errai.ui.shared.api.annotations.Templated;
 import org.slf4j.Logger;
 
@@ -54,16 +53,14 @@ public class LoginForm extends Composite {
 
   @Inject
   TransitionTo<WelcomePage> welcomePage;
-
+  
   @Inject
-  @Model
-  LoginBuilder identity;
+  private Caller<AuthenticationService> authCaller;
 
   @Inject
   private SecurityContext securityContext;
 
   @Inject
-  @Bound
   @DataField
   private TextBox username;
 
@@ -71,7 +68,6 @@ public class LoginForm extends Composite {
   private final Element form = DOM.createDiv();
 
   @Inject
-  @Bound
   @DataField
   private PasswordTextBox password;
 
@@ -88,11 +84,11 @@ public class LoginForm extends Composite {
 
   @EventHandler("login")
   private void loginClicked(ClickEvent event) {
-    identity.login(new RemoteCallback<User>() {
+    authCaller.call(new RemoteCallback<User>() {
 
       @Override
-      public void callback(final User response) {
-        if (response != null) {
+      public void callback(final User user) {
+        if (!user.equals(User.ANONYMOUS)) {
           securityContext.navigateBackOrHome();
         }
       }
@@ -103,22 +99,28 @@ public class LoginForm extends Composite {
         alert.getStyle().setDisplay(Style.Display.BLOCK);
         return false;
       }
-    });
+    }).login(username.getText(), password.getText());
   }
 
   @EventHandler("logout")
   private void logoutClicked(ClickEvent event) {
-    identity.logout();
-    welcomePage.go();
+    authCaller.call(new RemoteCallback<Void>() {
+
+      @Override
+      public void callback(Void response) {
+        welcomePage.go();
+      }
+
+    }).logout();
   }
 
   @PageShowing
   private void isLoggedIn() {
-    identity.getUser(new RemoteCallback<User>() {
+    authCaller.call(new RemoteCallback<Boolean>() {
 
       @Override
-      public void callback(final User response) {
-        if (response != null) {
+      public void callback(final Boolean isLoggedIn) {
+        if (isLoggedIn) {
           form.getStyle().setDisplay(Style.Display.NONE);
           logout.getElement().getStyle().setDisplay(Style.Display.INLINE_BLOCK);
         } else {
@@ -126,6 +128,7 @@ public class LoginForm extends Composite {
           logout.getElement().getStyle().setDisplay(Style.Display.NONE);
         }
       }
-    });
+
+    }).isLoggedIn();
   }
 }
