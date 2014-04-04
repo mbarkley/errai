@@ -16,12 +16,12 @@ import org.jboss.errai.common.client.api.RemoteCallback;
 import org.jboss.errai.demo.todo.shared.SharedList;
 import org.jboss.errai.demo.todo.shared.TodoItem;
 import org.jboss.errai.demo.todo.shared.TodoListService;
+import org.jboss.errai.demo.todo.shared.TodoListUser;
 import org.jboss.errai.jpa.sync.client.local.ClientSyncManager;
 import org.jboss.errai.jpa.sync.client.shared.SyncResponse;
 import org.jboss.errai.security.client.local.identity.LoginBuilder;
 import org.jboss.errai.security.shared.api.annotation.RestrictedAccess;
 import org.jboss.errai.security.shared.api.identity.User;
-import org.jboss.errai.security.shared.api.identity.User.StandardUserProperties;
 import org.jboss.errai.ui.client.widget.ListWidget;
 import org.jboss.errai.ui.nav.client.local.DefaultPage;
 import org.jboss.errai.ui.nav.client.local.Page;
@@ -69,16 +69,21 @@ public class TodoListPage extends Composite {
   @Inject private TransitionTo<SharePage> sharePageTransition;
   @Inject private @DataField Anchor logoutLink;
 
-  @Inject private LoginBuilder identity;
+  @Inject private LoginBuilder loginBuilder;
 
   @PageShowing
   private void onPageShowing() {
-    identity.getUser(new RemoteCallback<User>() {
+    loginBuilder.getUser(new RemoteCallback<User>() {
 
       @Override
       public void callback(final User result) {
         user = result;
-        username.setText(user.getProperty(StandardUserProperties.FIRST_NAME));
+        String shortName = user.getProperty(TodoListUser.SHORT_NAME);
+        if (shortName == null) {
+          shortName = "Anonymous";
+        }
+
+        username.setText(shortName);
         errorLabel.setVisible(false);
         refreshItems();
 
@@ -166,7 +171,7 @@ public class TodoListPage extends Composite {
   @EventHandler("logoutLink")
   void logout(ClickEvent event) {
     syncManager.clear();
-    identity.logout();
+    loginBuilder.logout();
     logoutTransition.go();
   }
 

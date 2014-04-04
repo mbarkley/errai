@@ -36,7 +36,7 @@ public class LoginPage extends Composite {
 
   @Inject
   private @Model
-  LoginBuilder identity;
+  LoginBuilder loginBuilder;
 
   @Inject
   private @DataField
@@ -73,7 +73,7 @@ public class LoginPage extends Composite {
 
   @EventHandler("loginButton")
   private void login(ClickEvent e) {
-    identity.login(
+    loginBuilder.login(
             new RemoteCallback<User>() {
               @Override
               public void callback(User user) {
