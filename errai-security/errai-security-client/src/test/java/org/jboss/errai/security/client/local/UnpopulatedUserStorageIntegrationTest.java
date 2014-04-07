@@ -6,7 +6,7 @@ import org.jboss.errai.enterprise.client.cdi.AbstractErraiCDITest;
 import org.jboss.errai.enterprise.client.cdi.api.CDI;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.marshalling.client.Marshalling;
-import org.jboss.errai.security.client.local.context.SecurityContext;
+import org.jboss.errai.security.client.local.api.SecurityContext;
 import org.jboss.errai.security.shared.api.UserCookieEncoder;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.security.shared.service.AuthenticationService;
@@ -42,12 +42,12 @@ public class UnpopulatedUserStorageIntegrationTest extends AbstractErraiCDITest 
         final SecurityContext securityContext = IOC.getBeanManager().lookupBean(SecurityContext.class).getInstance();
 
         // ensure we're starting with a clean slate
-        assertEquals(User.ANONYMOUS, securityContext.getActiveUserCache().getUser());
+        assertEquals(User.ANONYMOUS, securityContext.getCachedUser());
 
         MessageBuilder.createCall(new RemoteCallback<User>() {
           @Override
           public void callback(User response) {
-            assertEquals(response, securityContext.getActiveUserCache().getUser());
+            assertEquals(response, securityContext.getCachedUser());
             String expectedCookieValue = Marshalling.toJSON(response);
             assertEquals(expectedCookieValue, Cookies.getCookie(UserCookieEncoder.USER_COOKIE_NAME));
             finishTest();

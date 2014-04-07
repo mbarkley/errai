@@ -19,8 +19,7 @@ package org.jboss.errai.security.client.local.nav;
 import org.jboss.errai.ioc.client.lifecycle.api.Access;
 import org.jboss.errai.ioc.client.lifecycle.api.LifecycleEvent;
 import org.jboss.errai.ioc.client.lifecycle.api.LifecycleListener;
-import org.jboss.errai.security.client.local.context.ActiveUserCache;
-import org.jboss.errai.security.client.local.context.SecurityContext;
+import org.jboss.errai.security.client.local.api.SecurityContext;
 import org.jboss.errai.ui.nav.client.local.UniquePageRole;
 import org.jboss.errai.ui.nav.client.local.api.LoginPage;
 import org.jboss.errai.ui.nav.client.local.api.SecurityError;
@@ -45,14 +44,13 @@ public class PageRoleLifecycleListener<W extends IsWidget> implements LifecycleL
   public void observeEvent(final LifecycleEvent<W> event) {
     // There is no good way to inject the context within the bootstrapper.
     final SecurityContext securityContext = SecurityContextHoldingSingleton.getSecurityContext();
-    final ActiveUserCache userCache = securityContext.getActiveUserCache();
 
-    if (!userCache.isValid() || !userCache.hasUser()
-            || !userCache.getUser().hasAllRoles(roles)) {
+    if (!securityContext.isUserCacheValid() || !securityContext.hasCachedUser()
+            || !securityContext.getCachedUser().hasAllRoles(roles)) {
       event.veto();
 
       final Class<? extends UniquePageRole> destination;
-      if (!userCache.hasUser())
+      if (!securityContext.hasCachedUser())
         destination = LoginPage.class;
       else
         destination = SecurityError.class;

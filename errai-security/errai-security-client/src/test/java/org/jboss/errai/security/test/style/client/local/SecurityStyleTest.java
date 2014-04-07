@@ -24,8 +24,8 @@ import java.util.Set;
 import org.jboss.errai.enterprise.client.cdi.AbstractErraiCDITest;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ioc.client.container.SyncBeanManager;
-import org.jboss.errai.security.client.local.context.SecurityContext;
-import org.jboss.errai.security.client.local.context.impl.SecurityContextImpl;
+import org.jboss.errai.security.client.local.api.SecurityContext;
+import org.jboss.errai.security.client.local.context.SecurityContextImpl;
 import org.jboss.errai.security.shared.api.Role;
 import org.jboss.errai.security.shared.api.RoleImpl;
 import org.jboss.errai.security.shared.api.identity.User;
@@ -85,7 +85,7 @@ public class SecurityStyleTest extends AbstractErraiCDITest {
       public void run() {
         final TemplatedStyleWidget widget = bm.lookupBean(TemplatedStyleWidget.class).getInstance();
         // Make sure we are not logged in as anyone.
-        securityContext.getActiveUserCache().setUser(User.ANONYMOUS);
+        securityContext.setCachedUser(User.ANONYMOUS);
 
         assertTrue(widget.getControl().isVisible());
         assertFalse(widget.getUserAnchor().isVisible());
@@ -106,7 +106,7 @@ public class SecurityStyleTest extends AbstractErraiCDITest {
       public void run() {
         final TemplatedStyleWidget widget = bm.lookupBean(TemplatedStyleWidget.class).getInstance();
 
-        securityContext.getActiveUserCache().setUser(regularUser);
+        securityContext.setCachedUser(regularUser);
 
         assertTrue(widget.getControl().isVisible());
         assertTrue(widget.getUserAnchor().isVisible());
@@ -127,7 +127,7 @@ public class SecurityStyleTest extends AbstractErraiCDITest {
       public void run() {
         final TemplatedStyleWidget widget = bm.lookupBean(TemplatedStyleWidget.class).getInstance();
 
-        securityContext.getActiveUserCache().setUser(adminUser);
+        securityContext.setCachedUser(adminUser);
 
         assertTrue(widget.getControl().isVisible());
         assertTrue(widget.getUserAnchor().isVisible());

@@ -14,26 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.jboss.errai.security.client.local.context.impl;
+package org.jboss.errai.security.client.local.context;
 
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
 import org.jboss.errai.common.client.api.Assert;
-import org.jboss.errai.security.client.local.context.ActiveUserCache;
-import org.jboss.errai.security.client.local.context.Simple;
-import org.jboss.errai.security.client.local.identity.UserStorageHandler;
+import org.jboss.errai.security.client.local.spi.ActiveUserCache;
+import org.jboss.errai.security.client.local.storage.UserStorageHandler;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.slf4j.Logger;
 
 /**
- * A {@link Simple} implementation for {@link ActiveUserCache}, storing a
- * {@link User} in memory and in browser local storage (if configured).
- * 
  * @author Max Barkley <mbarkley@redhat.com>
  */
-@Simple
 @ApplicationScoped
 public class BasicUserCacheImpl implements ActiveUserCache {
 

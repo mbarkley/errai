@@ -14,13 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.jboss.errai.security.client.local.identity;
+package org.jboss.errai.security.client.local.storage;
 
 import javax.inject.Provider;
 import javax.inject.Singleton;
 
 import org.jboss.errai.ioc.client.api.IOCProvider;
-import org.jboss.errai.security.client.local.context.SecurityProperties;
 import org.jboss.errai.security.shared.api.UserCookieEncoder;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.slf4j.Logger;
@@ -31,9 +30,9 @@ import com.google.gwt.user.client.Cookies;
 
 @IOCProvider
 @Singleton
-public class LocalStorageHandlerProvider implements Provider<UserStorageHandler> {
+public class CookieStorageHandlerProvider implements Provider<UserStorageHandler> {
 
-  private static final Logger logger = LoggerFactory.getLogger(LocalStorageHandlerProvider.class);
+  private static final Logger logger = LoggerFactory.getLogger(CookieStorageHandlerProvider.class);
 
   private static class NoopStorageHandler implements UserStorageHandler {
     @Override

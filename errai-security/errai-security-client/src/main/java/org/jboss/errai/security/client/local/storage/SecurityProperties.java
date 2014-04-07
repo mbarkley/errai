@@ -14,29 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.jboss.errai.security.client.local.context;
+package org.jboss.errai.security.client.local.storage;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
-import javax.inject.Qualifier;
+import org.jboss.errai.security.shared.api.identity.User;
 
 /**
- * Used to denote a more complex implementation usually implemented using an
- * {@link Simple} implementation.
- * 
- * For example, {@link SecurityContext} extends {@link ActiveUserCache}. The
- * default implementation of {@code SecurityContext} is {@code @Complex}, and
- * uses a {@code @Simple ActiveUserCache} to implement the lesser functionality.
+ * Stores compile-time configurations for Errai Security.
  * 
  * @author Max Barkley <mbarkley@redhat.com>
  */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ ElementType.TYPE, ElementType.FIELD, ElementType.PARAMETER, ElementType.METHOD })
-@Documented
-@Qualifier
-public @interface Complex {
+public interface SecurityProperties {
+
+  /**
+   * @return True iff {@literal ErraiApp.properties} was configured to allow
+   *         {@link User Users} to be cached in browser local storage.
+   */
+  public Boolean isLocalStorageOfUserAllowed();
+
 }

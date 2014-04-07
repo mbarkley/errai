@@ -27,11 +27,11 @@ import javax.enterprise.event.Event;
 
 import org.jboss.errai.common.client.api.Caller;
 import org.jboss.errai.common.client.api.RemoteCallback;
-import org.jboss.errai.security.client.local.context.ActiveUserCache;
-import org.jboss.errai.security.client.local.context.SecurityContext;
-import org.jboss.errai.security.client.local.context.impl.BasicUserCacheImpl;
-import org.jboss.errai.security.client.local.context.impl.SecurityContextImpl;
-import org.jboss.errai.security.client.local.identity.UserStorageHandler;
+import org.jboss.errai.security.client.local.api.SecurityContext;
+import org.jboss.errai.security.client.local.context.BasicUserCacheImpl;
+import org.jboss.errai.security.client.local.context.SecurityContextImpl;
+import org.jboss.errai.security.client.local.spi.ActiveUserCache;
+import org.jboss.errai.security.client.local.storage.UserStorageHandler;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.security.shared.api.identity.UserImpl;
 import org.jboss.errai.security.shared.event.LoggedInEvent;

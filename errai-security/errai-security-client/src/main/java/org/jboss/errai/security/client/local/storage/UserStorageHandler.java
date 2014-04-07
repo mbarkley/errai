@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.jboss.errai.security.client.local.identity;
+package org.jboss.errai.security.client.local.storage;
 
 import org.jboss.errai.security.shared.api.identity.User;
 

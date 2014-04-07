@@ -29,7 +29,7 @@ import org.jboss.errai.ioc.client.container.SyncBeanManager;
 import org.jboss.errai.security.client.local.TestLoginPage;
 import org.jboss.errai.security.client.local.TestPage;
 import org.jboss.errai.security.client.local.TestSecurityErrorPage;
-import org.jboss.errai.security.client.local.context.ActiveUserCache;
+import org.jboss.errai.security.client.local.spi.ActiveUserCache;
 import org.jboss.errai.security.shared.api.Role;
 import org.jboss.errai.security.shared.api.RoleImpl;
 import org.jboss.errai.security.shared.api.identity.User;
