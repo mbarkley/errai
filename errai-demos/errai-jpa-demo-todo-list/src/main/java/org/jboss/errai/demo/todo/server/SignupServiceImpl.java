@@ -3,7 +3,6 @@ package org.jboss.errai.demo.todo.server;
 import javax.ejb.Stateless;
 import javax.ejb.TransactionAttribute;
 import javax.ejb.TransactionAttributeType;
-import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
 
@@ -17,7 +16,7 @@ import org.picketlink.idm.credential.Password;
 import org.picketlink.idm.model.basic.User;
 import org.slf4j.Logger;
 
-@Stateless @Dependent @Service
+@Stateless @Service
 public class SignupServiceImpl implements SignupService {
 
   @Inject private IdentityManager identityManager;

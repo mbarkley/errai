@@ -3,7 +3,6 @@ package org.jboss.errai.demo.todo.server;
 import javax.ejb.Stateless;
 import javax.ejb.TransactionAttribute;
 import javax.ejb.TransactionAttributeType;
-import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
 
@@ -18,7 +17,7 @@ import org.picketlink.authentication.UserAlreadyLoggedInException;
 import org.picketlink.credential.DefaultLoginCredentials;
 import org.picketlink.idm.model.basic.User;
 
-@Dependent @Stateless @Service
+@Stateless @Service
 public class AuthenticationServiceImpl implements AuthenticationService {
 
   @Inject private DefaultLoginCredentials credentials;
