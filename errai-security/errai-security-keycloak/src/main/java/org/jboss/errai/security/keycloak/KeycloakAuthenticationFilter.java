@@ -48,7 +48,7 @@ public class KeycloakAuthenticationFilter implements Filter {
   }
 
   @Inject
-  private ServletOAuthClient oauthClient;
+  private KeycloakAuthenticationBroker authBroker;
   
   @Inject
   private KeycloakDeployment keycloakDeployment;
@@ -72,7 +72,7 @@ public class KeycloakAuthenticationFilter implements Filter {
 
     if (reqParams.containsKey(OAuth2Constants.CODE)) {
       try {
-        final User keycloakUser = createKeycloakUser(oauthClient.getBearerToken(httpRequest));
+        final User keycloakUser = createKeycloakUser(authBroker.getBearerToken(httpRequest));
         keycloakAuthService.setKeycloakUser(keycloakUser);
         setUserCookie(keycloakUser, httpResponse);
       }

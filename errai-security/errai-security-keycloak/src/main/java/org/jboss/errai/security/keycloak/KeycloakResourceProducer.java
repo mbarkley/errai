@@ -14,6 +14,12 @@ public class KeycloakResourceProducer {
   public ServletOAuthClient getServletOAuthClient() {
     return new ServletOAuthClient();
   }
+  
+  @Produces
+  @ApplicationScoped
+  public KeycloakAuthenticationBroker getKeycloakAuthenticationBroker(final ServletOAuthClient oAuthClient) {
+    return new OAuthBroker(oAuthClient);
+  }
 
   @Produces
   @ApplicationScoped

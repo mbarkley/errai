@@ -31,7 +31,7 @@ public class KeycloakRedirectFilter implements Filter {
   private String relativeRedirectPath = DEFAULT_RELATIVE_REDIRECT_PATH;
 
   @Inject
-  private ServletOAuthClient oAuthClient;
+  private KeycloakAuthenticationBroker authBroker;
 
   @Inject
   private RedirectPageStore redirectPageStore;
@@ -54,7 +54,7 @@ public class KeycloakRedirectFilter implements Filter {
       redirectPageStore.setRedirectedPagePath(referer);
     }
 
-    oAuthClient.redirectRelative(relativeRedirectPath, httpRequest,
+    authBroker.redirectRelative(relativeRedirectPath, httpRequest,
         (HttpServletResponse) response);
   }
 
