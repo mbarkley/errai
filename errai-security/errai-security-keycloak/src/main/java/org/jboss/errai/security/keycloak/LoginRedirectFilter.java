@@ -21,7 +21,7 @@ import org.keycloak.KeycloakSecurityContext;
  *
  * @author Max Barkley <mbarkley@redhat.com>
  */
-@WebFilter(filterName = "ErraiKeycloakRedirectFilter")
+@WebFilter(filterName = "ErraiLoginRedirectFilter")
 public class LoginRedirectFilter implements Filter {
 
   @Inject
@@ -40,6 +40,7 @@ public class LoginRedirectFilter implements Filter {
     final HttpServletResponse httpResponse = (HttpServletResponse) response;
     contextHolder.setSecurityContext((KeycloakSecurityContext) request.getAttribute(KeycloakSecurityContext.class
             .getName()));
+    // TODO make this configurable
     httpResponse.sendRedirect(servletContext.getContextPath());
   }
 

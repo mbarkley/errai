@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Max Barkley <mbarkley@redhat.com>
  */
-@WebFilter(filterName="ErraiKeycloakAuthenticationFilter")
+@WebFilter(filterName="ErraiUserExtractionFilter")
 public class UserExtractionFilter implements Filter {
 
   @Inject
