@@ -1,4 +1,4 @@
-package org.jboss.errai.security.keycloak;
+package org.jboss.errai.security.keycloak.extension;
 
 import static java.lang.annotation.ElementType.*;
 import static java.lang.annotation.RetentionPolicy.*;
@@ -9,6 +9,7 @@ import java.lang.annotation.Target;
 
 import javax.inject.Qualifier;
 
+import org.jboss.errai.security.keycloak.KeycloakAuthenticationService;
 import org.jboss.errai.security.shared.service.AuthenticationService;
 
 /**

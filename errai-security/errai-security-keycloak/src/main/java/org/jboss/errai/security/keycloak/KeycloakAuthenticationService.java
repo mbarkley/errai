@@ -5,9 +5,9 @@ import java.io.Serializable;
 import javax.enterprise.context.SessionScoped;
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
-import javax.servlet.http.HttpServletRequest;
 
 import org.jboss.errai.bus.server.annotations.Service;
+import org.jboss.errai.security.keycloak.extension.Wrapped;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.security.shared.exception.AlreadyLoggedInException;
 import org.jboss.errai.security.shared.exception.FailedAuthenticationException;
@@ -30,9 +30,6 @@ public class KeycloakAuthenticationService implements AuthenticationService, Ser
   @Inject
   @Wrapped
   private Instance<AuthenticationService> authServiceInstance;
-
-  @Inject
-  private HttpServletRequest request;
 
   private User keycloakUser;
 

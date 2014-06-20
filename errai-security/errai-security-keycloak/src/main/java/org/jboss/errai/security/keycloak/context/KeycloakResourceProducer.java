@@ -1,4 +1,4 @@
-package org.jboss.errai.security.keycloak;
+package org.jboss.errai.security.keycloak.context;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Produces;

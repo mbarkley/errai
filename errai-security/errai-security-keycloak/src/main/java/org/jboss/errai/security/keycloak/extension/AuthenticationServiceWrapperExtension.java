@@ -1,4 +1,4 @@
-package org.jboss.errai.security.keycloak;
+package org.jboss.errai.security.keycloak.extension;
 
 import java.lang.annotation.Annotation;
 
@@ -8,6 +8,7 @@ import javax.enterprise.inject.spi.Extension;
 import javax.enterprise.inject.spi.ProcessAnnotatedType;
 
 import org.apache.deltaspike.core.util.metadata.builder.AnnotatedTypeBuilder;
+import org.jboss.errai.security.keycloak.KeycloakAuthenticationService;
 import org.jboss.errai.security.shared.service.AuthenticationService;
 
 /**

@@ -13,6 +13,7 @@ import javax.servlet.ServletResponse;
 import javax.servlet.annotation.WebFilter;
 import javax.servlet.http.HttpServletResponse;
 
+import org.jboss.errai.security.keycloak.context.KeycloakSecurityContextHolder;
 import org.keycloak.KeycloakSecurityContext;
 
 /**

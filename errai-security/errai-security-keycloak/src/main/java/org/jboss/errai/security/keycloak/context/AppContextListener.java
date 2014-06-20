@@ -1,4 +1,4 @@
-package org.jboss.errai.security.keycloak;
+package org.jboss.errai.security.keycloak.context;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
