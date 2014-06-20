@@ -1,6 +1,10 @@
 package org.jboss.errai.security.keycloak;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
 
 import javax.enterprise.context.SessionScoped;
 import javax.enterprise.inject.Instance;
@@ -8,10 +12,16 @@ import javax.inject.Inject;
 
 import org.jboss.errai.bus.server.annotations.Service;
 import org.jboss.errai.security.keycloak.extension.Wrapped;
+import org.jboss.errai.security.shared.api.Role;
+import org.jboss.errai.security.shared.api.RoleImpl;
 import org.jboss.errai.security.shared.api.identity.User;
+import org.jboss.errai.security.shared.api.identity.User.StandardUserProperties;
+import org.jboss.errai.security.shared.api.identity.UserImpl;
 import org.jboss.errai.security.shared.exception.AlreadyLoggedInException;
 import org.jboss.errai.security.shared.exception.FailedAuthenticationException;
 import org.jboss.errai.security.shared.service.AuthenticationService;
+import org.keycloak.KeycloakSecurityContext;
+import org.keycloak.representations.AccessToken;
 
 /**
  * An {@link AuthenticationService} implementation that integrates with
@@ -32,6 +42,8 @@ public class KeycloakAuthenticationService implements AuthenticationService, Ser
   private Instance<AuthenticationService> authServiceInstance;
 
   private User keycloakUser;
+
+  private KeycloakSecurityContext keycloakSecurityContext;
 
   @Override
   public User login(final String username, final String password) {
@@ -63,11 +75,7 @@ public class KeycloakAuthenticationService implements AuthenticationService, Ser
   }
 
   private boolean keycloakIsLoggedIn() {
-    return keycloakUser != null;
-  }
-
-  void setKeycloakUser(final User user) {
-    keycloakUser = user;
+    return keycloakSecurityContext != null && keycloakSecurityContext.getToken() != null;
   }
 
   @Override
@@ -81,13 +89,13 @@ public class KeycloakAuthenticationService implements AuthenticationService, Ser
   }
 
   private void keycloakLogout() {
-    keycloakUser = null;
+    setSecurityContext(null);
   }
 
   @Override
   public User getUser() {
     if (keycloakIsLoggedIn()) {
-      return keycloakUser;
+      return getKeycloakUser();
     }
     else if (wrappedIsLoggedIn()) {
       return authServiceInstance.get().getUser();
@@ -95,5 +103,46 @@ public class KeycloakAuthenticationService implements AuthenticationService, Ser
     else {
       return User.ANONYMOUS;
     }
+  }
+
+  private User getKeycloakUser() {
+    if (!keycloakIsLoggedIn()) {
+      throw new IllegalStateException(
+          "Cannot call getKeycloakUser if not logged in to through Keycloak.");
+    }
+
+    if (keycloakUser == null) {
+      keycloakUser = createKeycloakUser(keycloakSecurityContext.getToken());
+    }
+
+    return keycloakUser;
+  }
+
+  protected User createKeycloakUser(final AccessToken accessToken) {
+    final User user = new UserImpl(accessToken.getId(), createRoles(accessToken
+        .getRealmAccess().getRoles()));
+    user.setProperty(StandardUserProperties.FIRST_NAME, accessToken.getGivenName());
+    user.setProperty(StandardUserProperties.LAST_NAME, accessToken.getFamilyName());
+    user.setProperty(StandardUserProperties.EMAIL, accessToken.getEmail());
+
+    return user;
+  }
+
+  private Collection<? extends Role> createRoles(final Set<String> roleNames) {
+    final List<Role> roles = new ArrayList<Role>(roleNames.size());
+
+    for (final String roleName : roleNames) {
+      roles.add(new RoleImpl(roleName));
+    }
+
+    return roles;
+  }
+
+  void setSecurityContext(final KeycloakSecurityContext keycloakSecurityContext) {
+    if (wrappedIsLoggedIn() && keycloakSecurityContext != null) {
+      throw new AlreadyLoggedInException("Logged in as " + authServiceInstance.get().getUser());
+    }
+    this.keycloakSecurityContext = keycloakSecurityContext;
+    keycloakUser = null;
   }
 }

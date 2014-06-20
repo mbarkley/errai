@@ -1,10 +1,6 @@
 package org.jboss.errai.security.keycloak;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
 
 import javax.inject.Inject;
 import javax.servlet.Filter;
@@ -18,17 +14,8 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 
 import org.jboss.errai.marshalling.server.MappingContextSingleton;
-import org.jboss.errai.security.keycloak.context.KeycloakSecurityContextHolder;
-import org.jboss.errai.security.shared.api.Role;
-import org.jboss.errai.security.shared.api.RoleImpl;
 import org.jboss.errai.security.shared.api.UserCookieEncoder;
 import org.jboss.errai.security.shared.api.identity.User;
-import org.jboss.errai.security.shared.api.identity.User.StandardUserProperties;
-import org.jboss.errai.security.shared.api.identity.UserImpl;
-import org.keycloak.KeycloakSecurityContext;
-import org.keycloak.representations.AccessToken;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Loads information for OAuth user into the {@link KeycloakAuthenticationService}.
@@ -45,11 +32,6 @@ public class UserExtractionFilter implements Filter {
   @Inject
   private KeycloakAuthenticationService keycloakAuthService;
 
-  @Inject
-  private KeycloakSecurityContextHolder securityContextHolder;
-
-  private final Logger logger = LoggerFactory.getLogger(UserExtractionFilter.class);
-
   @Override
   public void init(FilterConfig filterConfig) throws ServletException {
   }
@@ -59,47 +41,10 @@ public class UserExtractionFilter implements Filter {
           throws IOException, ServletException {
     final HttpServletResponse httpResponse = (HttpServletResponse) response;
 
-    final User keycloakUser = getKeycloakUser(securityContextHolder.getSecurityContext());
-    keycloakAuthService.setKeycloakUser(keycloakUser);
+    final User keycloakUser = keycloakAuthService.getUser();
     setUserCookie(keycloakUser, httpResponse);
 
     chain.doFilter(request, response);
-  }
-
-  public User getKeycloakUser(final KeycloakSecurityContext securityContext) {
-    if (securityContext != null) {
-      final AccessToken token = securityContext.getToken();
-      if (token != null) {
-        try {
-          return createKeycloakUser(token);
-        }
-        catch (Exception e) {
-          logger.warn("An error occurred while attempting to extract Keycloak user form request.", e);
-        }
-      }
-    }
-
-    return User.ANONYMOUS;
-  }
-
-  protected User createKeycloakUser(final AccessToken accessToken) {
-    final User user = new UserImpl(accessToken.getId(), createRoles(accessToken
-        .getRealmAccess().getRoles()));
-    user.setProperty(StandardUserProperties.FIRST_NAME, accessToken.getGivenName());
-    user.setProperty(StandardUserProperties.LAST_NAME, accessToken.getFamilyName());
-    user.setProperty(StandardUserProperties.EMAIL, accessToken.getEmail());
-
-    return user;
-  }
-
-  private Collection<? extends Role> createRoles(final Set<String> roleNames) {
-    final List<Role> roles = new ArrayList<Role>(roleNames.size());
-
-    for (final String roleName : roleNames) {
-      roles.add(new RoleImpl(roleName));
-    }
-
-    return roles;
   }
 
   @Override

@@ -13,7 +13,6 @@ import javax.servlet.ServletResponse;
 import javax.servlet.annotation.WebFilter;
 import javax.servlet.http.HttpServletResponse;
 
-import org.jboss.errai.security.keycloak.context.KeycloakSecurityContextHolder;
 import org.keycloak.KeycloakSecurityContext;
 
 /**
@@ -28,7 +27,7 @@ public class LoginRedirectFilter implements Filter {
   private ServletContext servletContext;
 
   @Inject
-  private KeycloakSecurityContextHolder contextHolder;
+  private KeycloakAuthenticationService keycloakAuthService;
 
   @Override
   public void init(final FilterConfig filterConfig) throws ServletException {
@@ -38,7 +37,7 @@ public class LoginRedirectFilter implements Filter {
   public void doFilter(final ServletRequest request, final ServletResponse response,
       final FilterChain chain) throws IOException, ServletException {
     final HttpServletResponse httpResponse = (HttpServletResponse) response;
-    contextHolder.setSecurityContext((KeycloakSecurityContext) request.getAttribute(KeycloakSecurityContext.class
+    keycloakAuthService.setSecurityContext((KeycloakSecurityContext) request.getAttribute(KeycloakSecurityContext.class
             .getName()));
     // TODO make this configurable
     httpResponse.sendRedirect(servletContext.getContextPath());
