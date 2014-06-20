@@ -4,7 +4,5 @@
   "auth-server-url": "http://localhost:8080/auth",
   "ssl-not-required": true,
   "resource": "errai-security-demo",
-  "credentials": {
-    "secret": "60dfc909-86c1-4f20-ba09-1916157c028e"
-  }
+  "public-client": true
 }

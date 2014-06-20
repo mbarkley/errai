@@ -14,7 +14,6 @@ import org.jboss.logging.Logger;
 import org.keycloak.adapters.KeycloakDeployment;
 import org.keycloak.adapters.KeycloakDeploymentBuilder;
 import org.keycloak.servlet.ServletOAuthClient;
-import org.keycloak.servlet.ServletOAuthClientBuilder;
 
 /**
  * <p>
@@ -33,9 +32,6 @@ public class AppContextListener implements ServletContextListener {
   private static final Logger logger = Logger.getLogger(AppContextListener.class);
 
   @Inject
-  private ServletOAuthClient oauthClient;
-
-  @Inject
   private KeycloakDeployment keycloakDeployment;
 
   @Override
@@ -43,11 +39,10 @@ public class AppContextListener implements ServletContextListener {
     System.out.println("Context initialized!");
     final ServletContext context = sce.getServletContext();
 
-    ServletOAuthClientBuilder.build(getConfigInputStream(context), oauthClient);
     final KeycloakDeployment foundDeployment = KeycloakDeploymentBuilder.build(getConfigInputStream(context));
     copyDeployment(foundDeployment, keycloakDeployment);
 
-    logger.info("OAuth client configured and started");
+    logger.info("Keycloak deployment configured and started");
   }
 
   private void copyDeployment(final KeycloakDeployment from, final KeycloakDeployment to) {
@@ -92,7 +87,5 @@ public class AppContextListener implements ServletContextListener {
 
   @Override
   public void contextDestroyed(ServletContextEvent sce) {
-    oauthClient.stop();
-    logger.info("OAuth client stopped");
   }
 }
