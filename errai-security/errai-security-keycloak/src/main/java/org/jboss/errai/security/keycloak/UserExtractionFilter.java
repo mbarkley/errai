@@ -17,6 +17,7 @@ import javax.servlet.annotation.WebFilter;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 
+import org.jboss.errai.marshalling.server.MappingContextSingleton;
 import org.jboss.errai.security.keycloak.context.KeycloakSecurityContextHolder;
 import org.jboss.errai.security.shared.api.Role;
 import org.jboss.errai.security.shared.api.RoleImpl;
@@ -36,6 +37,10 @@ import org.slf4j.LoggerFactory;
  */
 @WebFilter(filterName="ErraiUserExtractionFilter")
 public class UserExtractionFilter implements Filter {
+
+  static {
+    MappingContextSingleton.get();
+  }
 
   @Inject
   private KeycloakAuthenticationService keycloakAuthService;
