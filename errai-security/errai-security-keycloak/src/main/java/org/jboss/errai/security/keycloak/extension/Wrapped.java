@@ -13,7 +13,7 @@ import org.jboss.errai.security.keycloak.KeycloakAuthenticationService;
 import org.jboss.errai.security.shared.service.AuthenticationService;
 
 /**
- * This qualifier is added to non-keycloak {@link AuthenticationService} implementations by the
+ * This qualifier is added to non-Keycloak {@link AuthenticationService} implementations by the
  * {@link AuthenticationServiceWrapperExtension} so that the {@link KeycloakAuthenticationService} can
  * be used to extend the behaviour of the existing implementation.
  *

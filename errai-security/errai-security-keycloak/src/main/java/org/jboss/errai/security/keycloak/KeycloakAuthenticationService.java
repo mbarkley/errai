@@ -62,7 +62,7 @@ import org.keycloak.representations.AccessToken;
  * in causes an exception.
  * <li>After a Keycloak login, what properties the {@link User} has depends on which properties have
  * been enabled in Keycloak. The user instance returned will have all values from the Keycloak
- * {@link AccessToken} that were not null.
+ * {@link AccessToken} pertaining to the user that were not null.
  *
  * @author Max Barkley <mbarkley@redhat.com>
  */
