@@ -22,6 +22,14 @@
     <welcome-file>index.jsp</welcome-file>
   </welcome-file-list>
 
+  <filter>
+    <filter-name>ErraiLoginRedirectFilter</filter-name>
+    <init-param>
+      <param-name>redirectLocation</param-name>
+      <param-value>/index.jsp</param-value>
+    </init-param>
+  </filter>
+
   <servlet-mapping>
     <servlet-name>javax.ws.rs.core.Application</servlet-name>
     <url-pattern>/rest/*</url-pattern>
