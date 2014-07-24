@@ -33,6 +33,7 @@
   <!-- !!! The only single place for Errai project to define versions is here !!! -->
   <!-- Keep versions property names in alphabetical order, please -->
   <properties>
+    <apache.commons.lang.version>3.2.1</apache.commons.lang.version>
     <apache.geronimo.spec.1.1.interceptor.version>1.0</apache.geronimo.spec.1.1.interceptor.version>
     <apache.httpcomponents.httpcore.version>4.2.1</apache.httpcomponents.httpcore.version>
     <apache.maven.artifact.version>3.0.5</apache.maven.artifact.version>
@@ -371,6 +372,12 @@
       </dependency>
       
       <!-- Third Party Dependencies -->
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>${apache.commons.lang.version}</version>
+      </dependency>
+
       <dependency>
         <groupId>org.apache.geronimo.specs</groupId>
         <artifactId>geronimo-interceptor_1.1_spec</artifactId>
