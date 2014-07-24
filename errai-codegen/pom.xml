@@ -102,7 +102,7 @@ runtime dependencies on it and it breaks deployment on JBoss AS and Tomcat -->
           </plugin>
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
-            <artifactId>maven-selenium-plugin</artifactId>
+            <artifactId>selenium-maven-plugin</artifactId>
             <configuration>
               <skip>true</skip>
             </configuration>
