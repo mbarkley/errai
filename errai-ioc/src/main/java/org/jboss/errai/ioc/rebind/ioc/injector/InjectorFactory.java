@@ -20,8 +20,9 @@ import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaParameterizedType;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstanceImpl;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContextImpl;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 import org.jboss.errai.ioc.rebind.ioc.injector.async.AsyncContextualProviderInjector;
 import org.jboss.errai.ioc.rebind.ioc.injector.async.AsyncProducerInjector;
@@ -82,7 +83,7 @@ public class InjectorFactory {
 
     try {
       final Constructor<? extends Injector> constructor
-          = injectorClass.getConstructor(MetaClass.class, InjectionContext.class);
+          = injectorClass.getConstructor(MetaClass.class, InjectionContextImpl.class);
 
       return constructor.newInstance(type, context);
     }
@@ -105,7 +106,7 @@ public class InjectorFactory {
 
     try {
       final Constructor<? extends Injector> constructor
-          = injectorClass.getConstructor(MetaClass.class, MetaClass.class, InjectionContext.class);
+          = injectorClass.getConstructor(MetaClass.class, MetaClass.class, InjectionContextImpl.class);
 
       return constructor.newInstance(type, providerType, context);
     }
@@ -128,7 +129,7 @@ public class InjectorFactory {
 
     try {
       final Constructor<? extends Injector> constructor
-          = injectorClass.getConstructor(MetaClass.class, MetaClass.class, InjectionContext.class);
+          = injectorClass.getConstructor(MetaClass.class, MetaClass.class, InjectionContextImpl.class);
 
       return constructor.newInstance(type, providerType, context);
     }

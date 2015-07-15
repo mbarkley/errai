@@ -54,6 +54,7 @@ import org.jboss.errai.ioc.client.container.DestructionCallback;
 import org.jboss.errai.ioc.client.container.InitializationCallback;
 import org.jboss.errai.ioc.client.container.SimpleCreationalContext;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContextImpl;
 import org.jboss.errai.ioc.rebind.ioc.exception.InjectionFailure;
 import org.jboss.errai.ioc.rebind.ioc.exception.UnsatisfiedDependenciesException;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.ConstructionStatusCallback;
@@ -63,6 +64,7 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.DecoratorTask;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstanceImpl;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContextImpl;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionTask;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.TaskType;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
@@ -963,7 +965,7 @@ public class InjectUtil {
    * Retrieves the value of a private field managed IOC component.
    *
    * @param processingContext
-   *     an instance of the {@link IOCProcessingContext}
+   *     an instance of the {@link IOCProcessingContextImpl}
    * @param obj
    *     a {@link Statement} reference to the bean instance whose field is to be accessed.
    *     <tt>null</tt> can be provided for static field access.
@@ -990,7 +992,7 @@ public class InjectUtil {
    * Set the value of a private field on a managed IOC component.
    *
    * @param processingContext
-   *     an instance of the {@link IOCProcessingContext}
+   *     an instance of the {@link IOCProcessingContextImpl}
    * @param obj
    *     a {@link Statement} reference to the bean instance whose field is to be accessed.
    *     <tt>null</tt> can be provided for static field access.
@@ -1020,7 +1022,7 @@ public class InjectUtil {
    * Invokes a private method on a managed IOC component.
    *
    * @param processingContext
-   *     an instance of the {@link IOCProcessingContext}
+   *     an instance of the {@link IOCProcessingContextImpl}
    * @param obj
    *     a {@link Statement} reference to the bean instance whose field is to be accessed.
    *     <tt>null</tt> can be provided for static method calls.
@@ -1056,7 +1058,7 @@ public class InjectUtil {
    * visibility of the specified field.
    *
    * @param context
-   *     an instance of the {@link InjectionContext}
+   *     an instance of the {@link InjectionContextImpl}
    * @param obj
    *     a {@link Statement} reference to the bean instance whose field is to be accessed
    * @param field
@@ -1083,7 +1085,7 @@ public class InjectUtil {
    * visibility of the specified field.
    *
    * @param context
-   *     an instance of the {@link InjectionContext}
+   *     an instance of the {@link InjectionContextImpl}
    * @param obj
    *     a {@link Statement} reference to the bean instance whose field is to be accessed
    * @param field
@@ -1113,7 +1115,7 @@ public class InjectUtil {
    * on the visibility of the specified method.
    *
    * @param context
-   *     an instance of the {@link InjectionContext}
+   *     an instance of the {@link InjectionContextImpl}
    * @param obj
    *     a {@link Statement} reference to the bean instance whose field is to be accessed
    * @param method

@@ -1,8 +1,10 @@
 package org.jboss.errai.ioc.tests.unit;
 
-import com.google.gwt.core.ext.TreeLogger;
-import com.google.gwt.user.rebind.StringSourceWriter;
-import junit.framework.TestCase;
+import java.lang.annotation.Annotation;
+import java.util.Collections;
+
+import javax.inject.Inject;
+
 import org.jboss.errai.codegen.Context;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.impl.ClassBuilder;
@@ -11,16 +13,17 @@ import org.jboss.errai.codegen.meta.MetaConstructor;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.SimpleInjectionContext;
 import org.jboss.errai.ioc.client.container.SimpleCreationalContext;
-import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContextImpl;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContextImpl;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionPoint;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.TaskType;
 import org.jboss.errai.ioc.tests.wiring.client.res.ConstructorInjectedBean;
 import org.jboss.errai.ioc.tests.wiring.client.res.FooService;
 
-import javax.inject.Inject;
-import java.lang.annotation.Annotation;
-import java.util.Collections;
+import com.google.gwt.core.ext.TreeLogger;
+
+import junit.framework.TestCase;
 
 public class InjectionPointTest extends TestCase {
 
@@ -32,7 +35,7 @@ public class InjectionPointTest extends TestCase {
   public void testEnsureMemberExposedWithConstructorInjectionPoint() throws Exception {
     final ClassStructureBuilder<? extends ClassStructureBuilder<?>> structureBuilder = ClassBuilder.define("my.FakeBootstrapper").publicScope().body();
 
-    final IOCProcessingContext processingContext = IOCProcessingContext.Builder.create()
+    final IOCProcessingContextImpl processingContext = IOCProcessingContextImpl.BuilderImpl.create()
         .logger(
             new TreeLogger() {
               @Override
@@ -62,7 +65,7 @@ public class InjectionPointTest extends TestCase {
         .blockBuilder(Stmt.do_())
         .packages(Collections.singleton(ConstructorInjectedBean.class.getPackage().getName()))
         .build();
-    final InjectionContext ctx = InjectionContext.Builder.create().processingContext(processingContext).build();
+    final InjectionContext ctx = InjectionContextImpl.BuilderImpl.create().processingContext(processingContext).build();
     final MetaConstructor constructor = MetaClassFactory.get(ConstructorInjectedBean.class).getConstructor(FooService.class);
     final InjectionPoint<Inject> injectionPoint = new InjectionPoint<Inject>(new Inject() {
 

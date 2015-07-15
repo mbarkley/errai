@@ -77,6 +77,8 @@ import org.jboss.errai.ioc.client.container.async.AsyncInjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContextBuilder;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContextImpl;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 import org.jboss.errai.ioc.rebind.ioc.metadata.QualifyingMetadataFactory;
 import org.jboss.errai.ioc.util.PropertiesUtil;
@@ -182,8 +184,8 @@ public class IOCBootstrapGenerator {
         classStructureBuilder.publicMethod(contextClass, "bootstrapContainer")
             .methodComment("The main IOC bootstrap method.");
 
-    final IOCProcessingContext.Builder iocProcContextBuilder
-        = IOCProcessingContext.Builder.create();
+    final ProcessingContextBuilder iocProcContextBuilder
+        = IOCProcessingContextImpl.BuilderImpl.create();
 
     iocProcContextBuilder.blockBuilder(blockBuilder);
     iocProcContextBuilder.generatorContext(context);
@@ -193,8 +195,8 @@ public class IOCBootstrapGenerator {
     iocProcContextBuilder.logger(logger);
     iocProcContextBuilder.gwtTarget(!useReflectionStubs);
 
-    final InjectionContext.Builder injectionContextBuilder
-        = InjectionContext.Builder.create();
+    final InjectionContextBuilder injectionContextBuilder
+        = InjectionContextImpl.BuilderImpl.create();
 
     final MetaDataScanner scanner = ScannerSingleton.getOrCreateInstance();
     final Multimap<String, String> props = scanner.getErraiProperties();
@@ -248,7 +250,7 @@ public class IOCBootstrapGenerator {
     iocProcContextBuilder.bootstrapContextClass(contextClass);
     iocProcContextBuilder.creationalContextClass(creationContextClass);
 
-    final IOCProcessingContext processingContext = iocProcContextBuilder.build();
+    final IOCProcessingContextImpl processingContext = iocProcContextBuilder.build();
 
     injectionContextBuilder.processingContext(processingContext);
     injectionContextBuilder.reachableTypes(allDeps);
@@ -263,7 +265,7 @@ public class IOCBootstrapGenerator {
 
   private String generateBootstrappingClassSource(final InjectionContext injectionContext) {
 
-    final IOCConfigProcessor processorFactory = new IOCConfigProcessor(injectionContext);
+    final IOCConfigProcessorImpl processorFactory = new IOCConfigProcessorImpl(injectionContext);
 
     log.debug("Processing IOC extensions...");
     long start = System.currentTimeMillis();
