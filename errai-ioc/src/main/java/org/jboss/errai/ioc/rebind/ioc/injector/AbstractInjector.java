@@ -45,6 +45,7 @@ import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.SimpleInjectionContext;
 import org.jboss.errai.ioc.client.api.ActivatedBy;
 import org.jboss.errai.ioc.client.api.qualifiers.BuiltInQualifiers;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstanceImpl;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.RegistrationHook;

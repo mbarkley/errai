@@ -61,6 +61,7 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.ConstructionStrategy;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.ConstructionType;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.DecoratorTask;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstanceImpl;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionTask;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.TaskType;
@@ -579,7 +580,7 @@ public class InjectUtil {
     for (int i = 0; i < parmTypes.length; i++) {
       Statement stmt;
       try {
-        final InjectableInstance injectableInstance = InjectableInstance.getParameterInjectedInstance(
+        final InjectableInstance injectableInstance = InjectableInstanceImpl.getParameterInjectedInstance(
             parms[i],
             null,
             ctx);
@@ -616,7 +617,7 @@ public class InjectUtil {
         stmt = recordInlineReference(
             getInjectorOrProxy(
                 ctx,
-                InjectableInstance.getParameterInjectedInstance(parms[i], null, ctx),
+                InjectableInstanceImpl.getParameterInjectedInstance(parms[i], null, ctx),
                 parmTypes[i],
                 ctx.getProcessingContext().getQualifyingMetadataFactory().createFrom(
                     parms[i].getAnnotations()

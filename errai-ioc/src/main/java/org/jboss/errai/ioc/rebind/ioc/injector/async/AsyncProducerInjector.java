@@ -32,9 +32,9 @@ import org.jboss.errai.ioc.rebind.ioc.injector.AsyncInjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.Injector;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.AsyncInjectionTask;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstanceImpl;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionPoint;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectorRegistrationListener;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.RenderingHook;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.TypeDiscoveryListener;
@@ -65,7 +65,7 @@ public class AsyncProducerInjector extends AbstractAsyncInjector {
 
   public AsyncProducerInjector(final MetaClass injectedType,
                                final MetaClassMember producerMember,
-                               final InjectableInstance producerInjectableInstance) {
+                               final InjectableInstanceImpl producerInjectableInstance) {
 
     final InjectionContext injectionContext = producerInjectableInstance.getInjectionContext();
 
@@ -132,7 +132,7 @@ public class AsyncProducerInjector extends AbstractAsyncInjector {
       injectionContext.getProcessingContext().registerTypeDiscoveryListener(new TypeDiscoveryListener() {
         @Override
         public void onDiscovery(final IOCProcessingContext context,
-                                final InjectionPoint injectionPoint,
+                                final InjectableInstance injectionPoint,
                                 final MetaClass injectedType) {
           if (injectionPoint.getEnclosingType().equals(enclosingType)) {
             setRendered(true);

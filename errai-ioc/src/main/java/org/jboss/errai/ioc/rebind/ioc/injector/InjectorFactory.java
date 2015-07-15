@@ -19,6 +19,7 @@ package org.jboss.errai.ioc.rebind.ioc.injector;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaParameterizedType;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstanceImpl;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
@@ -155,7 +156,7 @@ public class InjectorFactory {
           = injectorClass.getConstructor(
           MetaClass.class,
           MetaClassMember.class,
-          InjectableInstance.class
+          InjectableInstanceImpl.class
       );
 
       return constructor.newInstance(type, providerType, injectableInstance);

@@ -33,6 +33,7 @@ import org.jboss.errai.ioc.client.api.CodeDecorator;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstanceImpl;
 import org.jboss.errai.ui.shared.api.annotations.style.StyleBinding;
 import org.jboss.errai.ui.shared.api.style.StyleBindingChangeHandler;
 import org.jboss.errai.ui.shared.api.style.StyleBindingExecutor;

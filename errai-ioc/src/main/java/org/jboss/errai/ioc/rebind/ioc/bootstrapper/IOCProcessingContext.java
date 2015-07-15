@@ -29,7 +29,7 @@ import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.common.client.api.Assert;
 import org.jboss.errai.ioc.client.BootstrapInjectionContext;
 import org.jboss.errai.ioc.client.container.CreationalContext;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionPoint;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.TypeDiscoveryListener;
 import org.jboss.errai.ioc.rebind.ioc.metadata.JSR330QualifyingMetadataFactory;
 import org.jboss.errai.ioc.rebind.ioc.metadata.QualifyingMetadataFactory;
@@ -253,7 +253,7 @@ public class IOCProcessingContext {
     this.typeDiscoveryListeners.add(discoveryListener);
   }
 
-  public void handleDiscoveryOfType(final InjectionPoint injectionPoint, final MetaClass discoveredType) {
+  public void handleDiscoveryOfType(final InjectableInstance injectionPoint, final MetaClass discoveredType) {
     if (discovered.contains(injectionPoint.getElementTypeOrMethodReturnType())) {
       return;
     }

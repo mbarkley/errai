@@ -62,7 +62,7 @@ public abstract class IOCDecoratorExtension<T extends Annotation> {
    * See: http://bugs.java.com/bugdatabase/view_bug.do?bug_id=7144506<br/>
    * TODO: Remove calls with raw types to this method
    *
-   * @param ctx the {@link org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance} reference, representing
+   * @param ctx the {@link org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstanceImpl} reference, representing
    *            the value of the element which is annotated.
    * @return a list of statements to be rendered into the injector code.
    */

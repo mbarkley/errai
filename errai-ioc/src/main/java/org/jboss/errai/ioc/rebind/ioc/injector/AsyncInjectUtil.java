@@ -43,6 +43,7 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.ConstructionStatusCallback;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.ConstructionStrategy;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.ConstructionType;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstanceImpl;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.TaskType;
 import org.jboss.errai.ioc.rebind.ioc.injector.async.AsyncInjectorResolveCallback;
@@ -505,7 +506,7 @@ public class AsyncInjectUtil {
     for (int i = 0; i < parmTypes.length; i++) {
       Statement stmt;
       try {
-        final InjectableInstance injectableInstance = InjectableInstance.getParameterInjectedInstance(
+        final InjectableInstance injectableInstance = InjectableInstanceImpl.getParameterInjectedInstance(
             parms[i],
             null,
             ctx);
@@ -553,7 +554,7 @@ public class AsyncInjectUtil {
 
         blockBuilder.append(getInjectorOrProxy(
             ctx,
-            InjectableInstance.getParameterInjectedInstance(parms[i], null, ctx),
+            InjectableInstanceImpl.getParameterInjectedInstance(parms[i], null, ctx),
             parmType,
             qualifyingMetadata,
             true, new AsyncInjectorResolveCallback() {

@@ -127,7 +127,7 @@ public class AsyncDecoratorTask extends AsyncInjectionTask {
       }
 
       for (final Object stmt : dec.generateDecorator(
-          new InjectableInstance(annotation, taskType, constructor, method, field, type, parm, injector, ctx))) {
+          new InjectableInstanceImpl(annotation, taskType, constructor, method, field, type, parm, injector, ctx))) {
         ctx.getProcessingContext().append((Statement)stmt);
       }
       injector.updateProxies();

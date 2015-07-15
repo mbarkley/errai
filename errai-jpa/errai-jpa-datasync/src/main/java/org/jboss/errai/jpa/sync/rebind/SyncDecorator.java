@@ -26,6 +26,7 @@ import org.jboss.errai.ioc.client.container.InitializationCallback;
 import org.jboss.errai.ioc.client.container.RefHolder;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstanceImpl;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 import org.jboss.errai.jpa.sync.client.local.ClientSyncWorker;
 import org.jboss.errai.jpa.sync.client.local.ClientSyncWorker.QueryParamInitCallback;

@@ -41,7 +41,6 @@ import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
 import org.jboss.errai.ioc.rebind.ioc.injector.AbstractInjector;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionPoint;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.TypeDiscoveryListener;
 import org.jboss.errai.uibinder.client.UiBinderProvider;
 
@@ -58,7 +57,7 @@ public class GWTUiBinderIOCExtension implements IOCExtensionConfigurator {
     context.registerTypeDiscoveryListener(new TypeDiscoveryListener() {
       @Override
       public void onDiscovery(final IOCProcessingContext context,
-                              final InjectionPoint injectionPoint,
+                              final InjectableInstance injectionPoint,
                               final MetaClass type) {
        // final MetaClass type = injectionPoint.getElementTypeOrMethodReturnType();
         final MetaClass enclosingType = injectionPoint.getEnclosingType();

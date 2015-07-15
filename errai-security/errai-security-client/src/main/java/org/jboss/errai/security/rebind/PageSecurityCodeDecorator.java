@@ -33,6 +33,7 @@ import org.jboss.errai.ioc.client.container.InitializationCallback;
 import org.jboss.errai.ioc.client.lifecycle.api.LifecycleListener;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstanceImpl;
 import org.jboss.errai.security.client.local.nav.PageRoleLifecycleListener;
 import org.jboss.errai.security.client.local.roles.ClientRequiredRolesExtractorImpl;
 import org.jboss.errai.security.shared.api.annotation.RestrictedAccess;

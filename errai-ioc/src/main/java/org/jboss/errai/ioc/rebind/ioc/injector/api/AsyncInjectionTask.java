@@ -133,7 +133,7 @@ public class AsyncInjectionTask {
   @SuppressWarnings({"unchecked"})
   public boolean doTask(final InjectionContext ctx) {
     final IOCProcessingContext processingContext = ctx.getProcessingContext();
-    final InjectableInstance injectableInstance = getInjectableInstance(ctx);
+    final InjectableInstanceImpl injectableInstance = getInjectableInstance(ctx);
     final QualifyingMetadata qualifyingMetadata = processingContext.getQualifyingMetadataFactory()
         .createFrom(injectableInstance.getQualifiers());
     final Statement val;
@@ -199,7 +199,7 @@ public class AsyncInjectionTask {
       case Method: {
         for (final MetaParameter parm : method.getParameters()) {
           ctx.getProcessingContext().handleDiscoveryOfType(
-              InjectableInstance.getParameterInjectedInstance(parm, injector, ctx), parm.getType());
+              InjectableInstanceImpl.getParameterInjectedInstance(parm, injector, ctx), parm.getType());
         }
 
         final AtomicInteger atomicInteger = new AtomicInteger(0);
@@ -244,8 +244,8 @@ public class AsyncInjectionTask {
     return true;
   }
 
-  private InjectableInstance getInjectableInstance(final InjectionContext ctx) {
-    return new InjectableInstance(null, taskType, constructor, method, field, type, parm, injector, ctx);
+  private InjectableInstanceImpl getInjectableInstance(final InjectionContext ctx) {
+    return new InjectableInstanceImpl(null, taskType, constructor, method, field, type, parm, injector, ctx);
   }
 
   public Injector getInjector() {

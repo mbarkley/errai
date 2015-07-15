@@ -28,5 +28,5 @@ import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
  * @author Mike Brock
  */
 public interface TypeDiscoveryListener {
-  public void onDiscovery(IOCProcessingContext context, InjectionPoint injectionPoint, MetaClass discoveredType);
+  public void onDiscovery(IOCProcessingContext context, InjectableInstance injectionPoint, MetaClass discoveredType);
 }

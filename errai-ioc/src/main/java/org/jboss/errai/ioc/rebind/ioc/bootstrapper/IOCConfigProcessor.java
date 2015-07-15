@@ -16,8 +16,8 @@
 
 package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
 
-import static org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance.getInjectedInstance;
-import static org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance.getMethodInjectedInstance;
+import static org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstanceImpl.getInjectedInstance;
+import static org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstanceImpl.getMethodInjectedInstance;
 
 import java.io.File;
 import java.lang.annotation.Annotation;
@@ -59,6 +59,7 @@ import org.jboss.errai.ioc.rebind.ioc.graph.GraphSort;
 import org.jboss.errai.ioc.rebind.ioc.graph.SortUnit;
 import org.jboss.errai.ioc.rebind.ioc.injector.Injector;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstanceImpl;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
@@ -760,7 +761,7 @@ public class IOCConfigProcessor {
       @Override
       public void processDependencies() {
 
-        entry.handler.getDependencies(dependencyControl, InjectableInstance.getFieldInjectedInstance(metaField, null,
+        entry.handler.getDependencies(dependencyControl, InjectableInstanceImpl.getFieldInjectedInstance(metaField, null,
             injectionContext), annotation, context);
       }
 
@@ -774,7 +775,7 @@ public class IOCConfigProcessor {
         injectionContext.addType(type);
 
         final InjectableInstance injectableInstance
-            = InjectableInstance.getFieldInjectedInstance(metaField, injectionContext.getInjector(type),
+            = InjectableInstanceImpl.getFieldInjectedInstance(metaField, injectionContext.getInjector(type),
             injectionContext);
 
         entry.handler.registerMetadata(injectableInstance, annotation, context);

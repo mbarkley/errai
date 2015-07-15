@@ -58,6 +58,7 @@ import org.jboss.errai.ioc.client.container.DestructionCallback;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstanceImpl;
 import org.jboss.errai.ui.client.local.spi.TemplateRenderingCallback;
 import org.jboss.errai.ui.shared.Template;
 import org.jboss.errai.ui.shared.TemplateUtil;
