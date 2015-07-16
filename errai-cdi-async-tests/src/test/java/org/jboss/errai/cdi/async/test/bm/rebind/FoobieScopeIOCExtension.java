@@ -18,9 +18,9 @@ package org.jboss.errai.cdi.async.test.bm.rebind;
 
 import org.jboss.errai.cdi.async.test.bm.client.res.FoobieScope;
 import org.jboss.errai.ioc.client.api.IOCExtension;
-import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCConfigProcessor;
-import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContextImpl;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.spi.IOCConfigProcessor;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.spi.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;

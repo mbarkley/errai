@@ -1,4 +1,4 @@
-package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
+package org.jboss.errai.ioc.rebind.ioc.bootstrapper.spi;
 
 import java.util.Set;
 
@@ -8,6 +8,7 @@ import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.ioc.client.BootstrapInjectionContext;
 import org.jboss.errai.ioc.client.container.CreationalContext;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContextImpl;
 import org.jboss.errai.ioc.rebind.ioc.metadata.QualifyingMetadataFactory;
 
 import com.google.gwt.core.ext.GeneratorContext;

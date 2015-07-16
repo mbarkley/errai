@@ -33,6 +33,8 @@ import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.common.client.api.Assert;
 import org.jboss.errai.ioc.client.BootstrapInjectionContext;
 import org.jboss.errai.ioc.client.container.CreationalContext;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.spi.IOCProcessingContext;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.spi.ProcessingContextBuilder;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.TypeDiscoveryListener;
 import org.jboss.errai.ioc.rebind.ioc.metadata.JSR330QualifyingMetadataFactory;

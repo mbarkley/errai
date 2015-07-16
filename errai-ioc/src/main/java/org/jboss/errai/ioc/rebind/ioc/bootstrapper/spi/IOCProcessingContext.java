@@ -1,4 +1,4 @@
-package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
+package org.jboss.errai.ioc.rebind.ioc.bootstrapper.spi;
 
 import java.util.List;
 import java.util.Set;

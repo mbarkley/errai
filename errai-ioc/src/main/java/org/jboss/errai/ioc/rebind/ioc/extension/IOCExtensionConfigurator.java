@@ -16,8 +16,8 @@
 
 package org.jboss.errai.ioc.rebind.ioc.extension;
 
-import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCConfigProcessor;
-import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.spi.IOCConfigProcessor;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.spi.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 
 /**

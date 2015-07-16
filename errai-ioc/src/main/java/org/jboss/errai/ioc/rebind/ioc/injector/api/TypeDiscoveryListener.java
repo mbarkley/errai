@@ -17,7 +17,7 @@
 package org.jboss.errai.ioc.rebind.ioc.injector.api;
 
 import org.jboss.errai.codegen.meta.MetaClass;
-import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.spi.IOCProcessingContext;
 
 /**
  * A <tt>TypeDiscoveryListener</tt> is used for observing the discovery of new bean types in the container during

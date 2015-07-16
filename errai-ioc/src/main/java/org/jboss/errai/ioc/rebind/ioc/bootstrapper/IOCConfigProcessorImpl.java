@@ -58,6 +58,8 @@ import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.client.api.EnabledByProperty;
 import org.jboss.errai.ioc.client.api.TestMock;
 import org.jboss.errai.ioc.client.api.TestOnly;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.spi.IOCConfigProcessor;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.spi.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.extension.AnnotationHandler;
 import org.jboss.errai.ioc.rebind.ioc.extension.DependencyControl;
 import org.jboss.errai.ioc.rebind.ioc.extension.JSR330AnnotationHandler;
@@ -90,14 +92,14 @@ public class IOCConfigProcessorImpl implements IOCConfigProcessor {
   }
 
   @Override
-  public void registerHandler(final Class<? extends Annotation> annotation,
-                              final AnnotationHandler handler) {
+  public <A extends Annotation> void registerHandler(final Class<A> annotation,
+                              final AnnotationHandler<A> handler) {
     registerHandler(annotation, handler, null);
   }
 
   @Override
-  public void registerHandler(final Class<? extends Annotation> annotation,
-                              final AnnotationHandler handler,
+  public <A extends Annotation> void registerHandler(final Class<A> annotation,
+                              final AnnotationHandler<A> handler,
                               final List<RuleDef> rules) {
 
     getProcessingTasksSet().add(new ProcessingEntry(annotation, handler, rules));
