@@ -14,6 +14,7 @@ import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.SimpleInjectionContext;
 import org.jboss.errai.ioc.client.container.SimpleCreationalContext;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContextImpl;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.spi.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContextImpl;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionPoint;
@@ -35,7 +36,7 @@ public class InjectionPointTest extends TestCase {
   public void testEnsureMemberExposedWithConstructorInjectionPoint() throws Exception {
     final ClassStructureBuilder<? extends ClassStructureBuilder<?>> structureBuilder = ClassBuilder.define("my.FakeBootstrapper").publicScope().body();
 
-    final IOCProcessingContextImpl processingContext = IOCProcessingContextImpl.BuilderImpl.create()
+    final IOCProcessingContext processingContext = IOCProcessingContextImpl.BuilderImpl.create()
         .logger(
             new TreeLogger() {
               @Override

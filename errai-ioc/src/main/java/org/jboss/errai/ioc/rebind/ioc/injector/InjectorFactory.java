@@ -16,12 +16,15 @@
 
 package org.jboss.errai.ioc.rebind.ioc.injector;
 
+import java.lang.reflect.Constructor;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaParameterizedType;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstanceImpl;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContextImpl;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 import org.jboss.errai.ioc.rebind.ioc.injector.async.AsyncContextualProviderInjector;
@@ -34,11 +37,6 @@ import org.jboss.errai.ioc.rebind.ioc.injector.basic.ProducerInjector;
 import org.jboss.errai.ioc.rebind.ioc.injector.basic.ProviderInjector;
 import org.jboss.errai.ioc.rebind.ioc.injector.basic.QualifiedTypeInjectorDelegate;
 import org.jboss.errai.ioc.rebind.ioc.injector.basic.TypeInjector;
-import org.jboss.errai.ioc.rebind.ioc.metadata.QualifyingMetadata;
-
-import java.lang.reflect.Constructor;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * @author Mike Brock
@@ -157,7 +155,7 @@ public class InjectorFactory {
           = injectorClass.getConstructor(
           MetaClass.class,
           MetaClassMember.class,
-          InjectableInstanceImpl.class
+          InjectableInstance.class
       );
 
       return constructor.newInstance(type, providerType, injectableInstance);

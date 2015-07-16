@@ -21,7 +21,18 @@ import static java.util.Collections.unmodifiableCollection;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.enterprise.context.NormalScope;
 import javax.enterprise.inject.Stereotype;
@@ -40,7 +51,6 @@ import org.jboss.errai.common.client.api.Assert;
 import org.jboss.errai.config.rebind.ReachableTypes;
 import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCGenerator;
-import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContextImpl;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.spi.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.exception.InjectionFailure;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
@@ -59,7 +69,7 @@ import com.google.common.collect.Multimap;
 
 public class InjectionContextImpl implements InjectionContext {
   private static final Logger log = LoggerFactory.getLogger(InjectionContextImpl.class);
-  private final IOCProcessingContextImpl processingContext;
+  private final IOCProcessingContext processingContext;
 
   private final Multimap<WiringElementType, Class<? extends Annotation>> elementBindings = HashMultimap.create();
 
@@ -120,7 +130,7 @@ public class InjectionContextImpl implements InjectionContext {
   }
 
   public static class BuilderImpl implements InjectionContextBuilder {
-    private IOCProcessingContextImpl processingContext;
+    private IOCProcessingContext processingContext;
     private ReachableTypes reachableTypes = ReachableTypes.EVERYTHING_REACHABLE_INSTANCE;
     private boolean async;
     private final HashSet<String> enabledAlternatives = new HashSet<String>();
@@ -132,7 +142,7 @@ public class InjectionContextImpl implements InjectionContext {
     }
 
     @Override
-    public InjectionContextBuilder processingContext(final IOCProcessingContextImpl processingContext) {
+    public InjectionContextBuilder processingContext(final IOCProcessingContext processingContext) {
       this.processingContext = processingContext;
       return this;
     }

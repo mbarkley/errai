@@ -175,7 +175,7 @@ public class IOCProcessingContextImpl implements IOCProcessingContext {
     }
 
     @Override
-    public IOCProcessingContextImpl build() {
+    public IOCProcessingContext build() {
       Assert.notNull("treeLogger cannot be null", treeLogger);
       // Assert.notNull("sourceWriter cannot be null", sourceWriter);
       Assert.notNull("context cannot be null", context);

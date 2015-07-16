@@ -253,7 +253,7 @@ public class IOCBootstrapGenerator {
     iocProcContextBuilder.bootstrapContextClass(contextClass);
     iocProcContextBuilder.creationalContextClass(creationContextClass);
 
-    final IOCProcessingContextImpl processingContext = iocProcContextBuilder.build();
+    final IOCProcessingContext processingContext = iocProcContextBuilder.build();
 
     injectionContextBuilder.processingContext(processingContext);
     injectionContextBuilder.reachableTypes(allDeps);
