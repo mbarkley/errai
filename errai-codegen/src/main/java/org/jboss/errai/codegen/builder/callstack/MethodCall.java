@@ -20,6 +20,7 @@ import org.jboss.errai.codegen.CallParameters;
 import org.jboss.errai.codegen.Context;
 import org.jboss.errai.codegen.MethodInvocation;
 import org.jboss.errai.codegen.Statement;
+import org.jboss.errai.codegen.config.CodeGenConfig;
 import org.jboss.errai.codegen.exception.GenerationException;
 import org.jboss.errai.codegen.exception.UndefinedMethodException;
 import org.jboss.errai.codegen.meta.MetaClass;
@@ -107,7 +108,7 @@ public class MethodCall extends AbstractCallElement {
       /**
        * If the method is within the calling scope, we can strip the qualifying reference.
        */
-      if (statement instanceof LoadClassReference.ClassReference && context.isInScope(method)) {
+      if (canRemoveQualifyingReference(context, statement, method)) {
         writer.reset();
       }
 
@@ -125,6 +126,10 @@ public class MethodCall extends AbstractCallElement {
       throw new RuntimeException("error generating method call for: " + methodName
               + "(" + Arrays.toString(parameters) + ")", e);
     }
+  }
+
+  private boolean canRemoveQualifyingReference(final Context context, Statement statement, final MetaMethod method) {
+    return CodeGenConfig.isScopeCheckEnabled() && statement instanceof LoadClassReference.ClassReference && context.isInScope(method);
   }
 
   @Override

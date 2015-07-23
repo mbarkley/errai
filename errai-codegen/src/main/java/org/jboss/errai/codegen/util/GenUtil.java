@@ -23,6 +23,7 @@ import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.Variable;
 import org.jboss.errai.codegen.VariableReference;
 import org.jboss.errai.codegen.builder.impl.Scope;
+import org.jboss.errai.codegen.config.CodeGenConfig;
 import org.jboss.errai.codegen.exception.GenerationException;
 import org.jboss.errai.codegen.exception.InvalidTypeException;
 import org.jboss.errai.codegen.exception.OutOfScopeException;
@@ -114,7 +115,7 @@ public class GenUtil {
     }
     else if (o instanceof Variable) {
       final Variable v = (Variable) o;
-      if (context.isScoped(v)) {
+      if (!CodeGenConfig.isScopeCheckEnabled() || context.isScoped(v)) {
         return v.getReference();
       }
       else {
