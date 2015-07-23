@@ -26,6 +26,7 @@ import org.jboss.errai.common.metadata.RebindUtils;
 import org.jboss.errai.common.metadata.ScannerSingleton;
 import org.jboss.errai.common.rebind.CacheStore;
 import org.jboss.errai.common.rebind.CacheUtil;
+import org.jboss.errai.common.rebind.PrefixTrieMatcher;
 import org.mvel2.util.NullType;
 
 import com.google.gwt.core.ext.GeneratorContext;
@@ -50,7 +51,7 @@ public final class ClassScanner {
     }
   }
   final static CacheHolder cache = CacheUtil.getCache(CacheHolder.class);
-  
+
   private static final ThreadLocal<Boolean> reflectionScanLocal = new ThreadLocal<Boolean>() {
     @Override
     protected Boolean initialValue() {
@@ -284,40 +285,35 @@ public final class ClassScanner {
   }
 
   private static Collection<MetaClass> getAllReloadableCachedClasses(final GeneratorContext context) {
-    if (cache.reloadablePackages.isEmpty()) {
-      cache.reloadablePackages.addAll(RebindUtils.getReloadablePackageNames(context));
-    }
     if (!cache.reloadableClasses.isEmpty()) {
       return cache.reloadableClasses;
     }
 
+    final PrefixTrieMatcher matcher = buildMatcher(RebindUtils.getReloadablePackageNames(context));
+
     final Collection<MetaClass> classes = new ArrayList<MetaClass>();
     final Collection<String> classNames = new ArrayList<String>();
-    
+
     for (MetaClass clazz : MetaClassFactory.getAllCachedClasses()) {
       final String fqcn = clazz.getFullyQualifiedName();
-      final String pkg = clazz.getPackageName();
-      
-      if (pkg !=null && cache.reloadablePackages.contains(pkg)) {
+
+      if (matcher.startsWith(fqcn)) {
         classes.add(clazz);
         classNames.add(fqcn);
-      }
-      else {
-        for (String reloadablePackage : cache.reloadablePackages) {
-          if (fqcn.startsWith(reloadablePackage)) {
-            classes.add(clazz);
-            classNames.add(fqcn);
-            if (pkg != null) {
-              cache.reloadablePackages.add(pkg);
-            }
-            break;
-          }
-        }
       }
     }
     cache.reloadableClasses.addAll(classes);
     cache.reloadableClassNames.addAll(classNames);
     return classes;
+  }
+
+  private static PrefixTrieMatcher buildMatcher(final Set<String> reloadablePackages) {
+    final PrefixTrieMatcher matcher = new PrefixTrieMatcher();
+    for (final String pkg : reloadablePackages) {
+      matcher.add(pkg);
+    }
+
+    return matcher;
   }
 
   private static boolean isReloadable(Class<?> clazz) {
