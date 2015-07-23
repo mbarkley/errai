@@ -18,6 +18,7 @@ package org.jboss.errai.codegen.builder.callstack;
 
 import org.jboss.errai.codegen.Context;
 import org.jboss.errai.codegen.Statement;
+import org.jboss.errai.codegen.config.CodeGenConfig;
 import org.jboss.errai.codegen.exception.GenerationException;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.util.GenUtil;
@@ -30,7 +31,15 @@ public abstract class AbstractCallElement implements CallElement {
   protected CallElement next;
   protected MetaClass resultType = null;
 
-  protected final RuntimeException blame = new RuntimeException("Problem was caused by this call");
+  protected final RuntimeException blame;
+
+  public AbstractCallElement() {
+    if (CodeGenConfig.isBlameEnabled()) {
+      blame = new RuntimeException("Problem was caused by this call");
+    } else {
+      blame = null;
+    }
+  }
 
   public void nextOrReturn(CallWriter writer, Context ctx, Statement statement) {
     try {
@@ -80,7 +89,7 @@ public abstract class AbstractCallElement implements CallElement {
   }
 
   protected void blameAndRethrow(GenerationException e) {
-    if (e.getCause() == null) {
+    if (blame != null && e.getCause() == null) {
       GenUtil.rewriteBlameStackTrace(blame);
 
       e.initCause(blame);

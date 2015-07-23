@@ -71,8 +71,10 @@ public class MethodCall extends AbstractCallElement {
       if (method == null) {
         if (context.isPermissiveMode()) {
           final UndefinedMethodException udme = new UndefinedMethodException(statement.getType(), methodName, parameterTypes);
-          GenUtil.rewriteBlameStackTrace(blame);
-          udme.initCause(blame);
+          if (blame != null) {
+            GenUtil.rewriteBlameStackTrace(blame);
+            udme.initCause(blame);
+          }
           udme.printStackTrace();
 
           dummyReturn(writer, context);
@@ -80,8 +82,10 @@ public class MethodCall extends AbstractCallElement {
         }
         else {
           final UndefinedMethodException udme = new UndefinedMethodException(statement.getType(), methodName, parameterTypes);
-          GenUtil.rewriteBlameStackTrace(blame);
-          udme.initCause(blame);
+          if (blame != null) {
+            GenUtil.rewriteBlameStackTrace(blame);
+            udme.initCause(blame);
+          }
           throw udme;
         }
       }
