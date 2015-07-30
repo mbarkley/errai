@@ -138,7 +138,13 @@ public class IOCBootstrapGenerator {
       final InjectionContext injectionContext = setupContexts(packageName, className);
       log.debug("injection context setup in " + (System.currentTimeMillis() - injectionStart) + "ms");
 
-      gen = generateBootstrappingClassSource(injectionContext);
+      final IOCConfigProcessor processorFactory = new IOCConfigProcessor(injectionContext);
+      log.debug("Processing IOC extensions...");
+      long extensionsStart = System.currentTimeMillis();
+      processExtensions(context, injectionContext, processorFactory, beforeTasks, afterTasks);
+      log.debug("Extensions processed in " + (System.currentTimeMillis() - extensionsStart) + "ms");
+
+      gen = generateBootstrappingClassSource(processorFactory, injectionContext);
       log.info("generated IOC bootstrapping class in " + (System.currentTimeMillis() - st) + "ms "
           + "(" + injectionContext.getAllKnownInjectionTypes().size() + " beans processed)");
 
@@ -232,7 +238,7 @@ public class IOCBootstrapGenerator {
       for (final String alternative : alternatives) {
         injectionContextBuilder.enabledAlternative(alternative.trim());
       }
-      
+
       final Collection<String> whitelistItems = PropertiesUtil.getPropertyValues(WHITELIST_PROPERTY, "\\s");
       for (final String item : whitelistItems) {
         injectionContextBuilder.addToWhitelist(item.trim());
@@ -261,14 +267,8 @@ public class IOCBootstrapGenerator {
     return injectionContext;
   }
 
-  private String generateBootstrappingClassSource(final InjectionContext injectionContext) {
-
-    final IOCConfigProcessor processorFactory = new IOCConfigProcessor(injectionContext);
-
-    log.debug("Processing IOC extensions...");
-    long start = System.currentTimeMillis();
-    processExtensions(context, injectionContext, processorFactory, beforeTasks, afterTasks);
-    log.debug("Extensions processed in " + (System.currentTimeMillis() - start) + "ms");
+  private String generateBootstrappingClassSource(final IOCConfigProcessor processorFactory, final InjectionContext injectionContext) {
+    long start;
 
     final IOCProcessingContext processingContext = injectionContext.getProcessingContext();
     final ClassStructureBuilder<?> classBuilder = processingContext.getBootstrapBuilder();
