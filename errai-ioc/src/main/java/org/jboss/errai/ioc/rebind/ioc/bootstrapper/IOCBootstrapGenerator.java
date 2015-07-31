@@ -140,16 +140,11 @@ public class IOCBootstrapGenerator {
 
       final IOCConfigProcessor processorFactory = new IOCConfigProcessor(injectionContext);
       log.debug("Processing IOC extensions...");
-      final long extensionsStart = System.currentTimeMillis();
+      long extensionsStart = System.currentTimeMillis();
       processExtensions(context, injectionContext, processorFactory, beforeTasks, afterTasks);
       log.debug("Extensions processed in " + (System.currentTimeMillis() - extensionsStart) + "ms");
 
-      log.debug("Process dependency graph...");
-      final long dependencyGraphStart = System.currentTimeMillis();
-      processorFactory.process(injectionContext.getProcessingContext());
-      log.debug("Processed dependency graph in " + (System.currentTimeMillis() - dependencyGraphStart) + "ms");
-
-      gen = generateBootstrappingClassSource(injectionContext);
+      gen = generateBootstrappingClassSource(processorFactory, injectionContext);
       log.info("generated IOC bootstrapping class in " + (System.currentTimeMillis() - st) + "ms "
           + "(" + injectionContext.getAllKnownInjectionTypes().size() + " beans processed)");
 
@@ -272,7 +267,7 @@ public class IOCBootstrapGenerator {
     return injectionContext;
   }
 
-  private String generateBootstrappingClassSource(final InjectionContext injectionContext) {
+  private String generateBootstrappingClassSource(final IOCConfigProcessor processorFactory, final InjectionContext injectionContext) {
     long start;
 
     final IOCProcessingContext processingContext = injectionContext.getProcessingContext();
@@ -298,6 +293,11 @@ public class IOCBootstrapGenerator {
     start = System.currentTimeMillis();
     _doRunnableTasks(beforeTasks, builder);
     log.debug("Tasks run in " + (System.currentTimeMillis() - start) + "ms");
+
+    log.debug("Process dependency graph...");
+    start = System.currentTimeMillis();
+    processorFactory.process(processingContext);
+    log.debug("Processed dependency graph in " + (System.currentTimeMillis() - start) + "ms");
 
     int i = 0;
     int beanDeclareMethodCount = 0;
