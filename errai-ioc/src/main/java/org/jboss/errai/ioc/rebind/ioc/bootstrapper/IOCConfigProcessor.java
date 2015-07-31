@@ -107,6 +107,240 @@ public class IOCConfigProcessor {
     return processingTasksStack.peek();
   }
 
+  private final class JSR330SingletonBeanExtension extends JSR330AnnotationHandler {
+    @Override
+    public boolean handle(final InjectableInstance instance,
+                          final Annotation annotation,
+                          final IOCProcessingContext context) {
+      final Injector injector = injectionContext.getInjector(instance.getEnclosingType());
+
+      if (injector.isEnabled()) {
+        injector.renderProvider(instance);
+      }
+      return true;
+    }
+  }
+
+  private final class JSR330DependentBeanExtension extends JSR330AnnotationHandler {
+    @Override
+    public boolean handle(final InjectableInstance instance,
+                          final Annotation annotation,
+                          final IOCProcessingContext context) {
+
+      final List<Injector> injectors
+          = new ArrayList<Injector>(injectionContext.getInjectors(instance.getEnclosingType()));
+      final Injector injector;
+
+      final Iterator<Injector> injectorIterator = injectors.iterator();
+      boolean removed = false;
+      while (injectorIterator.hasNext()) {
+        if (!injectorIterator.next().isEnabled()) {
+          injectorIterator.remove();
+          removed = true;
+        }
+      }
+
+      if (injectors.isEmpty() && removed) {
+        return true;
+      }
+
+      if (!injectors.isEmpty()) {
+        injector = injectors.get(0);
+      }
+      else {
+        injector = injectionContext.getInjectorFactory()
+            .getTypeInjector(instance.getEnclosingType(), injectionContext);
+      }
+
+      if (injector.isEnabled() && injector.isRegularTypeInjector()) {
+        injector.renderProvider(instance);
+      }
+      return true;
+    }
+  }
+
+  private final class JSR330ProducerElementExtension extends JSR330AnnotationHandler {
+    @Override
+    public void getDependencies(final DependencyControl control,
+                                final InjectableInstance instance,
+                                final Annotation annotation,
+                                final IOCProcessingContext context) {
+
+      if (!checkIfEnabled(instance.getEnclosingType())) {
+        return;
+      }
+
+      final MetaClass injectedType = instance.getElementTypeOrMethodReturnType();
+      injectionContext.addTopLevelType(injectedType);
+
+      control.masqueradeAs(injectedType);
+
+      final MetaClassMember producerMember;
+
+      control.masqueradeAs(injectedType);
+
+      switch (instance.getTaskType()) {
+        case PrivateMethod:
+        case Method:
+          producerMember = instance.getMethod();
+
+          for (final MetaParameter parm : instance.getMethod().getParameters()) {
+            control.notifyDependency(parm.getType());
+            final Set<MetaClass> interfaceTypes = fillInInterface(parm.getType(), context.getGeneratorContext());
+            control.notifyDependencies(interfaceTypes);
+
+            if (!producerMember.isStatic()) {
+              final GraphBuilder graphBuilder = injectionContext.getGraphBuilder();
+              graphBuilder.addDependency(producerMember.getDeclaringClass(), Dependency.on(parm.getType()));
+              for (MetaClass type : interfaceTypes) {
+                graphBuilder.addDependency(producerMember.getDeclaringClass(), Dependency.on(type));
+              }
+            }
+          }
+
+          break;
+        case PrivateField:
+        case Field:
+          producerMember = instance.getField();
+          break;
+        default:
+          throw new RuntimeException("illegal producer type");
+      }
+
+      final Injector producerInjector = injectionContext.getInjectorFactory()
+          .getProducerInjector(injectedType, producerMember, instance);
+
+      injectionContext.registerInjector(producerInjector);
+
+
+      if (!producerMember.isStatic()) {
+        // if this is a static producer, it does not have a dependency on its parent bean
+        injectionContext.getGraphBuilder()
+            .addDependency(injectedType, Dependency.on(instance.getEnclosingType()));
+      }
+    }
+
+    @Override
+    public boolean handle(final InjectableInstance instance,
+                          final Annotation annotation,
+                          final IOCProcessingContext context) {
+      final List<Injector> injectors
+          = injectionContext.getInjectors(instance.getElementTypeOrMethodReturnType());
+      for (final Injector injector : injectors) {
+        if (injector.isEnabled()) {
+          injector.renderProvider(instance);
+        }
+      }
+      return true;
+    }
+  }
+
+  private final class JSR330TopLevelProviderExtension extends JSR330AnnotationHandler {
+    @SuppressWarnings("unchecked")
+    @Override
+    public void getDependencies(final DependencyControl control,
+                                final InjectableInstance instance,
+                                final Annotation annotation,
+                                final IOCProcessingContext context) {
+
+      final MetaClass providerClassType = instance.getEnclosingType();
+
+      if (!checkIfEnabled(providerClassType)) {
+        return;
+      }
+
+
+      final MetaClass MC_Provider = MetaClassFactory.get(Provider.class);
+      final MetaClass MC_ContextualTypeProvider = MetaClassFactory.get(ContextualTypeProvider.class);
+
+      MetaClass providerInterface = null;
+      final MetaClass providedType;
+
+      if (MC_Provider.isAssignableFrom(providerClassType)) {
+        for (final MetaClass interfaceType : providerClassType.getInterfaces()) {
+          if (MC_Provider.equals(interfaceType.getErased())) {
+            providerInterface = interfaceType;
+          }
+        }
+
+        if (providerInterface == null) {
+          throw new RuntimeException("top level provider " + providerClassType.getFullyQualifiedName()
+              + " must directly implement " + Provider.class.getName());
+        }
+
+        if (providerInterface.getParameterizedType() == null) {
+          throw new RuntimeException("top level provider " + providerClassType.getFullyQualifiedName()
+              + " must use a parameterized " + Provider.class.getName() + " interface type.");
+        }
+
+        final MetaType parmType = providerInterface.getParameterizedType().getTypeParameters()[0];
+        if (parmType instanceof MetaParameterizedType) {
+          providedType = (MetaClass) ((MetaParameterizedType) parmType).getRawType();
+        }
+        else {
+          providedType = (MetaClass) parmType;
+        }
+
+        injectionContext.registerInjector(
+            injectionContext.getInjectorFactory().getProviderInjector(providedType, providerClassType, injectionContext)
+        );
+      }
+      else if (MC_ContextualTypeProvider.isAssignableFrom(providerClassType)) {
+        for (final MetaClass interfaceType : providerClassType.getInterfaces()) {
+          if (MC_ContextualTypeProvider.equals(interfaceType.getErased())) {
+            providerInterface = interfaceType;
+          }
+        }
+
+        if (providerInterface == null) {
+          throw new RuntimeException("top level provider " + providerClassType.getFullyQualifiedName()
+              + " must directly implement " + ContextualTypeProvider.class.getName());
+        }
+
+        if (providerInterface.getParameterizedType() == null) {
+          throw new RuntimeException("top level provider " + providerClassType.getFullyQualifiedName()
+              + " must use a parameterized " + ContextualTypeProvider.class.getName() + " interface type.");
+        }
+
+        final MetaType parmType = providerInterface.getParameterizedType().getTypeParameters()[0];
+        if (parmType instanceof MetaParameterizedType) {
+          providedType = (MetaClass) ((MetaParameterizedType) parmType).getRawType();
+        }
+        else {
+          providedType = (MetaClass) parmType;
+        }
+
+        injectionContext.registerInjector(
+            injectionContext.getInjectorFactory()
+                .getContextualProviderInjector(providedType, providerClassType, injectionContext)
+        );
+      }
+      else {
+        throw new RuntimeException("top level provider " + providerClassType.getFullyQualifiedName()
+            + " does not implement: " + Provider.class.getName() + " or " + ContextualTypeProvider.class);
+      }
+
+      injectionContext.getGraphBuilder().addDependency(providedType, Dependency.on(providerClassType));
+
+      control.masqueradeAs(providedType);
+      super.getDependencies(control, instance, annotation, context);
+    }
+
+    @Override
+    public boolean handle(final InjectableInstance instance,
+                          final Annotation annotation,
+                          final IOCProcessingContext context) {
+      final List<Injector> injectors
+          = injectionContext.getInjectors(instance.getElementTypeOrMethodReturnType());
+      for (final Injector injector : injectors) {
+        if (injector.isEnabled() && injectionContext.isTypeInjectable(injector.getEnclosingType())) {
+          injector.renderProvider(instance);
+        }
+      }
+      return true;
+    }
+  }
+
   private final class ProcessingDelegateImpl implements ProcessingDelegate {
     private final ProcessingEntry entry;
     private final IOCProcessingContext context;
@@ -235,111 +469,7 @@ public class IOCConfigProcessor {
         : injectionContext.getAllElementMappings()) {
       switch (entry.getKey()) {
         case TopLevelProvider:
-          registerHandler(entry.getValue(), new JSR330AnnotationHandler() {
-            @SuppressWarnings("unchecked")
-            @Override
-            public void getDependencies(final DependencyControl control,
-                                        final InjectableInstance instance,
-                                        final Annotation annotation,
-                                        final IOCProcessingContext context) {
-
-              final MetaClass providerClassType = instance.getEnclosingType();
-
-              if (!checkIfEnabled(providerClassType)) {
-                return;
-              }
-
-
-              final MetaClass MC_Provider = MetaClassFactory.get(Provider.class);
-              final MetaClass MC_ContextualTypeProvider = MetaClassFactory.get(ContextualTypeProvider.class);
-
-              MetaClass providerInterface = null;
-              final MetaClass providedType;
-
-              if (MC_Provider.isAssignableFrom(providerClassType)) {
-                for (final MetaClass interfaceType : providerClassType.getInterfaces()) {
-                  if (MC_Provider.equals(interfaceType.getErased())) {
-                    providerInterface = interfaceType;
-                  }
-                }
-
-                if (providerInterface == null) {
-                  throw new RuntimeException("top level provider " + providerClassType.getFullyQualifiedName()
-                      + " must directly implement " + Provider.class.getName());
-                }
-
-                if (providerInterface.getParameterizedType() == null) {
-                  throw new RuntimeException("top level provider " + providerClassType.getFullyQualifiedName()
-                      + " must use a parameterized " + Provider.class.getName() + " interface type.");
-                }
-
-                final MetaType parmType = providerInterface.getParameterizedType().getTypeParameters()[0];
-                if (parmType instanceof MetaParameterizedType) {
-                  providedType = (MetaClass) ((MetaParameterizedType) parmType).getRawType();
-                }
-                else {
-                  providedType = (MetaClass) parmType;
-                }
-
-                injectionContext.registerInjector(
-                    injectionContext.getInjectorFactory().getProviderInjector(providedType, providerClassType, injectionContext)
-                );
-              }
-              else if (MC_ContextualTypeProvider.isAssignableFrom(providerClassType)) {
-                for (final MetaClass interfaceType : providerClassType.getInterfaces()) {
-                  if (MC_ContextualTypeProvider.equals(interfaceType.getErased())) {
-                    providerInterface = interfaceType;
-                  }
-                }
-
-                if (providerInterface == null) {
-                  throw new RuntimeException("top level provider " + providerClassType.getFullyQualifiedName()
-                      + " must directly implement " + ContextualTypeProvider.class.getName());
-                }
-
-                if (providerInterface.getParameterizedType() == null) {
-                  throw new RuntimeException("top level provider " + providerClassType.getFullyQualifiedName()
-                      + " must use a parameterized " + ContextualTypeProvider.class.getName() + " interface type.");
-                }
-
-                final MetaType parmType = providerInterface.getParameterizedType().getTypeParameters()[0];
-                if (parmType instanceof MetaParameterizedType) {
-                  providedType = (MetaClass) ((MetaParameterizedType) parmType).getRawType();
-                }
-                else {
-                  providedType = (MetaClass) parmType;
-                }
-
-                injectionContext.registerInjector(
-                    injectionContext.getInjectorFactory()
-                        .getContextualProviderInjector(providedType, providerClassType, injectionContext)
-                );
-              }
-              else {
-                throw new RuntimeException("top level provider " + providerClassType.getFullyQualifiedName()
-                    + " does not implement: " + Provider.class.getName() + " or " + ContextualTypeProvider.class);
-              }
-
-              injectionContext.getGraphBuilder().addDependency(providedType, Dependency.on(providerClassType));
-
-              control.masqueradeAs(providedType);
-              super.getDependencies(control, instance, annotation, context);
-            }
-
-            @Override
-            public boolean handle(final InjectableInstance instance,
-                                  final Annotation annotation,
-                                  final IOCProcessingContext context) {
-              final List<Injector> injectors
-                  = injectionContext.getInjectors(instance.getElementTypeOrMethodReturnType());
-              for (final Injector injector : injectors) {
-                if (injector.isEnabled() && injectionContext.isTypeInjectable(injector.getEnclosingType())) {
-                  injector.renderProvider(instance);
-                }
-              }
-              return true;
-            }
-          }, Rule.before(injectionContext.getAnnotationsForElementType(WiringElementType.SingletonBean),
+          registerHandler(entry.getValue(), new JSR330TopLevelProviderExtension(), Rule.before(injectionContext.getAnnotationsForElementType(WiringElementType.SingletonBean),
               injectionContext.getAnnotationsForElementType(WiringElementType.DependentBean)));
 
           break;
@@ -350,139 +480,16 @@ public class IOCConfigProcessor {
         : injectionContext.getAllElementMappings()) {
       switch (entry.getKey()) {
         case ProducerElement:
-          registerHandler(entry.getValue(), new JSR330AnnotationHandler() {
-            @Override
-            public void getDependencies(final DependencyControl control,
-                                        final InjectableInstance instance,
-                                        final Annotation annotation,
-                                        final IOCProcessingContext context) {
-
-              if (!checkIfEnabled(instance.getEnclosingType())) {
-                return;
-              }
-
-              final MetaClass injectedType = instance.getElementTypeOrMethodReturnType();
-              injectionContext.addTopLevelType(injectedType);
-
-              control.masqueradeAs(injectedType);
-
-              final MetaClassMember producerMember;
-
-              control.masqueradeAs(injectedType);
-
-              switch (instance.getTaskType()) {
-                case PrivateMethod:
-                case Method:
-                  producerMember = instance.getMethod();
-
-                  for (final MetaParameter parm : instance.getMethod().getParameters()) {
-                    control.notifyDependency(parm.getType());
-                    final Set<MetaClass> interfaceTypes = fillInInterface(parm.getType(), context.getGeneratorContext());
-                    control.notifyDependencies(interfaceTypes);
-
-                    if (!producerMember.isStatic()) {
-                      final GraphBuilder graphBuilder = injectionContext.getGraphBuilder();
-                      graphBuilder.addDependency(producerMember.getDeclaringClass(), Dependency.on(parm.getType()));
-                      for (MetaClass type : interfaceTypes) {
-                        graphBuilder.addDependency(producerMember.getDeclaringClass(), Dependency.on(type));
-                      }
-                    }
-                  }
-
-                  break;
-                case PrivateField:
-                case Field:
-                  producerMember = instance.getField();
-                  break;
-                default:
-                  throw new RuntimeException("illegal producer type");
-              }
-
-              final Injector producerInjector = injectionContext.getInjectorFactory()
-                  .getProducerInjector(injectedType, producerMember, instance);
-
-              injectionContext.registerInjector(producerInjector);
-
-
-              if (!producerMember.isStatic()) {
-                // if this is a static producer, it does not have a dependency on its parent bean
-                injectionContext.getGraphBuilder()
-                    .addDependency(injectedType, Dependency.on(instance.getEnclosingType()));
-              }
-            }
-
-            @Override
-            public boolean handle(final InjectableInstance instance,
-                                  final Annotation annotation,
-                                  final IOCProcessingContext context) {
-              final List<Injector> injectors
-                  = injectionContext.getInjectors(instance.getElementTypeOrMethodReturnType());
-              for (final Injector injector : injectors) {
-                if (injector.isEnabled()) {
-                  injector.renderProvider(instance);
-                }
-              }
-              return true;
-            }
-
-          }, Rule.after(injectionContext.getAnnotationsForElementType(WiringElementType.SingletonBean),
+          registerHandler(entry.getValue(), new JSR330ProducerElementExtension(), Rule.after(injectionContext.getAnnotationsForElementType(WiringElementType.SingletonBean),
               injectionContext.getAnnotationsForElementType(WiringElementType.DependentBean)));
           break;
 
         case DependentBean:
-          registerHandler(entry.getValue(), new JSR330AnnotationHandler() {
-            @Override
-            public boolean handle(final InjectableInstance instance,
-                                  final Annotation annotation,
-                                  final IOCProcessingContext context) {
-
-              final List<Injector> injectors
-                  = new ArrayList<Injector>(injectionContext.getInjectors(instance.getEnclosingType()));
-              final Injector injector;
-
-              final Iterator<Injector> injectorIterator = injectors.iterator();
-              boolean removed = false;
-              while (injectorIterator.hasNext()) {
-                if (!injectorIterator.next().isEnabled()) {
-                  injectorIterator.remove();
-                  removed = true;
-                }
-              }
-
-              if (injectors.isEmpty() && removed) {
-                return true;
-              }
-
-              if (!injectors.isEmpty()) {
-                injector = injectors.get(0);
-              }
-              else {
-                injector = injectionContext.getInjectorFactory()
-                    .getTypeInjector(instance.getEnclosingType(), injectionContext);
-              }
-
-              if (injector.isEnabled() && injector.isRegularTypeInjector()) {
-                injector.renderProvider(instance);
-              }
-              return true;
-            }
-          });
+          registerHandler(entry.getValue(), new JSR330DependentBeanExtension());
           break;
 
         case SingletonBean:
-          registerHandler(entry.getValue(), new JSR330AnnotationHandler() {
-            @Override
-            public boolean handle(final InjectableInstance instance,
-                                  final Annotation annotation,
-                                  final IOCProcessingContext context) {
-              final Injector injector = injectionContext.getInjector(instance.getEnclosingType());
-
-              if (injector.isEnabled()) {
-                injector.renderProvider(instance);
-              }
-              return true;
-            }
-          });
+          registerHandler(entry.getValue(), new JSR330SingletonBeanExtension());
           break;
       }
     }
