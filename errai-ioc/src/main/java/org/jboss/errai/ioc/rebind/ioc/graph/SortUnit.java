@@ -30,7 +30,7 @@ import com.google.gwt.dev.util.collect.IdentityHashSet;
 
 /**
  * A sort unit is a logical sorting element for the IOC container on which to order operations in order to correctly
- * render the bootstrapping code. A SortUnit is essentially a node in a directed graph and may have cycles.
+ * render the bootstrapping code. A SortUnit is essentially a node in a directed graph that may have cycles.
  *
  * @author Mike Brock
  */

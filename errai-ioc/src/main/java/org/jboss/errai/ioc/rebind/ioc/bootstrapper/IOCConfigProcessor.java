@@ -491,7 +491,55 @@ public class IOCConfigProcessor {
   @SuppressWarnings({"unchecked"})
   public void process(final IOCProcessingContext context) {
     setupHandlers();
+    processTasks(context);
 
+    final List<SortUnit> toSort = injectionContext.getGraphBuilder().build();
+    final List<SortUnit> list = GraphSort.sortGraph(toSort);
+
+    generateBeanGraphGVInSeparateThread(list);
+    addCyclesToInjectionContext(list);
+
+    for (final SortUnit unit : list) {
+      for (final Object item : unit.getItems()) {
+        if (item instanceof ProcessingDelegate) {
+          ((ProcessingDelegate) item).process();
+        }
+      }
+    }
+  }
+
+  private void addCyclesToInjectionContext(final List<SortUnit> list) {
+    for (final SortUnit unit : list) {
+      if (unit.isCyclicGraph()) {
+        final Set<String> knownCycles = new HashSet<String>();
+        knownCycles.add(unit.getType().getFullyQualifiedName());
+
+        for (final SortUnit dep : unit.getDependencies()) {
+          if (dep.isCyclicGraph()) {
+            knownCycles.add(dep.getType().getFullyQualifiedName());
+          }
+        }
+
+        injectionContext.addKnownTypesWithCycles(knownCycles);
+      }
+    }
+  }
+
+  private void generateBeanGraphGVInSeparateThread(final List<SortUnit> list) {
+    ThreadUtil.execute(new Runnable() {
+      @Override
+      public void run() {
+        final File dotFile = new File(RebindUtils.getErraiCacheDir().getAbsolutePath() + "/beangraph.gv");
+        RebindUtils.writeStringToFile(dotFile,
+            "//\n" +
+                "// Generated IOC bean dependency graph in GraphViz DOT format.\n" +
+                "//\n\n" +
+                GraphBuilder.toDOTRepresentation(list));
+      }
+    });
+  }
+
+  private void processTasks(final IOCProcessingContext context) {
     /**
      * Let's accumulate all the processing tasks.
      */
@@ -516,45 +564,6 @@ public class IOCConfigProcessor {
       }
     }
     while (!processingTasksStack.isEmpty());
-
-    final List<SortUnit> toSort = injectionContext.getGraphBuilder().build();
-    final List<SortUnit> list = GraphSort.sortGraph(toSort);
-
-    ThreadUtil.execute(new Runnable() {
-      @Override
-      public void run() {
-        final File dotFile = new File(RebindUtils.getErraiCacheDir().getAbsolutePath() + "/beangraph.gv");
-        RebindUtils.writeStringToFile(dotFile,
-            "//\n" +
-                "// Generated IOC bean dependency graph in GraphViz DOT format.\n" +
-                "//\n\n" +
-                GraphBuilder.toDOTRepresentation(list));
-      }
-    });
-
-
-    for (final SortUnit unit : list) {
-      if (unit.isCyclicGraph()) {
-        final Set<String> knownCycles = new HashSet<String>();
-        knownCycles.add(unit.getType().getFullyQualifiedName());
-
-        for (final SortUnit dep : unit.getDependencies()) {
-          if (dep.isCyclicGraph()) {
-            knownCycles.add(dep.getType().getFullyQualifiedName());
-          }
-        }
-
-        injectionContext.addKnownTypesWithCycles(knownCycles);
-      }
-    }
-
-    for (final SortUnit unit : list) {
-      for (final Object item : unit.getItems()) {
-        if (item instanceof ProcessingDelegate) {
-          ((ProcessingDelegate) item).process();
-        }
-      }
-    }
   }
 
   private void processField(final IOCProcessingContext context, final ProcessingEntry entry,
