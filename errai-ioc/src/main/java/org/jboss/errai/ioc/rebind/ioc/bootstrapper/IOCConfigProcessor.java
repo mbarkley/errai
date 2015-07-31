@@ -23,7 +23,17 @@ import java.io.File;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.Stack;
+import java.util.TreeSet;
 
 import javax.enterprise.context.Dependent;
 import javax.enterprise.context.NormalScope;
@@ -95,6 +105,57 @@ public class IOCConfigProcessor {
       processingTasksStack.push(new TreeSet<ProcessingEntry>());
     }
     return processingTasksStack.peek();
+  }
+
+  private final class ProcessingDelegateImpl implements ProcessingDelegate {
+    private final ProcessingEntry entry;
+    private final IOCProcessingContext context;
+    private final Annotation annotation;
+    private final InjectableInstance injectableInstance;
+    private final MetaClass type;
+    private final DependencyControl dependencyControl;
+
+    private ProcessingDelegateImpl(ProcessingEntry entry, IOCProcessingContext context, Annotation annotation,
+            InjectableInstance injectableInstance, MetaClass type, DependencyControl dependencyControl) {
+      this.entry = entry;
+      this.context = context;
+      this.annotation = annotation;
+      this.injectableInstance = injectableInstance;
+      this.type = type;
+      this.dependencyControl = dependencyControl;
+    }
+
+    @Override
+    public void processDependencies() {
+      entry.handler.getDependencies(dependencyControl, injectableInstance, annotation, context);
+    }
+
+    @Override
+    public boolean process() {
+      if (!checkIfEnabled(type)) {
+        return false;
+      }
+
+      injectionContext.addType(type);
+
+      final List<Injector> injectors = injectionContext.getInjectors(type);
+      final Injector injector;
+
+      if (!injectors.isEmpty()) {
+        injector = injectors.get(0);
+      }
+      else {
+        injector = injectionContext.getInjectorFactory().getTypeInjector(type, injectionContext);
+      }
+
+      return entry.handler
+          .handle(getInjectedInstance(annotation, type, injector, injectionContext), annotation, context);
+    }
+
+    @Override
+    public String toString() {
+      return type.getFullyQualifiedName();
+    }
   }
 
   class DependencyControlImpl implements DependencyControl {
@@ -437,145 +498,19 @@ public class IOCConfigProcessor {
     do {
       for (final ProcessingEntry entry : processingTasksStack.pop()) {
         final Class<? extends Annotation> annotationClass = entry.annotationClass;
-        Target target = annotationClass.getAnnotation(Target.class);
-
-        if (target == null) {
-          target = new Target() {
-            @Override
-            public ElementType[] value() {
-              return new ElementType[]
-                  {ElementType.TYPE, ElementType.CONSTRUCTOR, ElementType.FIELD,
-                      ElementType.METHOD, ElementType.FIELD};
-            }
-
-            @Override
-            public Class<? extends Annotation> annotationType() {
-              return Target.class;
-            }
-          };
-        }
+        final Target target = getTarget(annotationClass);
 
         for (final ElementType elementType : target.value()) {
           final DependencyControlImpl dependencyControl = new DependencyControlImpl(processingTasksStack);
 
           switch (elementType) {
-            case TYPE: {
-              Collection<MetaClass> classes;
-
-              classes = ClassScanner.getTypesAnnotatedWith(annotationClass, context.getPackages(), context.getGeneratorContext());
-              
-              // Get producer classes which are implicitly dependent
-              if (annotationClass.equals(Dependent.class)) {
-                classes = new ArrayList<MetaClass>(classes);
-                final Collection<MetaClass> toCheck = new ArrayList<MetaClass>();
-                for (final MetaMethod method : ClassScanner.getMethodsAnnotatedWith(Produces.class, context.getPackages(), 
-                    context.getGeneratorContext())) {
-                  toCheck.add(method.getDeclaringClass());
-                }
-                for (final MetaField field : ClassScanner.getFieldsAnnotatedWith(Produces.class, context.getPackages(), 
-                    context.getGeneratorContext())) {
-                  toCheck.add(field.getDeclaringClass());
-                }
-                
-                for (final MetaClass clazz : toCheck) {
-                  boolean scoped = false;
-                  for (final Annotation anno : clazz.getAnnotations()) {
-                    if (anno.annotationType().isAnnotationPresent(Scope.class)
-                            || anno.annotationType().isAnnotationPresent(NormalScope.class)) {
-                      scoped = true;
-                      break;
-                    }
-                  }
-                  if (!scoped) {
-                    classes.add(clazz);
-                  }
-                }
-              }
-
-              if (annotationClass.equals(Dependent.class)
-                  && Boolean.getBoolean(IOCBootstrapGenerator.EXPERIMENTAL_INFER_DEPENDENT_BY_REACHABILITY)
-                  && injectionContext.getAllReachableTypes() != null) {
-
-                System.out.println("******************************************************************************");
-                System.out.println("*** EXPERIMENTAL FEATURE ENABLED                                           ***");
-                System.out.println("*** You have enabled support for inferred dependent scope by reachability. ***");
-                System.out.println("***                                                                        ***");
-                System.out.println("*** This feature is designed to allow the @Dependent scope to work         ***");
-                System.out.println("*** as per the JSR-299 specification, without imposing the overhead of     ***");
-                System.out.println("*** adding all translatable beans to the container -- but rather, just     ***");
-                System.out.println("*** those which are reachable within your application.                     ***");
-                System.out.println("***                                                                        ***");
-                System.out.println("*** This feature is only experimental, and may be removed in a future      ***");
-                System.out.println("*** version without notice.                                                ***");
-                System.out.println("******************************************************************************");
-
-                classes = new ArrayList<MetaClass>(classes);
-
-                MetaClass metaClass;
-                Scan:
-                for (final String type : injectionContext.getAllReachableTypes()) {
-                  if (type.indexOf('$') != -1) {
-                    try {
-                      metaClass = MetaClassFactory.get(type);
-                    }
-                    catch (Throwable t) {
-                      continue;
-                    }
-                  }
-                  else {
-                    metaClass = MetaClassFactory.get(type);
-                  }
-
-                  if (metaClass.isDefaultInstantiable() && metaClass.isPublic() && metaClass.isConcrete()) {
-                    for (final Annotation anno : metaClass.getAnnotations()) {
-                      if (anno.annotationType().isAnnotationPresent(Scope.class)
-                          || anno.annotationType().isAnnotationPresent(NormalScope.class)) {
-                        continue Scan;
-                      }
-                    }
-
-                    classes.add(metaClass);
-                  }
-                }
-
-                classes = Collections.unmodifiableCollection(classes);
-              }
-
-              injectionContext.addTopLevelTypes(classes);
-
-              for (final MetaClass clazz : classes) {
-                if (clazz.isAnnotation()) {
-                  if (clazz.isAnnotationPresent(Stereotype.class)) {
-                    final Class<? extends Annotation> stereoType = clazz.asClass().asSubclass(Annotation.class);
-                    for (final MetaClass stereoTypedClass :
-                        ClassScanner.getTypesAnnotatedWith(stereoType, context.getGeneratorContext())) {
-                      handleType(entry, dependencyControl, stereoTypedClass, annotationClass, context);
-                    }
-                  }
-
-                  //TODO: recurse and handle stereotypes
-                  continue;
-                }
-
-                handleType(entry, dependencyControl, clazz, annotationClass, context);
-              }
-            }
+            case TYPE: processTypes(context, entry, annotationClass, dependencyControl);
             break;
 
-            case METHOD: {
-              for (final MetaMethod method : ClassScanner.getMethodsAnnotatedWith(annotationClass, context.getPackages(), 
-                  context.getGeneratorContext())) {
-                handleMethod(entry, dependencyControl, method, annotationClass, context);
-              }
-            }
+            case METHOD: processMethod(context, entry, annotationClass, dependencyControl);
             break;
 
-            case FIELD: {
-              for (final MetaField field : ClassScanner.getFieldsAnnotatedWith(annotationClass, context.getPackages(), 
-                  context.getGeneratorContext())) {
-                handleField(entry, dependencyControl, field, annotationClass, context);
-              }
-            }
+            case FIELD: processField(context, entry, annotationClass, dependencyControl);
           }
         }
       }
@@ -622,6 +557,162 @@ public class IOCConfigProcessor {
     }
   }
 
+  private void processField(final IOCProcessingContext context, final ProcessingEntry entry,
+          final Class<? extends Annotation> annotationClass, final DependencyControlImpl dependencyControl) {
+    {
+      for (final MetaField field : ClassScanner.getFieldsAnnotatedWith(annotationClass, context.getPackages(),
+          context.getGeneratorContext())) {
+        handleField(entry, dependencyControl, field, annotationClass, context);
+      }
+    }
+  }
+
+  private void processMethod(final IOCProcessingContext context, final ProcessingEntry entry,
+          final Class<? extends Annotation> annotationClass, final DependencyControlImpl dependencyControl) {
+    {
+      for (final MetaMethod method : ClassScanner.getMethodsAnnotatedWith(annotationClass, context.getPackages(),
+          context.getGeneratorContext())) {
+        handleMethod(entry, dependencyControl, method, annotationClass, context);
+      }
+    }
+  }
+
+  private void processTypes(final IOCProcessingContext context, final ProcessingEntry entry,
+          final Class<? extends Annotation> annotationClass, final DependencyControlImpl dependencyControl) {
+    Collection<MetaClass> classes;
+
+    classes = ClassScanner.getTypesAnnotatedWith(annotationClass, context.getPackages(), context.getGeneratorContext());
+
+    if (annotationClass.equals(Dependent.class)) {
+      classes = new ArrayList<MetaClass>(classes);
+      classes = findImplicitlyDependentProducers(context, classes);
+    }
+
+    if (annotationClass.equals(Dependent.class)
+            && Boolean.getBoolean(IOCBootstrapGenerator.EXPERIMENTAL_INFER_DEPENDENT_BY_REACHABILITY)
+            && injectionContext.getAllReachableTypes() != null) {
+
+      printInferReachabilityWarning();
+      classes = findImplicitlyDependentReachableTypes(classes);
+    }
+
+    injectionContext.addTopLevelTypes(classes);
+
+    for (final MetaClass clazz : classes) {
+      processType(context, entry, annotationClass, dependencyControl, clazz);
+    }
+  }
+
+  private void processType(final IOCProcessingContext context, final ProcessingEntry entry,
+          final Class<? extends Annotation> annotationClass, final DependencyControlImpl dependencyControl,
+          final MetaClass clazz) {
+    if (clazz.isAnnotation()) {
+      if (clazz.isAnnotationPresent(Stereotype.class)) {
+        final Class<? extends Annotation> stereoType = clazz.asClass().asSubclass(Annotation.class);
+        for (final MetaClass stereoTypedClass : ClassScanner.getTypesAnnotatedWith(stereoType,
+                context.getGeneratorContext())) {
+          handleType(entry, dependencyControl, stereoTypedClass, annotationClass, context);
+        }
+      }
+
+      return;
+    }
+
+    handleType(entry, dependencyControl, clazz, annotationClass, context);
+  }
+
+  private Collection<MetaClass> findImplicitlyDependentReachableTypes(final Collection<MetaClass> classes) {
+    MetaClass metaClass;
+    Scan: for (final String type : injectionContext.getAllReachableTypes()) {
+      if (type.indexOf('$') != -1) {
+        try {
+          metaClass = MetaClassFactory.get(type);
+        } catch (Throwable t) {
+          continue;
+        }
+      }
+      else {
+        metaClass = MetaClassFactory.get(type);
+      }
+
+      if (metaClass.isDefaultInstantiable() && metaClass.isPublic() && metaClass.isConcrete()) {
+        for (final Annotation anno : metaClass.getAnnotations()) {
+          if (anno.annotationType().isAnnotationPresent(Scope.class)
+                  || anno.annotationType().isAnnotationPresent(NormalScope.class)) {
+            continue Scan;
+          }
+        }
+
+        classes.add(metaClass);
+      }
+    }
+
+    return Collections.unmodifiableCollection(classes);
+  }
+
+  private void printInferReachabilityWarning() {
+    System.out.println("******************************************************************************");
+    System.out.println("*** EXPERIMENTAL FEATURE ENABLED                                           ***");
+    System.out.println("*** You have enabled support for inferred dependent scope by reachability. ***");
+    System.out.println("***                                                                        ***");
+    System.out.println("*** This feature is designed to allow the @Dependent scope to work         ***");
+    System.out.println("*** as per the JSR-299 specification, without imposing the overhead of     ***");
+    System.out.println("*** adding all translatable beans to the container -- but rather, just     ***");
+    System.out.println("*** those which are reachable within your application.                     ***");
+    System.out.println("***                                                                        ***");
+    System.out.println("*** This feature is only experimental, and may be removed in a future      ***");
+    System.out.println("*** version without notice.                                                ***");
+    System.out.println("******************************************************************************");
+  }
+
+  private Collection<MetaClass> findImplicitlyDependentProducers(final IOCProcessingContext context, final Collection<MetaClass> classes) {
+    final Collection<MetaClass> toCheck = new ArrayList<MetaClass>();
+    for (final MetaMethod method : ClassScanner.getMethodsAnnotatedWith(Produces.class, context.getPackages(),
+            context.getGeneratorContext())) {
+      toCheck.add(method.getDeclaringClass());
+    }
+    for (final MetaField field : ClassScanner.getFieldsAnnotatedWith(Produces.class, context.getPackages(),
+            context.getGeneratorContext())) {
+      toCheck.add(field.getDeclaringClass());
+    }
+
+    for (final MetaClass clazz : toCheck) {
+      boolean scoped = false;
+      for (final Annotation anno : clazz.getAnnotations()) {
+        if (anno.annotationType().isAnnotationPresent(Scope.class)
+                || anno.annotationType().isAnnotationPresent(NormalScope.class)) {
+          scoped = true;
+          break;
+        }
+      }
+      if (!scoped) {
+        classes.add(clazz);
+      }
+    }
+    return classes;
+  }
+
+  private Target getTarget(final Class<? extends Annotation> annotationClass) {
+    Target target = annotationClass.getAnnotation(Target.class);
+
+    if (target == null) {
+      target = new Target() {
+        @Override
+        public ElementType[] value() {
+          return new ElementType[]
+              {ElementType.TYPE, ElementType.CONSTRUCTOR, ElementType.FIELD,
+                  ElementType.METHOD, ElementType.FIELD};
+        }
+
+        @Override
+        public Class<? extends Annotation> annotationType() {
+          return Target.class;
+        }
+      };
+    }
+    return target;
+  }
+
   @SuppressWarnings("unchecked")
   private void handleType(final ProcessingEntry entry,
                           final DependencyControl dependencyControl,
@@ -646,39 +737,7 @@ public class IOCConfigProcessor {
     final InjectableInstance injectableInstance
         = getInjectedInstance(annotation, type, null, injectionContext);
 
-    final ProcessingDelegate del = new ProcessingDelegate() {
-      @Override
-      public void processDependencies() {
-        entry.handler.getDependencies(dependencyControl, injectableInstance, annotation, context);
-      }
-
-      @Override
-      public boolean process() {
-        if (!checkIfEnabled(type)) {
-          return false;
-        }
-
-        injectionContext.addType(type);
-
-        final List<Injector> injectors = injectionContext.getInjectors(type);
-        final Injector injector;
-
-        if (!injectors.isEmpty()) {
-          injector = injectors.get(0);
-        }
-        else {
-          injector = injectionContext.getInjectorFactory().getTypeInjector(type, injectionContext);
-        }
-
-        return entry.handler
-            .handle(getInjectedInstance(annotation, type, injector, injectionContext), annotation, context);
-      }
-
-      @Override
-      public String toString() {
-        return type.getFullyQualifiedName();
-      }
-    };
+    final ProcessingDelegate del = new ProcessingDelegateImpl(entry, context, annotation, injectableInstance, type, dependencyControl);
 
     entry.handler.registerMetadata(injectableInstance, annotation, context);
 
