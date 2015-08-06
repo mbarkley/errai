@@ -16,12 +16,10 @@
 
 package org.jboss.errai.ioc.rebind.ioc.injector.basic;
 
-import static org.jboss.errai.codegen.builder.impl.ObjectBuilder.newInstanceOf;
 import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
 import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
-import static org.jboss.errai.codegen.util.Stmt.load;
+import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
-import static org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil.getConstructionStrategy;
 
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
@@ -32,27 +30,25 @@ import java.util.Set;
 import javax.enterprise.inject.Specializes;
 import javax.inject.Named;
 
-import org.jboss.errai.codegen.Modifier;
-import org.jboss.errai.codegen.Parameter;
+import org.jboss.errai.codegen.InnerClass;
 import org.jboss.errai.codegen.Statement;
-import org.jboss.errai.codegen.builder.AnonymousClassStructureBuilder;
-import org.jboss.errai.codegen.builder.BlockBuilder;
+import org.jboss.errai.codegen.builder.impl.ClassBuilder;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.ioc.client.api.qualifiers.BuiltInQualifiers;
 import org.jboss.errai.ioc.client.container.BeanProvider;
-import org.jboss.errai.ioc.client.container.CreationalContext;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.exception.InjectionFailure;
 import org.jboss.errai.ioc.rebind.ioc.injector.AbstractInjector;
 import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.Injector;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.ConstructionStatusCallback;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.ConstructionType;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 import org.jboss.errai.ioc.rebind.ioc.metadata.JSR330QualifyingMetadata;
+
+import com.google.gwt.core.client.GWT;
 
 /**
  * This injector implementation is responsible for the lion's share of the container's workload. It is responsible
@@ -63,6 +59,7 @@ import org.jboss.errai.ioc.rebind.ioc.metadata.JSR330QualifyingMetadata;
  */
 public class TypeInjector extends AbstractInjector {
   protected final MetaClass type;
+  protected final String innerProviderClassName;
   protected String instanceVarName;
 
   public TypeInjector(final MetaClass type, final InjectionContext context) {
@@ -101,6 +98,8 @@ public class TypeInjector extends AbstractInjector {
     else {
       qualifyingMetadata = context.getProcessingContext().getQualifyingMetadataFactory().createDefaultMetadata();
     }
+
+    innerProviderClassName = "org.jboss.errai.ioc.client." + type.getFullyQualifiedName().replace('.', '_') + "_provider";
   }
 
   @Override
@@ -111,92 +110,33 @@ public class TypeInjector extends AbstractInjector {
     }
 
     final InjectionContext injectContext = injectableInstance.getInjectionContext();
-    final IOCProcessingContext ctx = injectContext.getProcessingContext();
+    final IOCProcessingContext procContext = injectContext.getProcessingContext();
 
-     /*
-     get a parameterized version of the BeanProvider class, parameterized with the type of
-     bean it produces.
-     */
-    final MetaClass creationCallbackRef = parameterizedAs(BeanProvider.class, typeParametersOf(type));
+    final BuildMetaClass runtimeProviderClass = addRuntimeProviderAbstractInnerClass(procContext);
+    addCreationalCallbackField(procContext, runtimeProviderClass);
+  }
 
-     /*
-     begin building the creational callback, implement the "getInstance" method from the interface
-     and assign its BlockBuilder to a callbackBuilder so we can work with it.
-     */
-    final BlockBuilder<AnonymousClassStructureBuilder> callbackBuilder
-        = newInstanceOf(creationCallbackRef).extend()
-        .publicOverridesMethod("getInstance", Parameter.of(CreationalContext.class, "context", true));
+  private void addCreationalCallbackField(final IOCProcessingContext procContext, final BuildMetaClass runtimeProviderClass) {
+    final MetaClass providerType = parameterizedAs(BeanProvider.class, typeParametersOf(type));
 
-     /* push the method block builder onto the stack, so injection tasks are rendered appropriately. */
-    ctx.pushBlockBuilder(callbackBuilder);
+    creationalCallbackVarName = InjectUtil.getNewInjectorName().concat("_").concat(type.getName()).concat("_creational");
 
-     /* get a new unique variable for the creational callback */
-    creationalCallbackVarName = InjectUtil.getNewInjectorName().concat("_")
-        .concat(type.getName()).concat("_creational");
+    procContext.getBootstrapBuilder()
+               .privateField(creationalCallbackVarName, providerType)
+               .initializesWith(invokeStatic(GWT.class, "create", runtimeProviderClass))
+               .finish();
+  }
 
-     /* get the construction strategy and execute it to wire the bean */
-    getConstructionStrategy(this, injectContext).generateConstructor(new ConstructionStatusCallback() {
-      @Override
-      public void beanConstructed(final ConstructionType constructionType) {
-        final Statement beanRef = Refs.get(instanceVarName);
+  private BuildMetaClass addRuntimeProviderAbstractInnerClass(final IOCProcessingContext procContext) {
+    final BuildMetaClass classDef = ClassBuilder.define(innerProviderClassName)
+                                                .publicScope()
+                                                .abstractClass()
+                                                .implementsInterface(parameterizedAs(BeanProvider.class, typeParametersOf(type)))
+                                                .body()
+                                                .getClassDefinition();
+    procContext.getBootstrapClass().addInnerClass(new InnerClass(classDef));
 
-        callbackBuilder.append(
-            loadVariable("context").invoke("addBean", loadVariable("context").invoke("getBeanReference", load(type),
-                load(qualifyingMetadata.getQualifiers())), beanRef)
-        );
-
-         /* mark this injector as injected so we don't go into a loop if there is a cycle. */
-        setCreated(true);
-      }
-    });
-
-
-    callbackBuilder.appendAll(getAddToEndStatements());
-
-     /*
-     return the instance of the bean from the creational callback.
-     */
-    if (isProxied()) {
-      callbackBuilder.appendAll(createProxyDeclaration(injectContext));
-      callbackBuilder.append(loadVariable(getProxyInstanceVarName()).returnValue());
-    }
-    else {
-      callbackBuilder.append(loadVariable(instanceVarName).returnValue());
-    }
-     /* pop the block builder of the stack now that we're done wiring. */
-    ctx.popBlockBuilder();
-
-     /*
-     declare a final variable for the BeanProvider and initialize it with the anonymous class we just
-     built.
-     */
-    ctx.getBootstrapBuilder().privateField(creationalCallbackVarName, creationCallbackRef).modifiers(Modifier.Final)
-        .initializesWith(callbackBuilder.finish().finish()).finish();
-
-    if (isSingleton()) {
-       /*
-        if the injector is for a singleton, we create a variable to hold the singleton reference in the bootstrapper
-        method and assign it with SimpleCreationalContext.getInstance().
-        */
-      ctx.getBootstrapBuilder().privateField(instanceVarName, type).modifiers(Modifier.Final)
-          .initializesWith(loadVariable(creationalCallbackVarName).invoke("getInstance", Refs.get("context"))).finish();
-
-      registerWithBeanManager(injectContext, Refs.get(instanceVarName));
-    }
-    else {
-      registerWithBeanManager(injectContext, null);
-    }
-
-    setRendered(true);
-    markRendered(injectableInstance);
-
-     /*
-       notify any component waiting for this type that is is ready now.
-      */
-    injectableInstance.getInjectionContext().getProcessingContext()
-        .handleDiscoveryOfType(injectableInstance, getInjectedType());
-
-    injectContext.markProxyClosedIfNeeded(getInjectedType(), getQualifyingMetadata());
+    return classDef;
   }
 
   @Override
