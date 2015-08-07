@@ -267,7 +267,7 @@ public class IOCProcessingContext {
     return bootstrapContextClass;
   }
 
-  public Class<? extends CreationalContext> getCretionalContextClass() {
+  public Class<? extends CreationalContext> getCreationalContextClass() {
     return cretionalContextClass;
   }
 }

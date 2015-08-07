@@ -233,7 +233,7 @@ public class IOCBootstrapGenerator {
       for (final String alternative : alternatives) {
         injectionContextBuilder.enabledAlternative(alternative.trim());
       }
-      
+
       final Collection<String> whitelistItems = PropertiesUtil.getPropertyValues(WHITELIST_PROPERTY, "\\s");
       for (final String item : whitelistItems) {
         injectionContextBuilder.addToWhitelist(item.trim());
@@ -286,18 +286,10 @@ public class IOCBootstrapGenerator {
         processingContext.getContextVariableReference().getType())
         .modifiers(Modifier.Final).initializesWith(Stmt.newObject(bootstrapContextClass)).finish();
 
-    classBuilder.privateField("context", injectionContext.getProcessingContext().getCretionalContextClass())
-        .modifiers(Modifier.Final)
-        .initializesWith(Stmt.loadVariable(processingContext.getContextVariableReference().getName())
-            .invoke("getRootContext")).finish();
-
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     final BlockBuilder builder = new BlockBuilderImpl(classBuilder.getClassDefinition().getInstanceInitializer(), null);
 
-    log.debug("Running before tasks...");
-    start = System.currentTimeMillis();
-    _doRunnableTasks(beforeTasks, builder);
-    log.debug("Tasks run in " + (System.currentTimeMillis() - start) + "ms");
+    doBeforeRunnables(builder);
 
     log.debug("Process dependency graph...");
     start = System.currentTimeMillis();
@@ -340,16 +332,29 @@ public class IOCBootstrapGenerator {
       PrivateAccessUtil.addPrivateAccessStubs(!useReflectionStubs ? "jsni" : "reflection", classBuilder, m);
     }
 
-    log.debug("Running after tasks...");
-    start = System.currentTimeMillis();
-    _doRunnableTasks(afterTasks, blockBuilder);
-    log.debug("Tasks run in " + (System.currentTimeMillis() - start) + "ms");
+    doAfterRunnbales(blockBuilder);
 
     blockBuilder.append(loadVariable(processingContext.getContextVariableReference()).returnValue());
 
     blockBuilder.finish();
 
     return classBuilder.toJavaString();
+  }
+
+  private void doAfterRunnbales(final BlockBuilder<?> blockBuilder) {
+    long start;
+    log.debug("Running after tasks...");
+    start = System.currentTimeMillis();
+    _doRunnableTasks(afterTasks, blockBuilder);
+    log.debug("Tasks run in " + (System.currentTimeMillis() - start) + "ms");
+  }
+
+  private void doBeforeRunnables(final BlockBuilder builder) {
+    long start;
+    log.debug("Running before tasks...");
+    start = System.currentTimeMillis();
+    _doRunnableTasks(beforeTasks, builder);
+    log.debug("Tasks run in " + (System.currentTimeMillis() - start) + "ms");
   }
 
   private static void _doRunnableTasks(final Collection<MetaClass> classes, final BlockBuilder<?> blockBuilder) {

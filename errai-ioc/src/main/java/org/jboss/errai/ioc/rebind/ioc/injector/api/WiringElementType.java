@@ -7,6 +7,7 @@ public enum WiringElementType {
   Type,
   QualifiyingType,
   SingletonBean,
+  NormalScopedBean,
   DependentBean,
   ContextualTopLevelProvider,
   TopLevelProvider,
