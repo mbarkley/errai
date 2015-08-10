@@ -60,7 +60,7 @@ public class IOCConfigProcessor {
       processType(type, builder);
     }
 
-    return builder.resolveDependencies();
+    return builder.createGraph();
   }
 
   private void processType(final MetaClass type, final DependencyGraphBuilder builder) {

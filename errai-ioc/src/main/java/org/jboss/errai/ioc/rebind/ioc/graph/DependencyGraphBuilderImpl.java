@@ -4,10 +4,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
+
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
 
 /**
  * @author Max Barkley <mbarkley@redhat.com>
@@ -15,6 +20,7 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   private final Map<AliasHandle, Alias> aliases = new HashMap<AliasHandle, Alias>();
+  private final Multimap<MetaClass, Alias> directAliasesByAssignableTypes = HashMultimap.create();
   private final Collection<Concrete> concretes = new ArrayList<Concrete>();
 
   @Override
@@ -29,7 +35,35 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   private void linkDirectAlias(final Concrete concrete) {
     final Alias alias = lookupAliasAsAlias(concrete.type, concrete.qualifier);
-    alias.concretes.add(concrete);
+    alias.linked.add(concrete);
+    processAssignableTypes(alias);
+  }
+
+  private void processAssignableTypes(final Alias alias) {
+    directAliasesByAssignableTypes.put(alias.type, alias);
+    processInterfaces(alias.type, alias);
+    if (!alias.type.isInterface()) {
+      processSuperClasses(alias.type, alias);
+    }
+  }
+
+  private void processSuperClasses(final MetaClass type, final Alias alias) {
+    final MetaClass superClass = type.getSuperClass();
+    if (superClass != null && !directAliasesByAssignableTypes.containsKey(superClass)) {
+      directAliasesByAssignableTypes.put(superClass, alias);
+      if (!superClass.getName().equals("java.lang.Object")) {
+        processSuperClasses(superClass, alias);
+      }
+    }
+  }
+
+  private void processInterfaces(final MetaClass type, final Alias alias) {
+    for (final MetaClass iface : type.getInterfaces()) {
+      if (!directAliasesByAssignableTypes.containsKey(iface)) {
+        directAliasesByAssignableTypes.put(iface, alias);
+        processInterfaces(iface, alias);
+      }
+    }
   }
 
   @Override
@@ -60,9 +94,29 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   @Override
-  public DependencyGraph resolveDependencies() {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+  public DependencyGraph createGraph() {
+    linkDependencyAliases();
+  }
+
+  private void linkDependencyAliases() {
+    final Set<Alias> linked = new HashSet<Alias>(aliases.size());
+    for (final Concrete concrete : concretes) {
+      for (final Dependency dep : concrete.dependencies) {
+        if (!linked.contains(dep.alias)) {
+          linkAlias(dep.alias);
+          linked.add(dep.alias);
+        }
+      }
+    }
+  }
+
+  private void linkAlias(final Alias alias) {
+    final Collection<Alias> candidates = directAliasesByAssignableTypes.get(alias.type);
+    for (final Alias candidate : candidates) {
+      if (alias.qualifier.isSatisfiedBy(candidate.qualifier)) {
+        alias.linked.add(candidate);
+      }
+    }
   }
 
   static class Entity implements Injector {
@@ -81,7 +135,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
  }
 
   static class Alias extends Entity {
-    final Collection<Concrete> concretes = new ArrayList<Concrete>();
+    final Collection<Entity> linked = new ArrayList<Entity>();
 
     Alias(final MetaClass type, final Qualifier qualifier) {
       super(type, qualifier);

@@ -14,7 +14,7 @@ public interface DependencyGraphBuilder {
 
   void addDependency(Injector from, Injector to, DependencyType dependencyType);
 
-  DependencyGraph resolveDependencies();
+  DependencyGraph createGraph();
 
   public static enum InjectorType {
     Type, Producer, Provider, ContextualProvider
