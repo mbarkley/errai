@@ -6,7 +6,7 @@ import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.common.client.api.annotations.NamedLogger;
 import org.jboss.errai.ioc.client.api.IOCExtension;
-import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCConfigProcessor;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessor;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
 import org.jboss.errai.ioc.rebind.ioc.injector.AbstractInjector;
@@ -20,12 +20,12 @@ import org.slf4j.LoggerFactory;
 public class LoggerFactoryIOCExtension implements IOCExtensionConfigurator {
 
   @Override
-  public void configure(IOCProcessingContext context, InjectionContext injectionContext, IOCConfigProcessor procFactory) {
+  public void configure(IOCProcessingContext context, InjectionContext injectionContext, IOCProcessor procFactory) {
   }
 
   @Override
   public void afterInitialization(final IOCProcessingContext context, final InjectionContext injectionContext,
-          final IOCConfigProcessor procFactory) {
+          final IOCProcessor procFactory) {
     injectionContext.registerInjector(new AbstractInjector() {
 
       @Override

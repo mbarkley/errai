@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -327,6 +328,13 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   class DependencyGraphImpl implements DependencyGraph {
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public Iterator<Injector> iterator() {
+      return Iterator.class.cast(concretes.iterator());
+    }
+
   }
 
 }

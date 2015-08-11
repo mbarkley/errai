@@ -28,7 +28,7 @@ import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.databinding.client.api.DataBinder;
 import org.jboss.errai.ioc.client.api.IOCExtension;
 import org.jboss.errai.ioc.client.container.RefHolder;
-import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCConfigProcessor;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessor;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
 import org.jboss.errai.ioc.rebind.ioc.injector.AbstractInjector;
@@ -53,12 +53,12 @@ public class DataBindingIOCExtension implements IOCExtensionConfigurator {
 
   @Override
   public void configure(final IOCProcessingContext context, final InjectionContext injectionContext,
-                        final IOCConfigProcessor procFactory) {}
+                        final IOCProcessor procFactory) {}
 
   @Override
   @SuppressWarnings("rawtypes")
   public void afterInitialization(final IOCProcessingContext context, final InjectionContext injectionContext,
-                                  final IOCConfigProcessor procFactory) {
+                                  final IOCProcessor procFactory) {
 
     final Collection<MetaClass> allBindableTypes = DataBindingUtil.getAllBindableTypes(context.getGeneratorContext());
 

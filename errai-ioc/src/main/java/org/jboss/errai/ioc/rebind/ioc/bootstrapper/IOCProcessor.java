@@ -16,44 +16,79 @@
 
 package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
 
+import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
+import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
+import static org.jboss.errai.config.rebind.EnvUtil.getAllReachableClasses;
+
 import java.lang.annotation.Annotation;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 import javax.inject.Provider;
 
+import org.jboss.errai.codegen.InnerClass;
+import org.jboss.errai.codegen.builder.ClassStructureBuilder;
+import org.jboss.errai.codegen.builder.impl.ClassBuilder;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaConstructor;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
+import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
+import org.jboss.errai.config.rebind.ReachableTypes;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
+import org.jboss.errai.ioc.client.container.RuntimeInjector;
 import org.jboss.errai.ioc.rebind.ioc.graph.DefaultQualifierFactory;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.InjectorType;
+import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilderImpl;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injector;
 import org.jboss.errai.ioc.rebind.ioc.graph.QualifierFactory;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
-/**
- * The main IOC configuration processor. This class is responsible for scanning the classpath, finding beans,
- * reading configuration, and then configuring the IOC code generator to emit the bootstrapper code.
- */
-public class IOCConfigProcessor {
+public class IOCProcessor {
 
   private final InjectionContext injectionContext;
   private final QualifierFactory qualFactory;
 
-  public IOCConfigProcessor(final InjectionContext injectionContext) {
+  public IOCProcessor(final InjectionContext injectionContext) {
     this.injectionContext = injectionContext;
     this.qualFactory = new DefaultQualifierFactory();
   }
 
-  public void process(IOCProcessingContext processingContext) {
+  public void process(final IOCProcessingContext processingContext) {
+    final ReachableTypes reachableTypes = getAllReachableClasses(processingContext.getGeneratorContext());
+    final Collection<String> reachableTypeNames = reachableTypes.toCollection();
+    final Collection<MetaClass> reachableMetaClasses = new ArrayList<MetaClass>(reachableTypeNames.size());
+
+    for (final String fqcn : reachableTypeNames) {
+      reachableMetaClasses.add(MetaClassFactory.get(fqcn));
+    }
+
+    final DependencyGraphBuilder graphBuilder = new DependencyGraphBuilderImpl();
+    final DependencyGraph dependencyGraph = processDependencies(reachableMetaClasses, graphBuilder);
+    InjectorGenerator.setDependencyGraph(dependencyGraph);
+
+    for (final Injector injector : dependencyGraph) {
+      addRuntimeInjectorDeclaration(injector, processingContext);
+    }
+  }
+
+  private void addRuntimeInjectorDeclaration(final Injector injector, final IOCProcessingContext processingContext) {
+    final ClassStructureBuilder builder = processingContext.getBootstrapBuilder();
+    final BuildMetaClass runtimeInjector = ClassBuilder.define(InjectorGenerator.getInjectorClassName(injector.getInjectedType()))
+                                                       .publicScope()
+                                                       .abstractClass()
+                                                       .implementsInterface(parameterizedAs(RuntimeInjector.class, typeParametersOf(injector.getInjectedType())))
+                                                       .body()
+                                                       .getClassDefinition();
+    builder.declaresInnerClass(new InnerClass(runtimeInjector));
   }
 
   private DependencyGraph processDependencies(final Collection<MetaClass> types, final DependencyGraphBuilder builder) {

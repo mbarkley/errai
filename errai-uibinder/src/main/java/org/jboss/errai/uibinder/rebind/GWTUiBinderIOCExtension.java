@@ -35,7 +35,7 @@ import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.api.IOCExtension;
 import org.jboss.errai.ioc.client.api.PackageTarget;
-import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCConfigProcessor;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessor;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
 import org.jboss.errai.ioc.rebind.ioc.injector.AbstractInjector;
@@ -53,7 +53,7 @@ import java.lang.annotation.Annotation;
 @IOCExtension
 public class GWTUiBinderIOCExtension implements IOCExtensionConfigurator {
   @Override
-  public void configure(final IOCProcessingContext context, final InjectionContext injectionContext, final IOCConfigProcessor procFactory) {
+  public void configure(final IOCProcessingContext context, final InjectionContext injectionContext, final IOCProcessor procFactory) {
 
     context.registerTypeDiscoveryListener(new TypeDiscoveryListener() {
       @Override
@@ -191,6 +191,6 @@ public class GWTUiBinderIOCExtension implements IOCExtensionConfigurator {
   }
 
   @Override
-  public void afterInitialization(IOCProcessingContext context, InjectionContext injectionContext, IOCConfigProcessor procFactory) {
+  public void afterInitialization(IOCProcessingContext context, InjectionContext injectionContext, IOCProcessor procFactory) {
   }
 }

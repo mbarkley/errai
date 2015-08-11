@@ -264,7 +264,7 @@ public class IOCBootstrapGenerator {
 
   private String generateBootstrappingClassSource(final InjectionContext injectionContext) {
 
-    final IOCConfigProcessor processorFactory = new IOCConfigProcessor(injectionContext);
+    final IOCProcessor processorFactory = new IOCProcessor(injectionContext);
 
     log.debug("Processing IOC extensions...");
     long start = System.currentTimeMillis();
@@ -370,7 +370,7 @@ public class IOCBootstrapGenerator {
 
   public static void processExtensions(final GeneratorContext context,
                                        final InjectionContext injectionContext,
-                                       final IOCConfigProcessor processorFactory,
+                                       final IOCProcessor processorFactory,
                                        final List<MetaClass> beforeTasks,
                                        final List<MetaClass> afterTasks) {
 
