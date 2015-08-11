@@ -10,6 +10,11 @@ public class DefaultQualifierFactory implements QualifierFactory {
     public boolean isSatisfiedBy(Qualifier other) {
       return true;
     }
+
+    @Override
+    public String toString() {
+      return "UNIVERSAL";
+    }
   };
 
   @Override

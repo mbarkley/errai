@@ -247,6 +247,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     public MetaClass getInjectedType() {
       return type;
     }
+
+    @Override
+    public String toString() {
+      return type.getName() + "$" + qualifier.toString();
+    }
  }
 
   static class Alias extends Entity {
@@ -255,6 +260,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     Alias(final MetaClass type, final Qualifier qualifier) {
       super(type, qualifier);
+    }
+
+    @Override
+    public String toString() {
+      return "[Alias:" + super.toString() + "]";
     }
   }
 
@@ -268,6 +278,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       this.wiringTypes = wiringTypes;
       this.injectorType = injectorType;
     }
+
+    @Override
+    public String toString() {
+      return "[Concrete:" + super.toString() + "]";
+    }
   }
 
   static class Dependency {
@@ -277,6 +292,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     Dependency(final Alias alias, final DependencyType dependencyType) {
       this.alias = alias;
       this.dependencyType = dependencyType;
+    }
+
+    @Override
+    public String toString() {
+      return "[depType=" + dependencyType.toString() + ", alias=" + alias.toString() + "]";
     }
   }
 
