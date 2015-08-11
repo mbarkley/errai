@@ -100,10 +100,12 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   @Override
   public DependencyGraph createGraph() {
     linkDependencyAliases();
-    validateDependencies();
+    resolveDependencies();
+
+    return new DependencyGraphImpl();
   }
 
-  private void validateDependencies() {
+  private void resolveDependencies() {
     final Set<Concrete> visited = new HashSet<Concrete>();
     final Stack<DFSFrame> visiting = new Stack<DFSFrame>();
 
@@ -168,6 +170,10 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   private Concrete resolveDependency(final Dependency dep) {
+    if (dep.alias.resolution != null) {
+      return dep.alias.resolution;
+    }
+
     final List<Concrete> resolved = new ArrayList<Concrete>();
     final Queue<Alias> resolutionQueue = new LinkedList<Alias>();
     resolutionQueue.add(dep.alias);
@@ -227,7 +233,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
   }
 
-  static class Entity implements Injector {
+  static abstract class Entity implements Injector {
     final MetaClass type;
     final Qualifier qualifier;
 
@@ -244,6 +250,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   static class Alias extends Entity {
     final Collection<Entity> linked = new ArrayList<Entity>();
+    Concrete resolution;
 
     Alias(final MetaClass type, final Qualifier qualifier) {
       super(type, qualifier);
@@ -317,6 +324,9 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     public int hashCode() {
       return concrete.hashCode();
     }
+  }
+
+  class DependencyGraphImpl implements DependencyGraph {
   }
 
 }

@@ -29,6 +29,7 @@ import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
+import org.jboss.errai.ioc.rebind.ioc.graph.DefaultQualifierFactory;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.DependencyType;
@@ -49,7 +50,7 @@ public class IOCConfigProcessor {
 
   public IOCConfigProcessor(final InjectionContext injectionContext) {
     this.injectionContext = injectionContext;
-    this.qualFactory = null;
+    this.qualFactory = new DefaultQualifierFactory();
   }
 
   public void process(IOCProcessingContext processingContext) {
@@ -227,7 +228,7 @@ public class IOCConfigProcessor {
   }
 
   private boolean isProxyable(final MetaClass type) {
-    return (type.getConstructor(new MetaClass[0]) != null);
+    return type.isDefaultInstantiable();
   }
 
   private boolean isNormalScoped(final MetaClass type) {
