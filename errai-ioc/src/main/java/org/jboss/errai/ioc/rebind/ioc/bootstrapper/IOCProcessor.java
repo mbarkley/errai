@@ -18,11 +18,10 @@ package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
 
 import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
 import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
-import static org.jboss.errai.config.rebind.EnvUtil.getAllReachableClasses;
 
 import java.lang.annotation.Annotation;
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 
 import javax.inject.Provider;
@@ -30,15 +29,13 @@ import javax.inject.Provider;
 import org.jboss.errai.codegen.InnerClass;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.impl.ClassBuilder;
-import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
-import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaConstructor;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
-import org.jboss.errai.config.rebind.ReachableTypes;
+import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.client.container.RuntimeInjector;
 import org.jboss.errai.ioc.rebind.ioc.graph.DefaultQualifierFactory;
@@ -63,16 +60,10 @@ public class IOCProcessor {
   }
 
   public void process(final IOCProcessingContext processingContext) {
-    final ReachableTypes reachableTypes = getAllReachableClasses(processingContext.getGeneratorContext());
-    final Collection<String> reachableTypeNames = reachableTypes.toCollection();
-    final Collection<MetaClass> reachableMetaClasses = new ArrayList<MetaClass>(reachableTypeNames.size());
-
-    for (final String fqcn : reachableTypeNames) {
-      reachableMetaClasses.add(MetaClassFactory.get(fqcn));
-    }
+    final Collection<MetaClass> allMetaClasses = findRelevantClasses(processingContext);
 
     final DependencyGraphBuilder graphBuilder = new DependencyGraphBuilderImpl();
-    final DependencyGraph dependencyGraph = processDependencies(reachableMetaClasses, graphBuilder);
+    final DependencyGraph dependencyGraph = processDependencies(allMetaClasses, graphBuilder);
     InjectorGenerator.setDependencyGraph(dependencyGraph);
 
     for (final Injector injector : dependencyGraph) {
@@ -80,8 +71,51 @@ public class IOCProcessor {
     }
   }
 
+  private Collection<MetaClass> findRelevantClasses(final IOCProcessingContext processingContext) {
+    final Collection<MetaClass> allMetaClasses = new HashSet<MetaClass>();
+
+    final WiringElementType[] typeLevelWiringTypes = new WiringElementType[] {
+        WiringElementType.DependentBean,
+        WiringElementType.NormalScopedBean,
+        WiringElementType.TopLevelProvider,
+        WiringElementType.ContextualTopLevelProvider
+    };
+
+    final WiringElementType[] methodLevelWiringTypes = new WiringElementType[] {
+        WiringElementType.ProducerElement
+    };
+
+    final WiringElementType[] fieldLevelWiringTypes = new WiringElementType[] {
+        WiringElementType.ProducerElement,
+        WiringElementType.InjectionPoint
+    };
+
+    for (final WiringElementType wiringType : typeLevelWiringTypes) {
+      for (final Class<? extends Annotation> anno : injectionContext.getAnnotationsForElementType(wiringType)) {
+        allMetaClasses.addAll(ClassScanner.getTypesAnnotatedWith(anno));
+      }
+    }
+
+    for (final WiringElementType wiringType : methodLevelWiringTypes) {
+      for (final Class<? extends Annotation> anno : injectionContext.getAnnotationsForElementType(wiringType)) {
+        for (final MetaMethod method : ClassScanner.getMethodsAnnotatedWith(anno, processingContext.getPackages(), processingContext.getGeneratorContext())) {
+          allMetaClasses.add(method.getDeclaringClass());
+        }
+      }
+    }
+
+    for (final WiringElementType wiringType : fieldLevelWiringTypes) {
+      for (final Class<? extends Annotation> anno : injectionContext.getAnnotationsForElementType(wiringType)) {
+        for (final MetaField field : ClassScanner.getFieldsAnnotatedWith(anno, processingContext.getPackages(), processingContext.getGeneratorContext())) {
+          allMetaClasses.add(field.getDeclaringClass());
+        }
+      }
+    }
+    return allMetaClasses;
+  }
+
   private void addRuntimeInjectorDeclaration(final Injector injector, final IOCProcessingContext processingContext) {
-    final ClassStructureBuilder builder = processingContext.getBootstrapBuilder();
+    final ClassStructureBuilder<?> builder = processingContext.getBootstrapBuilder();
     final BuildMetaClass runtimeInjector = ClassBuilder.define(InjectorGenerator.getInjectorClassName(injector.getInjectedType()))
                                                        .publicScope()
                                                        .abstractClass()
@@ -128,7 +162,7 @@ public class IOCProcessor {
 
   private void addContextualProviderInjector(final Injector typeInjector, final DependencyGraphBuilder builder) {
     final MetaClass type = typeInjector.getInjectedType();
-    final MetaMethod providerMethod = type.getMethod("provider", Class[].class, Annotation[].class);
+    final MetaMethod providerMethod = type.getMethod("provide", Class[].class, Annotation[].class);
     builder.addConcreteInjector(providerMethod.getReturnType(), qualFactory.universalQualifier(), InjectorType.ContextualProvider, WiringElementType.TopLevelProvider);
     final Injector alias = builder.lookupAlias(providerMethod.getReturnType(), qualFactory.universalQualifier());
     builder.addDependency(typeInjector, alias, DependencyType.ProducerParameter);
@@ -192,29 +226,9 @@ public class IOCProcessor {
 
   private void addConstructorInjectionPoints(final Injector typeInjector, final MetaConstructor injectableConstructor, final DependencyGraphBuilder builder) {
     for (final MetaParameter param : injectableConstructor.getParameters()) {
-      final WiringElementType scope = getScope(param);
       final Injector paramAlias = builder.lookupAlias(param.getType(), qualFactory.create(param));
       builder.addDependency(typeInjector, paramAlias, DependencyType.Constructor);
     }
-  }
-
-  private WiringElementType getScope(final HasAnnotations annotated) {
-    if (isNormalScoped(annotated)) {
-      return WiringElementType.NormalScopedBean;
-    } else {
-      return WiringElementType.DependentBean;
-    }
-  }
-
-  private boolean isNormalScoped(HasAnnotations annotated) {
-    final Collection<Class<? extends Annotation>> annotations = injectionContext.getAnnotationsForElementType(WiringElementType.NormalScopedBean);
-    for (final Class<? extends Annotation> anno : annotations) {
-      if (annotated.isAnnotationPresent(anno)) {
-        return true;
-      }
-    }
-
-    return false;
   }
 
   private MetaConstructor getInjectableConstructor(final MetaClass type) {
