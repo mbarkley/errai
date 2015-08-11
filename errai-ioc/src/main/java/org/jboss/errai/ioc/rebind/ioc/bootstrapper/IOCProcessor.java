@@ -37,6 +37,7 @@ import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
+import org.jboss.errai.ioc.client.api.EnabledByProperty;
 import org.jboss.errai.ioc.client.container.RuntimeInjector;
 import org.jboss.errai.ioc.rebind.ioc.graph.DefaultQualifierFactory;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
@@ -245,15 +246,23 @@ public class IOCProcessor {
   }
 
   private boolean isTypeInjectable(final MetaClass type) {
-    if (isNormalScoped(type)) {
-      if (isProxyable(type)) {
-        return hasAtMostOneInjectableConstructor(type);
-      } else {
-        // TODO improve message
-        throw new RuntimeException("The type " + type.getName() + " must be proxyable.");
-      }
+    if (type.isAnnotationPresent(EnabledByProperty.class)) {
+      final EnabledByProperty anno = type.getAnnotation(EnabledByProperty.class);
+      final boolean propValue = Boolean.getBoolean(anno.value());
+      final boolean negated = anno.negated();
+
+      return propValue ^ negated;
     } else {
-      return true;
+      if (isNormalScoped(type)) {
+        if (isProxyable(type)) {
+          return hasAtMostOneInjectableConstructor(type);
+        } else {
+          // TODO improve message
+          throw new RuntimeException("The type " + type.getName() + " must be proxyable.");
+        }
+      } else {
+        return true;
+      }
     }
   }
 
