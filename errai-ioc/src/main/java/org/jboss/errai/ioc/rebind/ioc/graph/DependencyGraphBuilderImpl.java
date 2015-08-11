@@ -228,7 +228,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   private void linkAlias(final Alias alias) {
     final Collection<Alias> candidates = directAliasesByAssignableTypes.get(alias.type);
     for (final Alias candidate : candidates) {
-      if (alias.qualifier.isSatisfiedBy(candidate.qualifier)) {
+      if (alias.qualifier.isSatisfiedBy(candidate.qualifier) && !candidate.equals(alias)) {
         alias.linked.add(candidate);
       }
     }
@@ -255,7 +255,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
  }
 
   static class Alias extends Entity {
-    final Collection<Entity> linked = new ArrayList<Entity>();
+    final Collection<Entity> linked = new HashSet<Entity>();
     Concrete resolution;
 
     Alias(final MetaClass type, final Qualifier qualifier) {
@@ -322,6 +322,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     public int hashCode() {
       return type.hashCode() ^ qualifier.hashCode();
     }
+
+    @Override
+    public String toString() {
+      return "[AliasHandle:" + type.getName() + "$" + qualifier.toString() + "]";
+    }
   }
 
   static class DFSFrame {
@@ -344,6 +349,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     @Override
     public int hashCode() {
       return concrete.hashCode();
+    }
+
+    @Override
+    public String toString() {
+      return "<concrete=" + concrete.toString() + ", index=" + dependencyIndex + ">";
     }
   }
 
