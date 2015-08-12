@@ -10,10 +10,10 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
  */
 public interface DependencyGraphBuilder {
 
-  Injectable addConcreteInjector(MetaClass injectedType, Qualifier qualifier, Class<? extends Annotation> literalScope,
+  Injectable addConcreteInjectable(MetaClass injectedType, Qualifier qualifier, Class<? extends Annotation> literalScope,
           InjectorType injectorType, WiringElementType... wiringTypes);
 
-  Injectable lookupAlias(MetaClass type, Qualifier qualifier);
+  Injectable lookupAbstractInjectable(MetaClass type, Qualifier qualifier);
 
   void addDependency(Injectable from, Injectable to, DependencyType dependencyType);
 

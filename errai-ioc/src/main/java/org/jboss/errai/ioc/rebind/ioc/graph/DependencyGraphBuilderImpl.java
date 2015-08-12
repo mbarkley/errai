@@ -25,99 +25,99 @@ import com.google.common.collect.Multimap;
  */
 public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
-  private final Map<AliasHandle, Alias> aliases = new HashMap<AliasHandle, Alias>();
-  private final Multimap<MetaClass, Alias> directAliasesByAssignableTypes = HashMultimap.create();
-  private final Collection<Concrete> concretes = new ArrayList<Concrete>();
+  private final Map<AbstractInjectableHandle, AbstractInjectable> abstractInjectables = new HashMap<AbstractInjectableHandle, AbstractInjectable>();
+  private final Multimap<MetaClass, AbstractInjectable> directAbstractInjectablesByAssignableTypes = HashMultimap.create();
+  private final Collection<ConcreteInjectable> concretes = new ArrayList<ConcreteInjectable>();
 
   @Override
-  public Injectable addConcreteInjector(final MetaClass injectedType, final Qualifier qualifier, Class<? extends Annotation> literalScope,
+  public Injectable addConcreteInjectable(final MetaClass injectedType, final Qualifier qualifier, Class<? extends Annotation> literalScope,
           final InjectorType injectorType, final WiringElementType... wiringTypes) {
-    final Concrete concrete = new Concrete(injectedType, qualifier, literalScope, injectorType, Arrays.asList(wiringTypes));
+    final ConcreteInjectable concrete = new ConcreteInjectable(injectedType, qualifier, literalScope, injectorType, Arrays.asList(wiringTypes));
     concretes.add(concrete);
-    linkDirectAlias(concrete);
+    linkDirectAbstractInjectable(concrete);
 
     return concrete;
   }
 
-  private void linkDirectAlias(final Concrete concrete) {
-    final Alias alias = lookupAliasAsAlias(concrete.type, concrete.qualifier);
-    alias.linked.add(concrete);
-    processAssignableTypes(alias);
+  private void linkDirectAbstractInjectable(final ConcreteInjectable concreteInjectable) {
+    final AbstractInjectable abstractInjectable = lookupAsAbstractInjectable(concreteInjectable.type, concreteInjectable.qualifier);
+    abstractInjectable.linked.add(concreteInjectable);
+    processAssignableTypes(abstractInjectable);
   }
 
-  private void processAssignableTypes(final Alias alias) {
-    directAliasesByAssignableTypes.put(alias.type, alias);
-    processInterfaces(alias.type, alias);
-    if (!alias.type.isInterface()) {
-      processSuperClasses(alias.type, alias);
+  private void processAssignableTypes(final AbstractInjectable abstractInjectable) {
+    directAbstractInjectablesByAssignableTypes.put(abstractInjectable.type, abstractInjectable);
+    processInterfaces(abstractInjectable.type, abstractInjectable);
+    if (!abstractInjectable.type.isInterface()) {
+      processSuperClasses(abstractInjectable.type, abstractInjectable);
     }
   }
 
-  private void processSuperClasses(final MetaClass type, final Alias alias) {
+  private void processSuperClasses(final MetaClass type, final AbstractInjectable abstractInjectable) {
     final MetaClass superClass = type.getSuperClass();
-    if (superClass != null && !directAliasesByAssignableTypes.containsKey(superClass)) {
-      directAliasesByAssignableTypes.put(superClass, alias);
+    if (superClass != null && !directAbstractInjectablesByAssignableTypes.containsKey(superClass)) {
+      directAbstractInjectablesByAssignableTypes.put(superClass, abstractInjectable);
       if (!superClass.getName().equals("java.lang.Object")) {
-        processSuperClasses(superClass, alias);
+        processSuperClasses(superClass, abstractInjectable);
       }
     }
   }
 
-  private void processInterfaces(final MetaClass type, final Alias alias) {
+  private void processInterfaces(final MetaClass type, final AbstractInjectable abstractInjectable) {
     for (final MetaClass iface : type.getInterfaces()) {
-      if (!directAliasesByAssignableTypes.containsKey(iface)) {
-        directAliasesByAssignableTypes.put(iface, alias);
-        processInterfaces(iface, alias);
+      if (!directAbstractInjectablesByAssignableTypes.containsKey(iface)) {
+        directAbstractInjectablesByAssignableTypes.put(iface, abstractInjectable);
+        processInterfaces(iface, abstractInjectable);
       }
     }
   }
 
   @Override
-  public Injectable lookupAlias(final MetaClass type, final Qualifier qualifier) {
-    return lookupAliasAsAlias(type, qualifier);
+  public Injectable lookupAbstractInjectable(final MetaClass type, final Qualifier qualifier) {
+    return lookupAsAbstractInjectable(type, qualifier);
   }
 
-  private Alias lookupAliasAsAlias(final MetaClass type, final Qualifier qualifier) {
-    final AliasHandle handle = new AliasHandle(type, qualifier);
-    Alias alias = aliases.get(handle);
-    if (alias == null) {
-      alias = new Alias(type, qualifier);
-      aliases.put(handle, alias);
+  private AbstractInjectable lookupAsAbstractInjectable(final MetaClass type, final Qualifier qualifier) {
+    final AbstractInjectableHandle handle = new AbstractInjectableHandle(type, qualifier);
+    AbstractInjectable abstractInjectable = abstractInjectables.get(handle);
+    if (abstractInjectable == null) {
+      abstractInjectable = new AbstractInjectable(type, qualifier);
+      abstractInjectables.put(handle, abstractInjectable);
     }
 
-    return alias;
+    return abstractInjectable;
   }
 
   @Override
   public void addDependency(final Injectable from, final Injectable to, DependencyType dependencyType) {
-    assert (from instanceof Concrete);
-    assert (to instanceof Alias);
+    assert (from instanceof ConcreteInjectable);
+    assert (to instanceof AbstractInjectable);
 
-    final Concrete concrete = (Concrete) from;
-    final Alias alias = (Alias) to;
+    final ConcreteInjectable concrete = (ConcreteInjectable) from;
+    final AbstractInjectable abstractInjectable = (AbstractInjectable) to;
 
-    concrete.dependencies.add(new Dependency(alias, dependencyType));
+    concrete.dependencies.add(new Dependency(abstractInjectable, dependencyType));
   }
 
   @Override
   public DependencyGraph createGraph() {
-    linkDependencyAliases();
+    linkAbstractInjectables();
     resolveDependencies();
 
     return new DependencyGraphImpl();
   }
 
   private void resolveDependencies() {
-    final Set<Concrete> visited = new HashSet<Concrete>();
+    final Set<ConcreteInjectable> visited = new HashSet<ConcreteInjectable>();
     final Stack<DFSFrame> visiting = new Stack<DFSFrame>();
 
-    for (final Concrete concrete : concretes) {
+    for (final ConcreteInjectable concrete : concretes) {
       visiting.push(new DFSFrame(concrete));
       do {
         final DFSFrame curFrame = visiting.peek();
         if (curFrame.dependencyIndex < curFrame.concrete.dependencies.size()) {
           final Dependency dep = curFrame.concrete.dependencies.get(curFrame.dependencyIndex);
-          final Concrete resolved = resolveDependency(dep);
+          final ConcreteInjectable resolved = resolveDependency(dep);
           if (visited.contains(resolved)) {
             if (visiting.contains(resolved)) {
               validateCycle(visiting, resolved);
@@ -133,7 +133,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
   }
 
-  private void validateCycle(final Stack<DFSFrame> visiting, final Concrete resolved) {
+  private void validateCycle(final Stack<DFSFrame> visiting, final ConcreteInjectable resolved) {
     if (canBreakCycle(resolved)) {
       return;
     }
@@ -161,7 +161,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     throw new RuntimeException(messageBuilder.toString());
   }
 
-  private boolean canBreakCycle(final Concrete resolved) {
+  private boolean canBreakCycle(final ConcreteInjectable resolved) {
     for (final WiringElementType wiringType : resolved.wiringTypes) {
       if (WiringElementType.NormalScopedBean.equals(wiringType)) {
         return true;
@@ -171,29 +171,29 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     return false;
   }
 
-  private Concrete resolveDependency(final Dependency dep) {
-    if (dep.alias.resolution != null) {
-      return dep.alias.resolution;
+  private ConcreteInjectable resolveDependency(final Dependency dep) {
+    if (dep.injectable.resolution != null) {
+      return dep.injectable.resolution;
     }
 
-    final List<Concrete> resolved = new ArrayList<Concrete>();
-    final Queue<Alias> resolutionQueue = new LinkedList<Alias>();
-    resolutionQueue.add(dep.alias);
+    final List<ConcreteInjectable> resolved = new ArrayList<ConcreteInjectable>();
+    final Queue<AbstractInjectable> resolutionQueue = new LinkedList<AbstractInjectable>();
+    resolutionQueue.add(dep.injectable);
 
     do {
-      final Alias cur = resolutionQueue.poll();
+      final AbstractInjectable cur = resolutionQueue.poll();
       for (final BaseInjectable link : cur.linked) {
-        if (link instanceof Alias) {
-          resolutionQueue.add((Alias) link);
-        } else if (link instanceof Concrete) {
-          resolved.add((Concrete) link);
+        if (link instanceof AbstractInjectable) {
+          resolutionQueue.add((AbstractInjectable) link);
+        } else if (link instanceof ConcreteInjectable) {
+          resolved.add((ConcreteInjectable) link);
         }
       }
     } while (resolutionQueue.size() > 0);
 
     if (resolved.isEmpty()) {
       // TODO improve message
-      throw new RuntimeException("Unsatisfied dependency: " + dep.alias.type.getName());
+      throw new RuntimeException("Unsatisfied dependency: " + dep.injectable.type.getName());
     } else if (resolved.size() > 1) {
       throwAmbiguousDependencyException(dep, resolved);
     }
@@ -201,9 +201,9 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     return resolved.get(0);
   }
 
-  private void throwAmbiguousDependencyException(final Dependency dep, final List<Concrete> resolved) {
+  private void throwAmbiguousDependencyException(final Dependency dep, final List<ConcreteInjectable> resolved) {
     final StringBuilder messageBuilder = new StringBuilder();
-    messageBuilder.append("Ambiguous resolution for type " + dep.alias.type.getName() + ".\n")
+    messageBuilder.append("Ambiguous resolution for type " + dep.injectable.type.getName() + ".\n")
                   .append("Resolved types:\n")
                   .append(resolved.get(0));
     for (int i = 1; i < resolved.size(); i++) {
@@ -214,23 +214,23 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     throw new RuntimeException(messageBuilder.toString());
   }
 
-  private void linkDependencyAliases() {
-    final Set<Alias> linked = new HashSet<Alias>(aliases.size());
-    for (final Concrete concrete : concretes) {
+  private void linkAbstractInjectables() {
+    final Set<AbstractInjectable> linked = new HashSet<AbstractInjectable>(abstractInjectables.size());
+    for (final ConcreteInjectable concrete : concretes) {
       for (final Dependency dep : concrete.dependencies) {
-        if (!linked.contains(dep.alias)) {
-          linkAlias(dep.alias);
-          linked.add(dep.alias);
+        if (!linked.contains(dep.injectable)) {
+          linkAbstractInjectable(dep.injectable);
+          linked.add(dep.injectable);
         }
       }
     }
   }
 
-  private void linkAlias(final Alias alias) {
-    final Collection<Alias> candidates = directAliasesByAssignableTypes.get(alias.type);
-    for (final Alias candidate : candidates) {
-      if (alias.qualifier.isSatisfiedBy(candidate.qualifier) && !candidate.equals(alias)) {
-        alias.linked.add(candidate);
+  private void linkAbstractInjectable(final AbstractInjectable abstractInjectable) {
+    final Collection<AbstractInjectable> candidates = directAbstractInjectablesByAssignableTypes.get(abstractInjectable.type);
+    for (final AbstractInjectable candidate : candidates) {
+      if (abstractInjectable.qualifier.isSatisfiedBy(candidate.qualifier) && !candidate.equals(abstractInjectable)) {
+        abstractInjectable.linked.add(candidate);
       }
     }
   }
@@ -260,17 +260,17 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
  }
 
-  static class Alias extends BaseInjectable {
+  static class AbstractInjectable extends BaseInjectable {
     final Collection<BaseInjectable> linked = new HashSet<BaseInjectable>();
-    Concrete resolution;
+    ConcreteInjectable resolution;
 
-    Alias(final MetaClass type, final Qualifier qualifier) {
+    AbstractInjectable(final MetaClass type, final Qualifier qualifier) {
       super(type, qualifier);
     }
 
     @Override
     public String toString() {
-      return "[Alias:" + super.toString() + "]";
+      return "[AbstractInjectable:" + super.toString() + "]";
     }
 
     @Override
@@ -279,13 +279,13 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
   }
 
-  static class Concrete extends BaseInjectable {
+  static class ConcreteInjectable extends BaseInjectable {
     final InjectorType injectorType;
     final Collection<WiringElementType> wiringTypes;
     final List<Dependency> dependencies = new ArrayList<Dependency>();
     final Class<? extends Annotation> literalScope;
 
-    Concrete(final MetaClass type, final Qualifier qualifier, final Class<? extends Annotation> literalScope,
+    ConcreteInjectable(final MetaClass type, final Qualifier qualifier, final Class<? extends Annotation> literalScope,
             final InjectorType injectorType, final Collection<WiringElementType> wiringTypes) {
       super(type, qualifier);
       this.literalScope = literalScope;
@@ -305,35 +305,35 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   static class Dependency {
-    final Alias alias;
+    final AbstractInjectable injectable;
     final DependencyType dependencyType;
 
-    Dependency(final Alias alias, final DependencyType dependencyType) {
-      this.alias = alias;
+    Dependency(final AbstractInjectable abstractInjectable, final DependencyType dependencyType) {
+      this.injectable = abstractInjectable;
       this.dependencyType = dependencyType;
     }
 
     @Override
     public String toString() {
-      return "[depType=" + dependencyType.toString() + ", alias=" + alias.toString() + "]";
+      return "[depType=" + dependencyType.toString() + ", abstractInjectable=" + injectable.toString() + "]";
     }
   }
 
-  static class AliasHandle {
+  static class AbstractInjectableHandle {
     final MetaClass type;
     final Qualifier qualifier;
 
-    AliasHandle(final MetaClass type, final Qualifier qualifier) {
+    AbstractInjectableHandle(final MetaClass type, final Qualifier qualifier) {
       this.type = type;
       this.qualifier = qualifier;
     }
 
     @Override
     public boolean equals(Object obj) {
-      if (!(obj instanceof AliasHandle))
+      if (!(obj instanceof AbstractInjectableHandle))
         return false;
 
-      final AliasHandle other = (AliasHandle) obj;
+      final AbstractInjectableHandle other = (AbstractInjectableHandle) obj;
       return type.equals(other.type) && qualifier.equals(qualifier);
     }
 
@@ -344,21 +344,21 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     @Override
     public String toString() {
-      return "[AliasHandle:" + type.getName() + "$" + qualifier.toString() + "]";
+      return "[AbstractInjectableHandle:" + type.getName() + "$" + qualifier.toString() + "]";
     }
   }
 
   static class DFSFrame {
-    final Concrete concrete;
+    final ConcreteInjectable concrete;
     int dependencyIndex = 0;
 
-    DFSFrame(final Concrete concrete) {
+    DFSFrame(final ConcreteInjectable concrete) {
       this.concrete = concrete;
     }
 
     @Override
     public boolean equals(Object obj) {
-      if (obj instanceof Concrete) {
+      if (obj instanceof ConcreteInjectable) {
         return concrete.equals(obj);
       } else {
         return super.equals(obj);
