@@ -1,51 +1,32 @@
 package org.jboss.errai.ioc.client.container;
 
 import java.lang.annotation.Annotation;
-import java.util.HashMap;
-import java.util.Map;
 
 import javax.enterprise.context.Dependent;
 
 import org.jboss.errai.ioc.client.api.ScopeContext;
 
 @ScopeContext({Dependent.class})
-public class DependentScopeContext implements Context {
-
-  private ContextManager contextManager;
-  private final Map<Class<?>, RuntimeInjector<?>> injectors = new HashMap<Class<?>, RuntimeInjector<?>>();
-
-  @Override
-  public void setContextManager(final ContextManager contextManager) {
-    this.contextManager = contextManager;
-  }
-
-  @Override
-  public <T> void registerInjector(final RuntimeInjector<T> injector) {
-    injectors.put(injector.getClass(), injector);
-  }
+public class DependentScopeContext extends AbstractContext {
 
   @Override
   public <T> T getInstance(final Class<? extends RuntimeInjector<T>> injectorType) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+    return getInjector(injectorType).createInstance(getContextManager());
   }
 
   @Override
-  public <T> T getActiveNonProxiedInstance(Class<? extends RuntimeInjector<T>> injectorType) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+  public <T> T getActiveNonProxiedInstance(final Class<? extends RuntimeInjector<T>> injectorType) {
+    throw new RuntimeException("This method should never be called on the DependentScopeContext because it's beans are not proxied.");
   }
 
   @Override
   public Class<? extends Annotation> getScope() {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+    return Dependent.class;
   }
 
   @Override
   public boolean isActive() {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+    return true;
   }
 
 }
