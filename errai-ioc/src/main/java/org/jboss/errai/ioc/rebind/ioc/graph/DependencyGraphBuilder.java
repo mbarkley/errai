@@ -1,5 +1,7 @@
 package org.jboss.errai.ioc.rebind.ioc.graph;
 
+import java.lang.annotation.Annotation;
+
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
@@ -8,11 +10,12 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
  */
 public interface DependencyGraphBuilder {
 
-  Injector addConcreteInjector(MetaClass injectedType, Qualifier qualifier, InjectorType injectorType, WiringElementType... wiringTypes);
+  Injectable addConcreteInjector(MetaClass injectedType, Qualifier qualifier, Class<? extends Annotation> literalScope,
+          InjectorType injectorType, WiringElementType... wiringTypes);
 
-  Injector lookupAlias(MetaClass type, Qualifier qualifier);
+  Injectable lookupAlias(MetaClass type, Qualifier qualifier);
 
-  void addDependency(Injector from, Injector to, DependencyType dependencyType);
+  void addDependency(Injectable from, Injectable to, DependencyType dependencyType);
 
   DependencyGraph createGraph();
 

@@ -1,5 +1,6 @@
 package org.jboss.errai.ioc.rebind.ioc.graph;
 
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -29,9 +30,9 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   private final Collection<Concrete> concretes = new ArrayList<Concrete>();
 
   @Override
-  public Injector addConcreteInjector(final MetaClass injectedType, final Qualifier qualifier, final InjectorType injectorType,
-          final WiringElementType... wiringTypes) {
-    final Concrete concrete = new Concrete(injectedType, qualifier, injectorType, Arrays.asList(wiringTypes));
+  public Injectable addConcreteInjector(final MetaClass injectedType, final Qualifier qualifier, Class<? extends Annotation> literalScope,
+          final InjectorType injectorType, final WiringElementType... wiringTypes) {
+    final Concrete concrete = new Concrete(injectedType, qualifier, literalScope, injectorType, Arrays.asList(wiringTypes));
     concretes.add(concrete);
     linkDirectAlias(concrete);
 
@@ -72,7 +73,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   @Override
-  public Injector lookupAlias(final MetaClass type, final Qualifier qualifier) {
+  public Injectable lookupAlias(final MetaClass type, final Qualifier qualifier) {
     return lookupAliasAsAlias(type, qualifier);
   }
 
@@ -88,7 +89,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   @Override
-  public void addDependency(final Injector from, final Injector to, DependencyType dependencyType) {
+  public void addDependency(final Injectable from, final Injectable to, DependencyType dependencyType) {
     assert (from instanceof Concrete);
     assert (to instanceof Alias);
 
@@ -181,7 +182,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     do {
       final Alias cur = resolutionQueue.poll();
-      for (final Entity link : cur.linked) {
+      for (final BaseInjectable link : cur.linked) {
         if (link instanceof Alias) {
           resolutionQueue.add((Alias) link);
         } else if (link instanceof Concrete) {
@@ -234,11 +235,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
   }
 
-  static abstract class Entity implements Injector {
+  static abstract class BaseInjectable implements Injectable {
     final MetaClass type;
     final Qualifier qualifier;
 
-    Entity(final MetaClass type, final Qualifier qualifier) {
+    BaseInjectable(final MetaClass type, final Qualifier qualifier) {
       this.type = type;
       this.qualifier = qualifier;
     }
@@ -252,10 +253,15 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     public String toString() {
       return type.getName() + "$" + qualifier.toString();
     }
+
+    @Override
+    public Qualifier getQualifier() {
+      return qualifier;
+    }
  }
 
-  static class Alias extends Entity {
-    final Collection<Entity> linked = new HashSet<Entity>();
+  static class Alias extends BaseInjectable {
+    final Collection<BaseInjectable> linked = new HashSet<BaseInjectable>();
     Concrete resolution;
 
     Alias(final MetaClass type, final Qualifier qualifier) {
@@ -266,15 +272,23 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     public String toString() {
       return "[Alias:" + super.toString() + "]";
     }
+
+    @Override
+    public Class<? extends Annotation> getScope() {
+      return null;
+    }
   }
 
-  static class Concrete extends Entity {
+  static class Concrete extends BaseInjectable {
     final InjectorType injectorType;
     final Collection<WiringElementType> wiringTypes;
     final List<Dependency> dependencies = new ArrayList<Dependency>();
+    final Class<? extends Annotation> literalScope;
 
-    Concrete(final MetaClass type, final Qualifier qualifier, final InjectorType injectorType, final Collection<WiringElementType> wiringTypes) {
+    Concrete(final MetaClass type, final Qualifier qualifier, final Class<? extends Annotation> literalScope,
+            final InjectorType injectorType, final Collection<WiringElementType> wiringTypes) {
       super(type, qualifier);
+      this.literalScope = literalScope;
       this.wiringTypes = wiringTypes;
       this.injectorType = injectorType;
     }
@@ -282,6 +296,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     @Override
     public String toString() {
       return "[Concrete:" + super.toString() + "]";
+    }
+
+    @Override
+    public Class<? extends Annotation> getScope() {
+      return literalScope;
     }
   }
 
@@ -361,7 +380,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Iterator<Injector> iterator() {
+    public Iterator<Injectable> iterator() {
       return Iterator.class.cast(concretes.iterator());
     }
 

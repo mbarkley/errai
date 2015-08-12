@@ -281,7 +281,7 @@ public class IOCBootstrapGenerator {
     classBuilder.privateField("windowContext", WindowInjectionContext.class)
             .modifiers(Modifier.Final)
             .initializesWith(Stmt.invokeStatic(WindowInjectionContext.class, "createOrGet")).finish();
-    
+
     classBuilder.privateField(processingContext.getContextVariableReference().getName(),
         processingContext.getContextVariableReference().getType())
         .modifiers(Modifier.Final).initializesWith(Stmt.newObject(bootstrapContextClass)).finish();
@@ -457,8 +457,8 @@ public class IOCBootstrapGenerator {
    *     an instance of the injection context
    */
   private static void defaultConfigureProcessor(final InjectionContext injectionContext) {
-    injectionContext.mapElementType(WiringElementType.SingletonBean, Singleton.class);
-    injectionContext.mapElementType(WiringElementType.SingletonBean, EntryPoint.class);
+    injectionContext.mapElementType(WiringElementType.NormalScopedBean, Singleton.class);
+    injectionContext.mapElementType(WiringElementType.NormalScopedBean, EntryPoint.class);
 
     injectionContext.mapElementType(WiringElementType.DependentBean, Dependent.class);
 
