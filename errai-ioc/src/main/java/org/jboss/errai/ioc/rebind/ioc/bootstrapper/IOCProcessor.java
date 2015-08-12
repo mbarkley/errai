@@ -246,12 +246,8 @@ public class IOCProcessor {
   }
 
   private boolean isTypeInjectable(final MetaClass type) {
-    if (type.isAnnotationPresent(EnabledByProperty.class)) {
-      final EnabledByProperty anno = type.getAnnotation(EnabledByProperty.class);
-      final boolean propValue = Boolean.getBoolean(anno.value());
-      final boolean negated = anno.negated();
-
-      return propValue ^ negated;
+    if (hasEnablingProperty(type)) {
+      return isEnabledByProperty(type);
     } else {
       if (isNormalScoped(type)) {
         if (isProxyable(type)) {
@@ -264,6 +260,18 @@ public class IOCProcessor {
         return true;
       }
     }
+  }
+
+  private boolean isEnabledByProperty(final MetaClass type) {
+    final EnabledByProperty anno = type.getAnnotation(EnabledByProperty.class);
+    final boolean propValue = Boolean.getBoolean(anno.value());
+    final boolean negated = anno.negated();
+
+    return propValue ^ negated;
+  }
+
+  private boolean hasEnablingProperty(final MetaClass type) {
+    return type.isAnnotationPresent(EnabledByProperty.class);
   }
 
   private boolean hasAtMostOneInjectableConstructor(final MetaClass type) {
