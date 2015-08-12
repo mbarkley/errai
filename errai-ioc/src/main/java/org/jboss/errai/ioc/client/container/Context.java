@@ -1,6 +1,7 @@
 package org.jboss.errai.ioc.client.container;
 
 import java.lang.annotation.Annotation;
+import java.util.Collection;
 
 public interface Context {
 
@@ -15,5 +16,7 @@ public interface Context {
   Class<? extends Annotation> getScope();
 
   boolean isActive();
+
+  Collection<RuntimeInjector<?>> getAllInjectors();
 
 }

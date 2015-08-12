@@ -1,5 +1,7 @@
 package org.jboss.errai.ioc.client.container;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -48,6 +50,11 @@ public abstract class AbstractContext implements Context {
     }
 
     return injector;
+  }
+
+  @Override
+  public Collection<RuntimeInjector<?>> getAllInjectors() {
+    return Collections.unmodifiableCollection(injectors.values());
   }
 
 }

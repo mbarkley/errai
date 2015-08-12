@@ -51,6 +51,8 @@ import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.client.api.EnabledByProperty;
 import org.jboss.errai.ioc.client.api.ScopeContext;
 import org.jboss.errai.ioc.client.container.Context;
+import org.jboss.errai.ioc.client.container.ContextManager;
+import org.jboss.errai.ioc.client.container.ContextManagerImpl;
 import org.jboss.errai.ioc.client.container.RuntimeInjector;
 import org.jboss.errai.ioc.rebind.ioc.graph.DefaultQualifierFactory;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
@@ -83,6 +85,41 @@ public class IOCProcessor {
     InjectorGenerator.setDependencyGraph(dependencyGraph);
 
     final Map<Class<? extends Annotation>, MetaClass> scopeContexts = findScopeContexts(processingContext);
+    final BlockStatement initializer = addScopeContextsToInitializer(processingContext, scopeContexts);
+
+    declaraAndRegisterInjectors(processingContext, dependencyGraph, scopeContexts, initializer);
+    final String contextManagerFieldName = declareContextManagerField(processingContext);
+    addContextsToContextManager(scopeContexts.values(), contextManagerFieldName, initializer);
+  }
+
+  private void addContextsToContextManager(final Collection<MetaClass> scopeContextImpls,
+          final String contextManagerFieldName, final BlockStatement initializer) {
+    for (final MetaClass scopeContextImpl : scopeContextImpls) {
+      initializer.addStatement(loadVariable(contextManagerFieldName).invoke("addContext", loadVariable(getContextVarName(scopeContextImpl))));
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private String declareContextManagerField(final IOCProcessingContext processingContext) {
+    final String contextManagerFieldName = "contextManager";
+    processingContext.getBootstrapBuilder()
+      .privateField(contextManagerFieldName, ContextManager.class)
+      .initializesWith(ObjectBuilder.newInstanceOf(ContextManagerImpl.class))
+      .finish();
+
+    return contextManagerFieldName;
+  }
+
+  private void declaraAndRegisterInjectors(final IOCProcessingContext processingContext, final DependencyGraph dependencyGraph,
+          final Map<Class<? extends Annotation>, MetaClass> scopeContexts, final BlockStatement initializer) {
+    for (final Injectable injectable : dependencyGraph) {
+      addRuntimeInjectorDeclaration(injectable, processingContext);
+      registerInjectorWithContext(injectable, scopeContexts, initializer);
+    }
+  }
+
+  private BlockStatement addScopeContextsToInitializer(final IOCProcessingContext processingContext,
+          final Map<Class<? extends Annotation>, MetaClass> scopeContexts) {
     final BlockStatement initializer = processingContext.getBootstrapClass().getInstanceInitializer();
     for (final Class<? extends Annotation> scope : injectionContext.getAnnotationsForElementType(WiringElementType.NormalScopedBean)) {
       if (scopeContexts.containsKey(scope)) {
@@ -96,11 +133,7 @@ public class IOCProcessor {
     }
     final MetaClass dependentContext = scopeContexts.get(Dependent.class);
     initializer.addStatement(Stmt.declareFinalVariable(getContextVarName(dependentContext), Context.class, ObjectBuilder.newInstanceOf(dependentContext)));
-
-    for (final Injectable injectable : dependencyGraph) {
-      addRuntimeInjectorDeclaration(injectable, processingContext);
-      registerInjectorWithContext(injectable, scopeContexts, initializer);
-    }
+    return initializer;
   }
 
   private void registerInjectorWithContext(final Injectable injectable,
