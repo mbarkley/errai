@@ -4,6 +4,7 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -27,13 +28,13 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   private final Map<AbstractInjectableHandle, AbstractInjectable> abstractInjectables = new HashMap<AbstractInjectableHandle, AbstractInjectable>();
   private final Multimap<MetaClass, AbstractInjectable> directAbstractInjectablesByAssignableTypes = HashMultimap.create();
-  private final Collection<ConcreteInjectable> concretes = new ArrayList<ConcreteInjectable>();
+  private final Map<String, ConcreteInjectable> concretesByName = new HashMap<String, ConcreteInjectable>();
 
   @Override
   public Injectable addConcreteInjectable(final MetaClass injectedType, final Qualifier qualifier, Class<? extends Annotation> literalScope,
           final InjectorType injectorType, final WiringElementType... wiringTypes) {
     final ConcreteInjectable concrete = new ConcreteInjectable(injectedType, qualifier, literalScope, injectorType, Arrays.asList(wiringTypes));
-    concretes.add(concrete);
+    concretesByName.put(concrete.getInjectorClassSimpleName(), concrete);
     linkDirectAbstractInjectable(concrete);
 
     return concrete;
@@ -96,7 +97,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     final ConcreteInjectable concrete = (ConcreteInjectable) from;
     final AbstractInjectable abstractInjectable = (AbstractInjectable) to;
 
-    concrete.dependencies.add(new Dependency(abstractInjectable, dependencyType));
+    concrete.dependencies.add(new DependencyImpl(abstractInjectable, dependencyType));
   }
 
   @Override
@@ -111,12 +112,12 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     final Set<ConcreteInjectable> visited = new HashSet<ConcreteInjectable>();
     final Stack<DFSFrame> visiting = new Stack<DFSFrame>();
 
-    for (final ConcreteInjectable concrete : concretes) {
+    for (final ConcreteInjectable concrete : concretesByName.values()) {
       visiting.push(new DFSFrame(concrete));
       do {
         final DFSFrame curFrame = visiting.peek();
         if (curFrame.dependencyIndex < curFrame.concrete.dependencies.size()) {
-          final Dependency dep = curFrame.concrete.dependencies.get(curFrame.dependencyIndex);
+          final DependencyImpl dep = curFrame.concrete.dependencies.get(curFrame.dependencyIndex);
           final ConcreteInjectable resolved = resolveDependency(dep);
           if (visited.contains(resolved)) {
             if (visiting.contains(resolved)) {
@@ -171,7 +172,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     return false;
   }
 
-  private ConcreteInjectable resolveDependency(final Dependency dep) {
+  private ConcreteInjectable resolveDependency(final DependencyImpl dep) {
     if (dep.injectable.resolution != null) {
       return dep.injectable.resolution;
     }
@@ -198,10 +199,10 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       throwAmbiguousDependencyException(dep, resolved);
     }
 
-    return resolved.get(0);
+    return (dep.injectable.resolution = resolved.get(0));
   }
 
-  private void throwAmbiguousDependencyException(final Dependency dep, final List<ConcreteInjectable> resolved) {
+  private void throwAmbiguousDependencyException(final DependencyImpl dep, final List<ConcreteInjectable> resolved) {
     final StringBuilder messageBuilder = new StringBuilder();
     messageBuilder.append("Ambiguous resolution for type " + dep.injectable.type.getName() + ".\n")
                   .append("Resolved types:\n")
@@ -216,8 +217,8 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   private void linkAbstractInjectables() {
     final Set<AbstractInjectable> linked = new HashSet<AbstractInjectable>(abstractInjectables.size());
-    for (final ConcreteInjectable concrete : concretes) {
-      for (final Dependency dep : concrete.dependencies) {
+    for (final ConcreteInjectable concrete : concretesByName.values()) {
+      for (final DependencyImpl dep : concrete.dependencies) {
         if (!linked.contains(dep.injectable)) {
           linkAbstractInjectable(dep.injectable);
           linked.add(dep.injectable);
@@ -263,12 +264,6 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     public String getInjectorClassSimpleName() {
       return type.getFullyQualifiedName().replace('.', '_') + "_" + qualifier.getIdentifierSafeString();
     }
-
-    @Override
-    public Collection<org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.Dependency> getDependencies() {
-      // TODO Auto-generated method stub
-      throw new RuntimeException("Not yet implemented.");
-    }
  }
 
   static class AbstractInjectable extends BaseInjectable {
@@ -293,12 +288,17 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     public InjectorType getInjectorType() {
       return InjectorType.Abstract;
     }
+
+    @Override
+    public Collection<Dependency> getDependencies() {
+      return Collections.emptyList();
+    }
   }
 
   static class ConcreteInjectable extends BaseInjectable {
     final InjectorType injectorType;
     final Collection<WiringElementType> wiringTypes;
-    final List<Dependency> dependencies = new ArrayList<Dependency>();
+    final List<DependencyImpl> dependencies = new ArrayList<DependencyImpl>();
     final Class<? extends Annotation> literalScope;
 
     ConcreteInjectable(final MetaClass type, final Qualifier qualifier, final Class<? extends Annotation> literalScope,
@@ -323,13 +323,18 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     public InjectorType getInjectorType() {
       return injectorType;
     }
+
+    @Override
+    public Collection<Dependency> getDependencies() {
+      return Collections.<Dependency>unmodifiableCollection(dependencies);
+    }
   }
 
-  static class Dependency {
+  static class DependencyImpl implements Dependency {
     final AbstractInjectable injectable;
     final DependencyType dependencyType;
 
-    Dependency(final AbstractInjectable abstractInjectable, final DependencyType dependencyType) {
+    DependencyImpl(final AbstractInjectable abstractInjectable, final DependencyType dependencyType) {
       this.injectable = abstractInjectable;
       this.dependencyType = dependencyType;
     }
@@ -337,6 +342,16 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     @Override
     public String toString() {
       return "[depType=" + dependencyType.toString() + ", abstractInjectable=" + injectable.toString() + "]";
+    }
+
+    @Override
+    public Injectable getInjectable() {
+      return injectable.resolution;
+    }
+
+    @Override
+    public DependencyType getDependencyType() {
+      return dependencyType;
     }
   }
 
@@ -402,13 +417,12 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     @SuppressWarnings("unchecked")
     @Override
     public Iterator<Injectable> iterator() {
-      return Iterator.class.cast(concretes.iterator());
+      return Iterator.class.cast(concretesByName.values().iterator());
     }
 
     @Override
-    public Injectable getConcreteInjectable(String typeName) {
-      // TODO Auto-generated method stub
-      throw new RuntimeException("Not yet implemented.");
+    public Injectable getConcreteInjectable(final String injectableName) {
+      return concretesByName.get(injectableName);
     }
 
   }

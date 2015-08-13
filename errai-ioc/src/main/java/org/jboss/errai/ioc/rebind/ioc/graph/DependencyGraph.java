@@ -2,6 +2,6 @@ package org.jboss.errai.ioc.rebind.ioc.graph;
 
 public interface DependencyGraph extends Iterable<Injectable> {
 
-  Injectable getConcreteInjectable(String typeName);
+  Injectable getConcreteInjectable(String injectorTypeName);
 
 }
