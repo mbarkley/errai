@@ -22,17 +22,27 @@ import java.util.Queue;
 
 import javax.annotation.PostConstruct;
 
+import org.jboss.errai.codegen.Modifier;
+import org.jboss.errai.codegen.Parameter;
 import org.jboss.errai.codegen.Statement;
+import org.jboss.errai.codegen.builder.BlockBuilder;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
+import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
+import org.jboss.errai.codegen.builder.impl.ClassBuilder;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
+import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.util.PrivateAccessType;
 import org.jboss.errai.codegen.util.PrivateAccessUtil;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.common.metadata.RebindUtils;
+import org.jboss.errai.ioc.client.container.Context;
 import org.jboss.errai.ioc.client.container.ContextManager;
 import org.jboss.errai.ioc.client.container.Injector;
+import org.jboss.errai.ioc.client.container.Proxy;
+import org.jboss.errai.ioc.client.container.ProxyHelper;
+import org.jboss.errai.ioc.client.container.ProxyHelperImpl;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.DependencyType;
@@ -146,12 +156,117 @@ public class InjectorGenerator extends IncrementalGenerator {
 
       final List<Statement> createInstanceStatements = new ArrayList<Statement>();
 
-      createInstance(injectable, constructorDependencies, createInstanceStatements);
+      constructInstance(injectable, constructorDependencies, createInstanceStatements);
       injectFieldDependencies(injectable, fieldDependencies, createInstanceStatements, bodyBlockBuilder);
-      maybeInvokePostConstruct(injectable, createInstanceStatements, bodyBlockBuilder);
+      maybeInvokePostConstructs(injectable, createInstanceStatements, bodyBlockBuilder);
       addReturnStatement(createInstanceStatements);
 
       implementCreateInstance(bodyBlockBuilder, injectable, createInstanceStatements);
+
+      implementCreateProxy(bodyBlockBuilder, injectable);
+    }
+
+    private void implementCreateProxy(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable) {
+      final ClassStructureBuilder<?> proxyImpl = createProxyImplementation(injectable);
+      bodyBlockBuilder
+              .publicMethod(parameterizedAs(Proxy.class, typeParametersOf(injectable.getInjectedType())), "createProxy",
+                      finalOf(Context.class, "context"))
+              .body()
+              ._(declareFinalVariable("proxyImpl",
+                      parameterizedAs(Proxy.class, typeParametersOf(injectable.getInjectedType())),
+                      newObject(proxyImpl.getClassDefinition())))
+              ._(loadVariable("proxyImpl").invoke("setContext", loadVariable("context")))
+              ._(loadVariable("proxyImpl").returnValue()).finish();
+    }
+
+    private ClassStructureBuilder<?> createProxyImplementation(final Injectable injectable) {
+      final ClassStructureBuilder<?> proxyImpl = ClassBuilder
+              .define(injectable.getInjectorClassSimpleName() + "ProxyImpl", injectable.getInjectedType()).privateScope()
+              .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectable.getInjectedType()))).body();
+
+      proxyImpl.privateField("proxyHelper", parameterizedAs(ProxyHelper.class, typeParametersOf(injectable.getInjectedType())))
+               .modifiers(Modifier.Final)
+               .initializesWith(Stmt.newObject(parameterizedAs(ProxyHelperImpl.class, typeParametersOf(injectable.getInjectedType()))))
+               .finish();
+
+      implementProxyMethods(proxyImpl, injectable);
+      implementInjectableMethods(proxyImpl, injectable);
+
+      return proxyImpl;
+    }
+
+    private void implementInjectableMethods(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {
+      final MetaClass injectableType = injectable.getInjectedType();
+      for (final MetaMethod method : injectableType.getMethods()) {
+        // TODO also proxy package private and proetected methods?
+        if (method.isPublic() && !method.asMethod().getDeclaringClass().equals(Object.class)) {
+          final BlockBuilder<?> body = proxyImpl.publicMethod(method.getReturnType(), method.getName(), getParametersForDeclaration(method)).body();
+          final ContextualStatementBuilder invocation = loadVariable("proxyHelper").invoke("getInstance").invoke(method.getName(), getParametersForInvocation(method));
+          if (method.getReturnType().isVoid()) {
+            body._(invocation);
+          } else {
+            body._(invocation.returnValue());
+          }
+
+          body.finish();
+        }
+      }
+    }
+
+    private Object[] getParametersForInvocation(final MetaMethod method) {
+      final Object[] params = new Object[method.getParameters().length];
+      final MetaParameter[] declaredParams = method.getParameters();
+      for (int i = 0; i < declaredParams.length; i++) {
+        params[i] = loadVariable(declaredParams[i].getName());
+      }
+
+      return params;
+    }
+
+    private Parameter[] getParametersForDeclaration(final MetaMethod method) {
+      final MetaParameter[] metaParams = method.getParameters();
+      final Parameter[] params = new Parameter[metaParams.length];
+
+      for (int i = 0; i < params.length; i++) {
+        params[i] = finalOf(metaParams[i].getType(), metaParams[i].getName());
+      }
+
+      return params;
+    }
+
+    private void implementProxyMethods(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {
+      implementAsBeanType(proxyImpl, injectable);
+      implementSetInstance(proxyImpl, injectable);
+      implementClearInstance(proxyImpl, injectable);
+      implementSetContext(proxyImpl, injectable);
+    }
+
+    private void implementSetContext(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {
+      proxyImpl.publicMethod(void.class, "setContext", finalOf(Context.class, "context"))
+               .body()
+               ._(loadVariable("proxyHelper").invoke("setContext", loadVariable("context")))
+               .finish();
+    }
+
+    private void implementClearInstance(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {
+      proxyImpl.publicMethod(void.class, "clearInstance")
+               .body()
+               ._(loadVariable("proxyHelper").invoke("clearInstance"))
+               .finish();
+    }
+
+    private void implementSetInstance(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {
+      proxyImpl.publicMethod(void.class, "setInstance", finalOf(injectable.getInjectedType(), "instance"))
+               .body()
+               ._(loadVariable("proxyHelper").invoke("setInstance", loadVariable("instance")))
+               .finish();
+    }
+
+    private void implementAsBeanType(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {
+      proxyImpl.publicMethod(injectable.getInjectedType(), "asBeanType")
+               .body()
+               ._(loadVariable("this").returnValue())
+               .finish();
     }
 
     private void implementCreateInstance(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable,
@@ -165,7 +280,7 @@ public class InjectorGenerator extends IncrementalGenerator {
       createInstanceStatements.add(loadVariable("instance").returnValue());
     }
 
-    private void maybeInvokePostConstruct(final Injectable injectable, final List<Statement> createInstanceStatements,
+    private void maybeInvokePostConstructs(final Injectable injectable, final List<Statement> createInstanceStatements,
             final ClassStructureBuilder<?> bodyBlockBuilder) {
       final Queue<MetaMethod> postConstructMethods = gatherPostConstructs(injectable);
       for (final MetaMethod postConstruct : postConstructMethods) {
@@ -231,7 +346,7 @@ public class InjectorGenerator extends IncrementalGenerator {
       }
     }
 
-    private void createInstance(final Injectable injectable, final Collection<Dependency> constructorDependencies,
+    private void constructInstance(final Injectable injectable, final Collection<Dependency> constructorDependencies,
             final List<Statement> createInstanceStatements) {
       if (constructorDependencies.size() > 0) {
         final Object[] constructorParameterStatements = new Object[constructorDependencies.size()];

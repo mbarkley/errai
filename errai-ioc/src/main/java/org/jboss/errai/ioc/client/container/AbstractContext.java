@@ -35,8 +35,7 @@ public abstract class AbstractContext implements Context {
     Proxy<T> proxy = (Proxy<T>) proxies.get(injectorTypeSimpleName);
     if (proxy == null) {
       final Injector<T> injector = getInjector(injectorTypeSimpleName);
-      proxy = injector.createProxy();
-      proxy.setContext(this);
+      proxy = injector.createProxy(this);
     }
 
     return proxy;

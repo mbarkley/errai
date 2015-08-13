@@ -4,6 +4,6 @@ public interface Injector<T> {
 
   T createInstance(ContextManager contextManager);
 
-  Proxy<T> createProxy();
+  Proxy<T> createProxy(Context context);
 
 }
