@@ -9,13 +9,13 @@ public class ContextManagerImpl implements ContextManager {
 
   @Override
   public void addContext(final Context context) {
-    for (final RuntimeInjector<?> injector : context.getAllInjectors()) {
+    for (final Injector<?> injector : context.getAllInjectors()) {
       contextsByInjector.put(injector.getClass(), context);
     }
   }
 
   @Override
-  public <T> T getInstance(final Class<? extends RuntimeInjector<T>> injectorType) {
+  public <T> T getInstance(final Class<? extends Injector<T>> injectorType) {
     return contextsByInjector.get(injectorType).getInstance(injectorType);
   }
 

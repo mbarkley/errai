@@ -15,14 +15,14 @@ public class ApplicationScopedContext extends AbstractContext {
   private final Map<Class<?>, Object> instances = new HashMap<Class<?>, Object>();
 
   @Override
-  public <T> T getInstance(final Class<? extends RuntimeInjector<T>> injectorType) {
+  public <T> T getInstance(final Class<? extends Injector<T>> injectorType) {
     final Proxy<T> proxy = getOrCreateProxy(injectorType);
 
     return proxy.asBeanType();
   }
 
   @Override
-  public <T> T getActiveNonProxiedInstance(final Class<? extends RuntimeInjector<T>> injectorType) {
+  public <T> T getActiveNonProxiedInstance(final Class<? extends Injector<T>> injectorType) {
     @SuppressWarnings("unchecked")
     T instance = (T) instances.get(injectorType);
     if (instance == null) {

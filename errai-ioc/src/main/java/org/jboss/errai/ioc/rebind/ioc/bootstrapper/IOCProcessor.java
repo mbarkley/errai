@@ -54,7 +54,7 @@ import org.jboss.errai.ioc.client.api.ScopeContext;
 import org.jboss.errai.ioc.client.container.Context;
 import org.jboss.errai.ioc.client.container.ContextManager;
 import org.jboss.errai.ioc.client.container.ContextManagerImpl;
-import org.jboss.errai.ioc.client.container.RuntimeInjector;
+import org.jboss.errai.ioc.client.container.Injector;
 import org.jboss.errai.ioc.rebind.ioc.graph.DefaultQualifierFactory;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder;
@@ -151,7 +151,7 @@ public class IOCProcessor {
           @SuppressWarnings("rawtypes") final BlockBuilder registerInjectorsBody) {
     final String contextVarName = getContextVarName(scopeContexts.get(injectable.getScope()));
     registerInjectorsBody._(loadVariable(contextVarName).invoke("registerInjector",
-            Stmt.castTo(parameterizedAs(RuntimeInjector.class, typeParametersOf(injectable.getInjectedType())),
+            Stmt.castTo(parameterizedAs(Injector.class, typeParametersOf(injectable.getInjectedType())),
                     invokeStatic(GWT.class, "create", injectorClass))));
   }
 
@@ -225,7 +225,7 @@ public class IOCProcessor {
     final BuildMetaClass runtimeInjector = ClassBuilder.define(injector.getInjectorClassSimpleName())
                                                        .publicScope()
                                                        .abstractClass()
-                                                       .implementsInterface(parameterizedAs(RuntimeInjector.class, typeParametersOf(injector.getInjectedType())))
+                                                       .implementsInterface(parameterizedAs(Injector.class, typeParametersOf(injector.getInjectedType())))
                                                        .body()
                                                        .getClassDefinition();
     builder.declaresInnerClass(new InnerClass(runtimeInjector));

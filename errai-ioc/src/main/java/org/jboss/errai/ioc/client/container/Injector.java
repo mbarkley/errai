@@ -1,6 +1,6 @@
 package org.jboss.errai.ioc.client.container;
 
-public interface RuntimeInjector<T> {
+public interface Injector<T> {
 
   T createInstance(ContextManager contextManager);
 

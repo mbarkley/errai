@@ -37,6 +37,10 @@
     <when-type-assignable class="org.jboss.errai.ioc.client.container.IOCEnvironment"/>
   </generate-with>
 
+  <generate-with class="org.jboss.errai.ioc.rebind.ioc.bootstrapper.InjectorGenerator">
+    <when-type-assignable class="org.jboss.errai.ioc.client.container.Injector"/>
+  </generate-with>
+
   <super-source path="compat"/>
   <source path="client"/>
 </module>
