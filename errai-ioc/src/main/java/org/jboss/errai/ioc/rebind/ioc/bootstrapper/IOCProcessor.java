@@ -94,6 +94,8 @@ public class IOCProcessor {
     addContextsToContextManager(scopeContexts.values(), contextManagerFieldName, registerInjectorsBody);
 
     registerInjectorsBody.finish();
+
+    processingContext.getBlockBuilder()._(loadVariable("this").invoke("registerInjectors"));
   }
 
   private void addContextsToContextManager(final Collection<MetaClass> scopeContextImpls,
