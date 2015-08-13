@@ -1,6 +1,5 @@
 package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
 
-import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 
 import com.google.gwt.core.ext.GeneratorContext;
@@ -15,10 +14,6 @@ public class InjectorGenerator extends IncrementalGenerator {
 
   public static void setDependencyGraph(final DependencyGraph graph) {
     InjectorGenerator.graph = graph;
-  }
-
-  public static String getInjectorClassName(final MetaClass injectedType) {
-    return injectedType.getFullyQualifiedName() + "_$$InjectorImpl";
   }
 
   @Override

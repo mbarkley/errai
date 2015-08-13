@@ -15,6 +15,11 @@ public class DefaultQualifierFactory implements QualifierFactory {
     public String toString() {
       return "UNIVERSAL";
     }
+
+    @Override
+    public String getIdentifierSafeString() {
+      return "Universal";
+    }
   };
 
   @Override

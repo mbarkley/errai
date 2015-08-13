@@ -258,6 +258,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     public Qualifier getQualifier() {
       return qualifier;
     }
+
+    @Override
+    public String getInjectorClassSimpleName() {
+      return type.getFullyQualifiedName().replace('.', '_') + "_" + qualifier.getIdentifierSafeString();
+    }
  }
 
   static class AbstractInjectable extends BaseInjectable {

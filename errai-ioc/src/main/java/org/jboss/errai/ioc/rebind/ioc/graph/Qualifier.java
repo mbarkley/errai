@@ -7,4 +7,6 @@ public interface Qualifier {
 
   boolean isSatisfiedBy(Qualifier other);
 
+  String getIdentifierSafeString();
+
 }

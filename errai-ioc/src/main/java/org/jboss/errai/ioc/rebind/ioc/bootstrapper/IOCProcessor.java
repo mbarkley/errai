@@ -16,6 +16,7 @@
 
 package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
 
+import static org.jboss.errai.codegen.builder.impl.ObjectBuilder.newInstanceOf;
 import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
 import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
 import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
@@ -33,8 +34,8 @@ import javax.enterprise.context.NormalScope;
 import javax.inject.Provider;
 import javax.inject.Scope;
 
-import org.jboss.errai.codegen.BlockStatement;
 import org.jboss.errai.codegen.InnerClass;
+import org.jboss.errai.codegen.builder.BlockBuilder;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.impl.ClassBuilder;
 import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
@@ -85,17 +86,20 @@ public class IOCProcessor {
     InjectorGenerator.setDependencyGraph(dependencyGraph);
 
     final Map<Class<? extends Annotation>, MetaClass> scopeContexts = findScopeContexts(processingContext);
-    final BlockStatement initializer = addScopeContextsToInitializer(processingContext, scopeContexts);
+    @SuppressWarnings("rawtypes")
+    final BlockBuilder registerInjectorsBody = addScopeContextsToRegisterInjectorsMethod(processingContext, scopeContexts);
 
-    declaraAndRegisterInjectors(processingContext, dependencyGraph, scopeContexts, initializer);
+    declaraAndRegisterInjectors(processingContext, dependencyGraph, scopeContexts, registerInjectorsBody);
     final String contextManagerFieldName = declareContextManagerField(processingContext);
-    addContextsToContextManager(scopeContexts.values(), contextManagerFieldName, initializer);
+    addContextsToContextManager(scopeContexts.values(), contextManagerFieldName, registerInjectorsBody);
+
+    registerInjectorsBody.finish();
   }
 
   private void addContextsToContextManager(final Collection<MetaClass> scopeContextImpls,
-          final String contextManagerFieldName, final BlockStatement initializer) {
+          final String contextManagerFieldName, @SuppressWarnings("rawtypes") final BlockBuilder registerInjectorsBody) {
     for (final MetaClass scopeContextImpl : scopeContextImpls) {
-      initializer.addStatement(loadVariable(contextManagerFieldName).invoke("addContext", loadVariable(getContextVarName(scopeContextImpl))));
+      registerInjectorsBody._(loadVariable(contextManagerFieldName).invoke("addContext", loadVariable(getContextVarName(scopeContextImpl))));
     }
   }
 
@@ -110,17 +114,20 @@ public class IOCProcessor {
     return contextManagerFieldName;
   }
 
-  private void declaraAndRegisterInjectors(final IOCProcessingContext processingContext, final DependencyGraph dependencyGraph,
-          final Map<Class<? extends Annotation>, MetaClass> scopeContexts, final BlockStatement initializer) {
+  private void declaraAndRegisterInjectors(final IOCProcessingContext processingContext,
+          final DependencyGraph dependencyGraph, final Map<Class<? extends Annotation>, MetaClass> scopeContexts,
+          @SuppressWarnings("rawtypes") final BlockBuilder registerInjectorsBody) {
     for (final Injectable injectable : dependencyGraph) {
-      addRuntimeInjectorDeclaration(injectable, processingContext);
-      registerInjectorWithContext(injectable, scopeContexts, initializer);
+      final MetaClass injectorClass = addRuntimeInjectorDeclaration(injectable, processingContext);
+      registerInjectorWithContext(injectable, injectorClass, scopeContexts, registerInjectorsBody);
     }
   }
 
-  private BlockStatement addScopeContextsToInitializer(final IOCProcessingContext processingContext,
+  @SuppressWarnings("rawtypes")
+  private BlockBuilder addScopeContextsToRegisterInjectorsMethod(final IOCProcessingContext processingContext,
           final Map<Class<? extends Annotation>, MetaClass> scopeContexts) {
-    final BlockStatement initializer = processingContext.getBootstrapClass().getInstanceInitializer();
+    @SuppressWarnings({ "unchecked" })
+    final BlockBuilder methodBody = processingContext.getBootstrapBuilder().privateMethod(void.class, "registerInjectors").body();
     for (final Class<? extends Annotation> scope : injectionContext.getAnnotationsForElementType(WiringElementType.NormalScopedBean)) {
       if (scopeContexts.containsKey(scope)) {
         final MetaClass scopeContextImpl = scopeContexts.get(scope);
@@ -128,19 +135,22 @@ public class IOCProcessor {
           throw new RuntimeException("The @ScopeContext " + scopeContextImpl.getName() + " must have a public, no-args constructor.");
         }
 
-        initializer.addStatement(Stmt.declareFinalVariable(getContextVarName(scopeContextImpl), Context.class, ObjectBuilder.newInstanceOf(scopeContextImpl)));
+        methodBody._(Stmt.declareFinalVariable(getContextVarName(scopeContextImpl), Context.class, newInstanceOf(scopeContextImpl)));
       }
     }
     final MetaClass dependentContext = scopeContexts.get(Dependent.class);
-    initializer.addStatement(Stmt.declareFinalVariable(getContextVarName(dependentContext), Context.class, ObjectBuilder.newInstanceOf(dependentContext)));
-    return initializer;
+    methodBody._(Stmt.declareFinalVariable(getContextVarName(dependentContext), Context.class, newInstanceOf(dependentContext)));
+
+    return methodBody;
   }
 
-  private void registerInjectorWithContext(final Injectable injectable,
-          final Map<Class<? extends Annotation>, MetaClass> scopeContexts, final BlockStatement initializer) {
+  private void registerInjectorWithContext(final Injectable injectable, MetaClass injectorClass,
+          final Map<Class<? extends Annotation>, MetaClass> scopeContexts,
+          @SuppressWarnings("rawtypes") final BlockBuilder registerInjectorsBody) {
     final String contextVarName = getContextVarName(scopeContexts.get(injectable.getScope()));
-    initializer.addStatement(
-            loadVariable(contextVarName).invoke("registerInjector", invokeStatic(GWT.class, "create", injectable.getInjectedType().asClass())));
+    registerInjectorsBody._(loadVariable(contextVarName).invoke("registerInjector",
+            Stmt.castTo(parameterizedAs(RuntimeInjector.class, typeParametersOf(injectable.getInjectedType())),
+                    invokeStatic(GWT.class, "create", injectorClass))));
   }
 
   private String getContextVarName(final MetaClass scopeContextImpl) {
@@ -208,15 +218,17 @@ public class IOCProcessor {
     return allMetaClasses;
   }
 
-  private void addRuntimeInjectorDeclaration(final Injectable injector, final IOCProcessingContext processingContext) {
+  private MetaClass addRuntimeInjectorDeclaration(final Injectable injector, final IOCProcessingContext processingContext) {
     final ClassStructureBuilder<?> builder = processingContext.getBootstrapBuilder();
-    final BuildMetaClass runtimeInjector = ClassBuilder.define(InjectorGenerator.getInjectorClassName(injector.getInjectedType()))
+    final BuildMetaClass runtimeInjector = ClassBuilder.define(injector.getInjectorClassSimpleName())
                                                        .publicScope()
                                                        .abstractClass()
                                                        .implementsInterface(parameterizedAs(RuntimeInjector.class, typeParametersOf(injector.getInjectedType())))
                                                        .body()
                                                        .getClassDefinition();
     builder.declaresInnerClass(new InnerClass(runtimeInjector));
+
+    return runtimeInjector;
   }
 
   private DependencyGraph processDependencies(final Collection<MetaClass> types, final DependencyGraphBuilder builder) {

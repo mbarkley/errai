@@ -12,4 +12,6 @@ public interface Injectable {
 
   Qualifier getQualifier();
 
+  String getInjectorClassSimpleName();
+
 }
