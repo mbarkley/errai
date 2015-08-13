@@ -20,10 +20,22 @@ public interface DependencyGraphBuilder {
   DependencyGraph createGraph();
 
   public static enum InjectorType {
-    Type, Producer, Provider, ContextualProvider
+    Type, Producer, Provider, ContextualProvider, Abstract
   }
 
   public static enum DependencyType {
     Constructor, Field, ProducerInstance, ProducerParameter
+  }
+
+  public static interface Dependency {
+
+    Injectable getInjectable();
+
+  }
+
+  public static interface ParamDependency extends Dependency {
+
+    int getParamIndex();
+
   }
 }

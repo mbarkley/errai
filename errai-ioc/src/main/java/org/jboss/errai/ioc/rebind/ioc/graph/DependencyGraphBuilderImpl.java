@@ -263,6 +263,12 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     public String getInjectorClassSimpleName() {
       return type.getFullyQualifiedName().replace('.', '_') + "_" + qualifier.getIdentifierSafeString();
     }
+
+    @Override
+    public Collection<org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.Dependency> getDependencies() {
+      // TODO Auto-generated method stub
+      throw new RuntimeException("Not yet implemented.");
+    }
  }
 
   static class AbstractInjectable extends BaseInjectable {
@@ -281,6 +287,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     @Override
     public Class<? extends Annotation> getScope() {
       return null;
+    }
+
+    @Override
+    public InjectorType getInjectorType() {
+      return InjectorType.Abstract;
     }
   }
 
@@ -306,6 +317,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     @Override
     public Class<? extends Annotation> getScope() {
       return literalScope;
+    }
+
+    @Override
+    public InjectorType getInjectorType() {
+      return injectorType;
     }
   }
 
@@ -387,6 +403,12 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     @Override
     public Iterator<Injectable> iterator() {
       return Iterator.class.cast(concretes.iterator());
+    }
+
+    @Override
+    public Injectable getConcreteInjectable(String typeName) {
+      // TODO Auto-generated method stub
+      throw new RuntimeException("Not yet implemented.");
     }
 
   }

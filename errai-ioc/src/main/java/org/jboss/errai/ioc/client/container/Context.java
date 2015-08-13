@@ -9,9 +9,9 @@ public interface Context {
 
   <T> void registerInjector(Injector<T> injector);
 
-  <T> T getInstance(Class<? extends Injector<T>> injectorType);
+  <T> T getInstance(String injectorTypeSimpleName);
 
-  <T> T getActiveNonProxiedInstance(Class<? extends Injector<T>> injectorType);
+  <T> T getActiveNonProxiedInstance(String injectorTypeSimpleName);
 
   Class<? extends Annotation> getScope();
 

@@ -12,22 +12,22 @@ import org.jboss.errai.ioc.client.api.ScopeContext;
 @ScopeContext({ApplicationScoped.class, Singleton.class})
 public class ApplicationScopedContext extends AbstractContext {
 
-  private final Map<Class<?>, Object> instances = new HashMap<Class<?>, Object>();
+  private final Map<String, Object> instances = new HashMap<String, Object>();
 
   @Override
-  public <T> T getInstance(final Class<? extends Injector<T>> injectorType) {
-    final Proxy<T> proxy = getOrCreateProxy(injectorType);
+  public <T> T getInstance(final String injectorTypeSimpleName) {
+    final Proxy<T> proxy = getOrCreateProxy(injectorTypeSimpleName);
 
     return proxy.asBeanType();
   }
 
   @Override
-  public <T> T getActiveNonProxiedInstance(final Class<? extends Injector<T>> injectorType) {
+  public <T> T getActiveNonProxiedInstance(final String injectorTypeSimpleName) {
     @SuppressWarnings("unchecked")
-    T instance = (T) instances.get(injectorType);
+    T instance = (T) instances.get(injectorTypeSimpleName);
     if (instance == null) {
-      instance = getInjector(injectorType).createInstance(getContextManager());
-      instances.put(injectorType, instance);
+      instance = this.<T>getInjector(injectorTypeSimpleName).createInstance(getContextManager());
+      instances.put(injectorTypeSimpleName, instance);
     }
 
     return instance;

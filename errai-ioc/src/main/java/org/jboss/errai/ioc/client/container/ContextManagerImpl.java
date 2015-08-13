@@ -5,18 +5,18 @@ import java.util.Map;
 
 public class ContextManagerImpl implements ContextManager {
 
-  private final Map<Class<?>, Context> contextsByInjector = new HashMap<Class<?>, Context>();
+  private final Map<String, Context> contextsByInjectorName = new HashMap<String, Context>();
 
   @Override
   public void addContext(final Context context) {
     for (final Injector<?> injector : context.getAllInjectors()) {
-      contextsByInjector.put(injector.getClass(), context);
+      contextsByInjectorName.put(injector.getClass().getSimpleName(), context);
     }
   }
 
   @Override
-  public <T> T getInstance(final Class<? extends Injector<T>> injectorType) {
-    return contextsByInjector.get(injectorType).getInstance(injectorType);
+  public <T> T getInstance(final String injectorTypeSimpleName) {
+    return contextsByInjectorName.get(injectorTypeSimpleName).getInstance(injectorTypeSimpleName);
   }
 
 }

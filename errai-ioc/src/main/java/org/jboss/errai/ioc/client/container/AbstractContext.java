@@ -7,8 +7,8 @@ import java.util.Map;
 
 public abstract class AbstractContext implements Context {
 
-  private final Map<Class<?>, Injector<?>> injectors = new HashMap<Class<?>, Injector<?>>();
-  private final Map<Class<?>, Proxy<?>> proxies = new HashMap<Class<?>, Proxy<?>>();
+  private final Map<String, Injector<?>> injectors = new HashMap<String, Injector<?>>();
+  private final Map<String, Proxy<?>> proxies = new HashMap<String, Proxy<?>>();
 
   private ContextManager contextManager;
 
@@ -27,14 +27,14 @@ public abstract class AbstractContext implements Context {
 
   @Override
   public <T> void registerInjector(final Injector<T> injector) {
-    injectors.put(injector.getClass(), injector);
+    injectors.put(injector.getClass().getSimpleName(), injector);
   }
 
-  protected <T> Proxy<T> getOrCreateProxy(final Class<? extends Injector<T>> injectorType) {
+  protected <T> Proxy<T> getOrCreateProxy(final String injectorTypeSimpleName) {
     @SuppressWarnings("unchecked")
-    Proxy<T> proxy = (Proxy<T>) proxies.get(injectorType);
+    Proxy<T> proxy = (Proxy<T>) proxies.get(injectorTypeSimpleName);
     if (proxy == null) {
-      final Injector<T> injector = getInjector(injectorType);
+      final Injector<T> injector = getInjector(injectorTypeSimpleName);
       proxy = injector.createProxy();
       proxy.setContext(this);
     }
@@ -42,11 +42,11 @@ public abstract class AbstractContext implements Context {
     return proxy;
   }
 
-  protected <T> Injector<T> getInjector(final Class<? extends Injector<T>> injectorType) {
+  protected <T> Injector<T> getInjector(final String injectorTypeSimpleName) {
     @SuppressWarnings("unchecked")
-    final Injector<T> injector = (Injector<T>) injectors.get(injectorType);
+    final Injector<T> injector = (Injector<T>) injectors.get(injectorTypeSimpleName);
     if (injector == null) {
-      throw new RuntimeException("Could not find registered injector " + injectorType.getName());
+      throw new RuntimeException("Could not find registered injector " + injectorTypeSimpleName);
     }
 
     return injector;
