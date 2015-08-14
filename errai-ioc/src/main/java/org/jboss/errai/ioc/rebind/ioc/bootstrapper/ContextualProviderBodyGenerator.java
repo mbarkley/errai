@@ -43,6 +43,7 @@ public class ContextualProviderBodyGenerator extends AbstractBodyGenerator {
 
     statement.add(castTo(parameterizedAs(ContextualTypeProvider.class, typeParametersOf(injectable.getInjectedType())),
             loadVariable("contextManager").invoke("getInstance", providerInjectable.getInjectorClassSimpleName()))
+                    // TODO need to make specific injectors for every injection point to pass in proper parameters.
                     .invoke("provide", newArray(Class.class, 0), newArray(Annotation.class, 0)).returnValue());
 
     return statement;

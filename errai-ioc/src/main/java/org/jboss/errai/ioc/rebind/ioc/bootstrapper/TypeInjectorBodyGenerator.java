@@ -103,7 +103,7 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
       if (!field.isPublic()) {
         addPrivateAccessStubs(PrivateAccessType.Write, "jsni", bodyBlockBuilder, field);
         final String privateFieldInjectorName = PrivateAccessUtil.getPrivateFieldInjectorName(field);
-        createInstanceStatements.add(loadVariable("instance").invoke(privateFieldInjectorName, injectedValue));
+        createInstanceStatements.add(loadVariable("this").invoke(privateFieldInjectorName, loadVariable("instance"), injectedValue));
       } else {
         createInstanceStatements.add(loadVariable("instance").loadField(field).assignValue(injectedValue));
       }

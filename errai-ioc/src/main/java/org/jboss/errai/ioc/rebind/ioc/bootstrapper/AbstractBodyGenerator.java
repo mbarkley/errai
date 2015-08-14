@@ -9,6 +9,7 @@ import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 import static org.jboss.errai.codegen.util.Stmt.newObject;
 
+import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.List;
 
@@ -66,9 +67,19 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
   }
 
   private ClassStructureBuilder<?> createProxyImplementation(final Injectable injectable) {
-    final ClassStructureBuilder<?> proxyImpl = ClassBuilder
-            .define(injectable.getInjectorClassSimpleName() + "ProxyImpl", injectable.getInjectedType()).privateScope()
-            .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectable.getInjectedType()))).body();
+    final ClassStructureBuilder<?> proxyImpl;
+    if (injectable.getInjectedType().isInterface()) {
+      proxyImpl = ClassBuilder
+              .define(injectable.getInjectorClassSimpleName() + "ProxyImpl")
+              .privateScope()
+              .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectable.getInjectedType())))
+              .implementsInterface(injectable.getInjectedType()).body();
+    } else {
+      proxyImpl = ClassBuilder
+              .define(injectable.getInjectorClassSimpleName() + "ProxyImpl", injectable.getInjectedType())
+              .privateScope()
+              .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectable.getInjectedType()))).body();
+    }
 
     proxyImpl
             .privateField("proxyHelper",
@@ -80,17 +91,25 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
             .finish();
 
     implementProxyMethods(proxyImpl, injectable);
-    implementInjectableMethods(proxyImpl, injectable);
+    implementAccessibleMethods(proxyImpl, injectable);
 
     return proxyImpl;
   }
 
-  private void implementInjectableMethods(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {
+  private void implementAccessibleMethods(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {
     final MetaClass injectableType = injectable.getInjectedType();
     for (final MetaMethod method : injectableType.getMethods()) {
-      // TODO also proxy package private and proetected methods?
-      if (method.isPublic() && !method.asMethod().getDeclaringClass().equals(Object.class)) {
-        final BlockBuilder<?> body = proxyImpl.publicMethod(method.getReturnType(), method.getName(), getParametersForDeclaration(method)).body();
+      // TODO clean this up and maybe proxy package private and proetected methods?
+      if (method.isPublic() && (method.asMethod() == null || method.asMethod().getDeclaringClass() == null
+              || !method.asMethod().getDeclaringClass().equals(Object.class))) {
+        final BlockBuilder<?> body = proxyImpl
+                .publicMethod(method.getReturnType(), method.getName(), getParametersForDeclaration(method))
+                .annotatedWith(new Override() {
+                  @Override
+                  public Class<? extends Annotation> annotationType() {
+                    return Override.class;
+                  }
+                }).body();
         final ContextualStatementBuilder invocation = loadVariable("proxyHelper").invoke("getInstance").invoke(method.getName(), getParametersForInvocation(method));
         if (method.getReturnType().isVoid()) {
           body._(invocation);
