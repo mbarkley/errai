@@ -2,28 +2,45 @@ package org.jboss.errai.ioc.client.container;
 
 public class ProxyHelperImpl<T> implements ProxyHelper<T> {
 
+  private Context context;
+  private T instance;
+
   @Override
-  public void setInstance(T instance) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+  public void setInstance(final T instance) {
+    this.instance = instance;
   }
 
   @Override
   public T getInstance() {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+    if (instance == null) {
+      // TODO improve message
+      throw new RuntimeException("There is no active instance.");
+    }
+
+    return instance;
   }
 
   @Override
   public void clearInstance() {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+    instance = null;
   }
 
   @Override
-  public void setContext(Context context) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+  public void setContext(final Context context) {
+    if (context != null) {
+      throw new RuntimeException("Context can only be set once.");
+    }
+
+    this.context = context;
+  }
+
+  @Override
+  public Context getContext() {
+    if (context == null) {
+      throw new RuntimeException("Context has not yet been set.");
+    }
+
+    return context;
   }
 
 }

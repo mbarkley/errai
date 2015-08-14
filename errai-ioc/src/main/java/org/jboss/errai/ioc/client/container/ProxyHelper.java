@@ -9,4 +9,6 @@ public interface ProxyHelper<T> {
   void clearInstance();
 
   void setContext(Context context);
+
+  Context getContext();
 }
