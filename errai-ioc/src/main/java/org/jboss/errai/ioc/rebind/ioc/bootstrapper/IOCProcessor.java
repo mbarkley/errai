@@ -394,16 +394,7 @@ public class IOCProcessor {
     if (hasEnablingProperty(type)) {
       return isEnabledByProperty(type);
     } else {
-      if (isNormalScoped(type)) {
-        if (isProxyable(type)) {
-          return hasAtMostOneInjectableConstructor(type);
-        } else {
-          // TODO improve message
-          throw new RuntimeException("The type " + type.getName() + " must be proxyable.");
-        }
-      } else {
-        return true;
-      }
+      return hasAtMostOneInjectableConstructor(type);
     }
   }
 
@@ -436,21 +427,6 @@ public class IOCProcessor {
     }
 
     return true;
-  }
-
-  private boolean isProxyable(final MetaClass type) {
-    return type.isDefaultInstantiable();
-  }
-
-  private boolean isNormalScoped(final MetaClass type) {
-    final Collection<Class<? extends Annotation>> normalScopes = injectionContext.getAnnotationsForElementType(WiringElementType.NormalScopedBean);
-    for (final Class<? extends Annotation> scope : normalScopes) {
-      if (type.isAnnotationPresent(scope)) {
-        return true;
-      }
-    }
-
-    return false;
   }
 
 }
