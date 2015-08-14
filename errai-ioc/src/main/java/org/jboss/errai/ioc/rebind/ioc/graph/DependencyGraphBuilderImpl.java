@@ -51,7 +51,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   private void processAssignableTypes(final AbstractInjectable abstractInjectable) {
-    directAbstractInjectablesByAssignableTypes.put(abstractInjectable.type, abstractInjectable);
+    directAbstractInjectablesByAssignableTypes.put(abstractInjectable.type.getErased(), abstractInjectable);
     processInterfaces(abstractInjectable.type, abstractInjectable);
     if (!abstractInjectable.type.isInterface()) {
       processSuperClasses(abstractInjectable.type, abstractInjectable);
@@ -60,8 +60,8 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   private void processSuperClasses(final MetaClass type, final AbstractInjectable abstractInjectable) {
     final MetaClass superClass = type.getSuperClass();
-    if (superClass != null && !directAbstractInjectablesByAssignableTypes.containsKey(superClass)) {
-      directAbstractInjectablesByAssignableTypes.put(superClass, abstractInjectable);
+    if (superClass != null && !directAbstractInjectablesByAssignableTypes.containsKey(superClass.getErased())) {
+      directAbstractInjectablesByAssignableTypes.put(superClass.getErased(), abstractInjectable);
       if (!superClass.getName().equals("java.lang.Object")) {
         processSuperClasses(superClass, abstractInjectable);
       }
@@ -70,8 +70,8 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   private void processInterfaces(final MetaClass type, final AbstractInjectable abstractInjectable) {
     for (final MetaClass iface : type.getInterfaces()) {
-      if (!directAbstractInjectablesByAssignableTypes.containsKey(iface)) {
-        directAbstractInjectablesByAssignableTypes.put(iface, abstractInjectable);
+      if (!directAbstractInjectablesByAssignableTypes.containsKey(iface.getErased())) {
+        directAbstractInjectablesByAssignableTypes.put(iface.getErased(), abstractInjectable);
         processInterfaces(iface, abstractInjectable);
       }
     }
@@ -120,7 +120,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
         final DFSFrame curFrame = visiting.peek();
         if (curFrame.dependencyIndex < curFrame.concrete.dependencies.size()) {
           final BaseDependency dep = curFrame.concrete.dependencies.get(curFrame.dependencyIndex);
-          final ConcreteInjectable resolved = resolveDependency(dep);
+          final ConcreteInjectable resolved = resolveDependency(dep, curFrame.concrete);
           if (visited.contains(resolved)) {
             if (visiting.contains(resolved)) {
               validateCycle(visiting, resolved);
@@ -174,7 +174,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     return false;
   }
 
-  private ConcreteInjectable resolveDependency(final BaseDependency dep) {
+  private ConcreteInjectable resolveDependency(final BaseDependency dep, final ConcreteInjectable concrete) {
     if (dep.injectable.resolution != null) {
       return dep.injectable.resolution;
     }
@@ -196,7 +196,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     if (resolved.isEmpty()) {
       // TODO improve message
-      throw new RuntimeException("Unsatisfied dependency: " + dep.injectable.type.getName());
+      throw new RuntimeException("Unsatisfied dependency " + dep.injectable.type.getName() + " in " + concrete.getInjectedType().getName());
     } else if (resolved.size() > 1) {
       throwAmbiguousDependencyException(dep, resolved);
     }
@@ -211,7 +211,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
                   .append(resolved.get(0));
     for (int i = 1; i < resolved.size(); i++) {
       messageBuilder.append(", ")
-                    .append(resolved.get(i).type.getName());
+                    .append(resolved.get(i));
     }
 
     throw new RuntimeException(messageBuilder.toString());
@@ -230,12 +230,18 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   private void linkAbstractInjectable(final AbstractInjectable abstractInjectable) {
-    final Collection<AbstractInjectable> candidates = directAbstractInjectablesByAssignableTypes.get(abstractInjectable.type);
+    final Collection<AbstractInjectable> candidates = directAbstractInjectablesByAssignableTypes.get(abstractInjectable.type.getErased());
     for (final AbstractInjectable candidate : candidates) {
-      if (abstractInjectable.qualifier.isSatisfiedBy(candidate.qualifier) && !candidate.equals(abstractInjectable)) {
+      if (abstractInjectable.qualifier.isSatisfiedBy(candidate.qualifier)
+              && typeParametersAreAssignable(candidate.getInjectedType(), abstractInjectable.type)
+              && !candidate.equals(abstractInjectable)) {
         abstractInjectable.linked.add(candidate);
       }
     }
+  }
+
+  private boolean typeParametersAreAssignable(final MetaClass fromType, final MetaClass toType) {
+    return toType.isAssignableFrom(fromType);
   }
 
   @Override
@@ -274,7 +280,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     @Override
     public String toString() {
-      return type.getName() + "$" + qualifier.toString();
+      return "class=" + type + ", injectorType=" + getInjectorType() + ", qualifier=" + qualifier.toString();
     }
 
     @Override
