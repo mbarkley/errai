@@ -23,7 +23,6 @@ import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.util.PrivateAccessType;
 import org.jboss.errai.codegen.util.PrivateAccessUtil;
 import org.jboss.errai.codegen.util.Stmt;
-import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.DependencyType;
@@ -31,14 +30,11 @@ import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.FieldDependen
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.ParamDependency;
 
 import com.google.common.collect.Multimap;
-import com.google.gwt.core.ext.GeneratorContext;
-import com.google.gwt.core.ext.TreeLogger;
 
 class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
 
   @Override
-  public void generate(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable,
-          final DependencyGraph graph, final TreeLogger logger, final GeneratorContext context) {
+  protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable) {
     final Multimap<DependencyType, Dependency> dependenciesByType = separateByType(injectable.getDependencies());
 
     final Collection<Dependency> constructorDependencies = dependenciesByType.get(DependencyType.Constructor);
@@ -50,10 +46,7 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
     injectFieldDependencies(injectable, fieldDependencies, createInstanceStatements, bodyBlockBuilder);
     maybeInvokePostConstructs(injectable, createInstanceStatements, bodyBlockBuilder);
     addReturnStatement(createInstanceStatements);
-
-    implementCreateInstance(bodyBlockBuilder, injectable, createInstanceStatements);
-
-    implementCreateProxy(bodyBlockBuilder, injectable);
+    return createInstanceStatements;
   }
 
   private void maybeInvokePostConstructs(final Injectable injectable, final List<Statement> createInstanceStatements,

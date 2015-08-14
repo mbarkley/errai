@@ -29,12 +29,15 @@ import org.jboss.errai.ioc.client.container.ContextManager;
 import org.jboss.errai.ioc.client.container.Proxy;
 import org.jboss.errai.ioc.client.container.ProxyHelper;
 import org.jboss.errai.ioc.client.container.ProxyHelperImpl;
+import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import com.google.gwt.core.ext.GeneratorContext;
+import com.google.gwt.core.ext.TreeLogger;
 
 public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
 
@@ -170,6 +173,17 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
     addPrivateAccessStubs("jsni", bodyBlockBuilder, postConstruct);
 
     return getPrivateMethodName(postConstruct);
+  }
+
+  protected abstract List<Statement> generateCreateInstanceStatements(ClassStructureBuilder<?> bodyBlockBuilder, Injectable injectable);
+
+  @Override
+  public void generate(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable, final DependencyGraph graph, final TreeLogger logger, final GeneratorContext context) {
+    final List<Statement> createInstanceStatements = generateCreateInstanceStatements(bodyBlockBuilder, injectable);
+  
+    implementCreateInstance(bodyBlockBuilder, injectable, createInstanceStatements);
+  
+    implementCreateProxy(bodyBlockBuilder, injectable);
   }
 
 }
