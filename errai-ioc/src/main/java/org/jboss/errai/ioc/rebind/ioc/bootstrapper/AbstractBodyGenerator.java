@@ -175,14 +175,14 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
     return getPrivateMethodName(postConstruct);
   }
 
-  protected abstract List<Statement> generateCreateInstanceStatements(ClassStructureBuilder<?> bodyBlockBuilder, Injectable injectable);
+  protected abstract List<Statement> generateCreateInstanceStatements(ClassStructureBuilder<?> bodyBlockBuilder, Injectable injectable, DependencyGraph graph);
 
   @Override
   public void generate(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable, final DependencyGraph graph, final TreeLogger logger, final GeneratorContext context) {
-    final List<Statement> createInstanceStatements = generateCreateInstanceStatements(bodyBlockBuilder, injectable);
-  
+    final List<Statement> createInstanceStatements = generateCreateInstanceStatements(bodyBlockBuilder, injectable, graph);
+
     implementCreateInstance(bodyBlockBuilder, injectable, createInstanceStatements);
-  
+
     implementCreateProxy(bodyBlockBuilder, injectable);
   }
 

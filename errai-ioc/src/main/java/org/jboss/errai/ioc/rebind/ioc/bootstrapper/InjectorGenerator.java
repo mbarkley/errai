@@ -70,7 +70,10 @@ public class InjectorGenerator extends IncrementalGenerator {
       break;
     case Provider:
       generator = new ProviderBodyGenerator();
+      break;
     case ContextualProvider:
+      generator = new ContextualProviderBodyGenerator();
+      break;
     case Producer:
     default:
       throw new RuntimeException("Not yet implemented!");
