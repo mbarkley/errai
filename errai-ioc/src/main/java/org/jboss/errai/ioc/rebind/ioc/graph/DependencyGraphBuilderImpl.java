@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.Stack;
 
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 import com.google.common.collect.HashMultimap;
@@ -90,14 +91,12 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   @Override
-  public void addDependency(final Injectable from, final Injectable to, DependencyType dependencyType) {
-    assert (from instanceof ConcreteInjectable);
-    assert (to instanceof AbstractInjectable);
+  public void addDependency(final Injectable concreteInjectable, Dependency dependency) {
+    assert (concreteInjectable instanceof ConcreteInjectable);
 
-    final ConcreteInjectable concrete = (ConcreteInjectable) from;
-    final AbstractInjectable abstractInjectable = (AbstractInjectable) to;
+    final ConcreteInjectable concrete = (ConcreteInjectable) concreteInjectable;
 
-    concrete.dependencies.add(new DependencyImpl(abstractInjectable, dependencyType));
+    concrete.dependencies.add(BaseDependency.class.cast(dependency));
   }
 
   @Override
@@ -117,7 +116,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       do {
         final DFSFrame curFrame = visiting.peek();
         if (curFrame.dependencyIndex < curFrame.concrete.dependencies.size()) {
-          final DependencyImpl dep = curFrame.concrete.dependencies.get(curFrame.dependencyIndex);
+          final BaseDependency dep = curFrame.concrete.dependencies.get(curFrame.dependencyIndex);
           final ConcreteInjectable resolved = resolveDependency(dep);
           if (visited.contains(resolved)) {
             if (visiting.contains(resolved)) {
@@ -172,7 +171,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     return false;
   }
 
-  private ConcreteInjectable resolveDependency(final DependencyImpl dep) {
+  private ConcreteInjectable resolveDependency(final BaseDependency dep) {
     if (dep.injectable.resolution != null) {
       return dep.injectable.resolution;
     }
@@ -202,7 +201,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     return (dep.injectable.resolution = resolved.get(0));
   }
 
-  private void throwAmbiguousDependencyException(final DependencyImpl dep, final List<ConcreteInjectable> resolved) {
+  private void throwAmbiguousDependencyException(final BaseDependency dep, final List<ConcreteInjectable> resolved) {
     final StringBuilder messageBuilder = new StringBuilder();
     messageBuilder.append("Ambiguous resolution for type " + dep.injectable.type.getName() + ".\n")
                   .append("Resolved types:\n")
@@ -218,7 +217,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   private void linkAbstractInjectables() {
     final Set<AbstractInjectable> linked = new HashSet<AbstractInjectable>(abstractInjectables.size());
     for (final ConcreteInjectable concrete : concretesByName.values()) {
-      for (final DependencyImpl dep : concrete.dependencies) {
+      for (final BaseDependency dep : concrete.dependencies) {
         if (!linked.contains(dep.injectable)) {
           linkAbstractInjectable(dep.injectable);
           linked.add(dep.injectable);
@@ -234,6 +233,26 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
         abstractInjectable.linked.add(candidate);
       }
     }
+  }
+
+  @Override
+  public FieldDependency createFieldDependency(final Injectable abstractInjectable, final MetaField dependentField) {
+    return new FieldDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.Field, dependentField);
+  }
+
+  @Override
+  public ParamDependency createConstructorDependency(final Injectable abstractInjectable, final int paramIndex) {
+    return new ParamDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.Constructor, paramIndex);
+  }
+
+  @Override
+  public ParamDependency createProducerParamDependency(final Injectable abstractInjectable, final int paramIndex) {
+    return new ParamDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerParameter, paramIndex);
+  }
+
+  @Override
+  public Dependency createProducerInstanceDependency(final Injectable abstractInjectable) {
+    return new BaseDependency(AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerInstance);
   }
 
   static abstract class BaseInjectable implements Injectable {
@@ -298,7 +317,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   static class ConcreteInjectable extends BaseInjectable {
     final InjectorType injectorType;
     final Collection<WiringElementType> wiringTypes;
-    final List<DependencyImpl> dependencies = new ArrayList<DependencyImpl>();
+    final List<BaseDependency> dependencies = new ArrayList<BaseDependency>();
     final Class<? extends Annotation> literalScope;
 
     ConcreteInjectable(final MetaClass type, final Qualifier qualifier, final Class<? extends Annotation> literalScope,
@@ -330,11 +349,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
   }
 
-  static class DependencyImpl implements Dependency {
+  static class BaseDependency implements Dependency {
     final AbstractInjectable injectable;
     final DependencyType dependencyType;
 
-    DependencyImpl(final AbstractInjectable abstractInjectable, final DependencyType dependencyType) {
+    BaseDependency(final AbstractInjectable abstractInjectable, final DependencyType dependencyType) {
       this.injectable = abstractInjectable;
       this.dependencyType = dependencyType;
     }
@@ -353,6 +372,38 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     public DependencyType getDependencyType() {
       return dependencyType;
     }
+  }
+
+  static class ParamDependencyImpl extends BaseDependency implements ParamDependency {
+
+    private final int paramIndex;
+
+    ParamDependencyImpl(final AbstractInjectable abstractInjectable, final DependencyType dependencyType, final int paramIndex) {
+      super(abstractInjectable, dependencyType);
+      this.paramIndex = paramIndex;
+    }
+
+    @Override
+    public int getParamIndex() {
+      return paramIndex;
+    }
+
+  }
+
+  static class FieldDependencyImpl extends BaseDependency implements FieldDependency {
+
+    private final MetaField field;
+
+    FieldDependencyImpl(final AbstractInjectable abstractInjectable, final DependencyType dependencyType, final MetaField field) {
+      super(abstractInjectable, dependencyType);
+      this.field = field;
+    }
+
+    @Override
+    public MetaField getField() {
+      return field;
+    }
+
   }
 
   static class AbstractInjectableHandle {

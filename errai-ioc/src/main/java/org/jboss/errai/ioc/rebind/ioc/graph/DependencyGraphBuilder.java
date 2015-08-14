@@ -16,7 +16,15 @@ public interface DependencyGraphBuilder {
 
   Injectable lookupAbstractInjectable(MetaClass type, Qualifier qualifier);
 
-  void addDependency(Injectable from, Injectable to, DependencyType dependencyType);
+  void addDependency(Injectable concreteInjectable, Dependency dependency);
+
+  FieldDependency createFieldDependency(Injectable abstractInjectable, MetaField dependentField);
+
+  ParamDependency createConstructorDependency(Injectable abstractInjectable, int paramIndex);
+
+  ParamDependency createProducerParamDependency(Injectable abstractInjectable, int paramIndex);
+
+  Dependency createProducerInstanceDependency(Injectable abstractInjectble);
 
   DependencyGraph createGraph();
 

@@ -148,8 +148,7 @@ public class InjectorGenerator extends IncrementalGenerator {
     @Override
     public void generate(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable,
             final DependencyGraph graph, final TreeLogger logger, final GeneratorContext context) {
-      final Collection<Dependency> dependencies = injectable.getDependencies();
-      final Multimap<DependencyType, Dependency> dependenciesByType = separateByType(dependencies);
+      final Multimap<DependencyType, Dependency> dependenciesByType = separateByType(injectable.getDependencies());
 
       final Collection<Dependency> constructorDependencies = dependenciesByType.get(DependencyType.Constructor);
       final Collection<Dependency> fieldDependencies = dependenciesByType.get(DependencyType.Field);
