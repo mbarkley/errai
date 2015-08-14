@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Queue;
 
 import javax.annotation.PostConstruct;
+import javax.enterprise.context.Dependent;
 
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
@@ -128,5 +129,10 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
       createInstanceStatements.add(declareFinalVariable("instance", injectable.getInjectedType(),
               newObject(injectable.getInjectedType())));
     }
+  }
+
+  @Override
+  protected boolean requiresProxy(final Injectable injectable) {
+    return !injectable.getScope().equals(Dependent.class);
   }
 }

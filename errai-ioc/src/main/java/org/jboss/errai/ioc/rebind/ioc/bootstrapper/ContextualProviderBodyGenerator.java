@@ -48,4 +48,9 @@ public class ContextualProviderBodyGenerator extends AbstractBodyGenerator {
 
     return statement;
   }
+
+  @Override
+  protected boolean requiresProxy(final Injectable injectable) {
+    return false;
+  }
 }
