@@ -391,6 +391,7 @@ public class IOCProcessor {
   }
 
   private boolean isTypeInjectable(final MetaClass type) {
+    // FIXME this logic isn't quite right...
     if (hasEnablingProperty(type)) {
       return isEnabledByProperty(type);
     } else {
