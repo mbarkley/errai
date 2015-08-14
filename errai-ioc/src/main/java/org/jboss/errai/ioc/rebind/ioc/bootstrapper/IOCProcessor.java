@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.enterprise.context.Dependent;
 import javax.enterprise.context.NormalScope;
@@ -127,16 +128,20 @@ public class IOCProcessor {
   @SuppressWarnings("rawtypes")
   private BlockBuilder addScopeContextsToRegisterInjectorsMethod(final IOCProcessingContext processingContext,
           final Map<Class<? extends Annotation>, MetaClass> scopeContexts) {
+    final Set<String> namesAlreadyAdded = new HashSet<String>();
     @SuppressWarnings({ "unchecked" })
     final BlockBuilder methodBody = processingContext.getBootstrapBuilder().privateMethod(void.class, "registerInjectors").body();
     for (final Class<? extends Annotation> scope : injectionContext.getAnnotationsForElementType(WiringElementType.NormalScopedBean)) {
       if (scopeContexts.containsKey(scope)) {
         final MetaClass scopeContextImpl = scopeContexts.get(scope);
-        if (!scopeContextImpl.isDefaultInstantiable()) {
-          throw new RuntimeException("The @ScopeContext " + scopeContextImpl.getName() + " must have a public, no-args constructor.");
-        }
+        if (!namesAlreadyAdded.contains(scopeContextImpl.getName())) {
+          if (!scopeContextImpl.isDefaultInstantiable()) {
+            throw new RuntimeException("The @ScopeContext " + scopeContextImpl.getName() + " must have a public, no-args constructor.");
+          }
 
-        methodBody._(Stmt.declareFinalVariable(getContextVarName(scopeContextImpl), Context.class, newInstanceOf(scopeContextImpl)));
+          methodBody._(Stmt.declareFinalVariable(getContextVarName(scopeContextImpl), Context.class, newInstanceOf(scopeContextImpl)));
+          namesAlreadyAdded.add(scopeContextImpl.getName());
+        }
       }
     }
     final MetaClass dependentContext = scopeContexts.get(Dependent.class);

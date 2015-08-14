@@ -7,9 +7,10 @@ import java.util.Map;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Singleton;
 
+import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.client.api.ScopeContext;
 
-@ScopeContext({ApplicationScoped.class, Singleton.class})
+@ScopeContext({ApplicationScoped.class, Singleton.class, EntryPoint.class})
 public class ApplicationScopedContext extends AbstractContext {
 
   private final Map<String, Object> instances = new HashMap<String, Object>();
