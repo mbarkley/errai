@@ -67,10 +67,14 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
             .define(injectable.getInjectorClassSimpleName() + "ProxyImpl", injectable.getInjectedType()).privateScope()
             .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectable.getInjectedType()))).body();
 
-    proxyImpl.privateField("proxyHelper", parameterizedAs(ProxyHelper.class, typeParametersOf(injectable.getInjectedType())))
-             .modifiers(Modifier.Final)
-             .initializesWith(Stmt.newObject(parameterizedAs(ProxyHelperImpl.class, typeParametersOf(injectable.getInjectedType()))))
-             .finish();
+    proxyImpl
+            .privateField("proxyHelper",
+                    parameterizedAs(ProxyHelper.class, typeParametersOf(injectable.getInjectedType())))
+            .modifiers(Modifier.Final)
+            .initializesWith(Stmt.newObject(
+                    parameterizedAs(ProxyHelperImpl.class, typeParametersOf(injectable.getInjectedType())),
+                    injectable.getInjectorClassSimpleName()))
+            .finish();
 
     implementProxyMethods(proxyImpl, injectable);
     implementInjectableMethods(proxyImpl, injectable);

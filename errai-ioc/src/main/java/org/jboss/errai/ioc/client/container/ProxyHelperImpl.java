@@ -2,8 +2,14 @@ package org.jboss.errai.ioc.client.container;
 
 public class ProxyHelperImpl<T> implements ProxyHelper<T> {
 
+  private final String injectorTypeSimpleName;
+
   private Context context;
   private T instance;
+
+  public ProxyHelperImpl(final String injectorTypeSimpleName) {
+    this.injectorTypeSimpleName = injectorTypeSimpleName;
+  }
 
   @Override
   public void setInstance(final T instance) {
@@ -13,11 +19,20 @@ public class ProxyHelperImpl<T> implements ProxyHelper<T> {
   @Override
   public T getInstance() {
     if (instance == null) {
-      // TODO improve message
-      throw new RuntimeException("There is no active instance.");
+      trySettingInstance();
     }
 
     return instance;
+  }
+
+  private void trySettingInstance() {
+    assertContextIsSet();
+
+    if (context.isActive()) {
+      instance = context.getActiveNonProxiedInstance(injectorTypeSimpleName);
+    } else {
+      throw new RuntimeException("Cannot invoke method on bean from inactive " + context.getScope().getSimpleName() + " context.");
+    }
   }
 
   @Override
@@ -36,11 +51,15 @@ public class ProxyHelperImpl<T> implements ProxyHelper<T> {
 
   @Override
   public Context getContext() {
+    assertContextIsSet();
+
+    return context;
+  }
+
+  private void assertContextIsSet() {
     if (context == null) {
       throw new RuntimeException("Context has not yet been set.");
     }
-
-    return context;
   }
 
 }
