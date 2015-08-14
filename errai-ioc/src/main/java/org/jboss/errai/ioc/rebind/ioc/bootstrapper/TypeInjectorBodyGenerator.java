@@ -131,8 +131,4 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
     }
   }
 
-  @Override
-  protected boolean requiresProxy(final Injectable injectable) {
-    return !injectable.getScope().equals(Dependent.class);
-  }
 }

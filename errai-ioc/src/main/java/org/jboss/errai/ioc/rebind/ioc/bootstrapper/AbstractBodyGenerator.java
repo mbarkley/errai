@@ -92,7 +92,7 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
               .privateScope()
               .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectable.getInjectedType()))).body();
     } else {
-      if (!requiresProxy(injectable)) {
+      if (!injectable.requiresProxy()) {
         return parameterizedAs(NonProxiableWrapper.class, typeParametersOf(injectable.getInjectedType()));
       } else {
         throw new RuntimeException(injectable.getInjectedType() + " must be proxiable but is not default instatiable.");
@@ -107,8 +107,6 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
 
     return proxyImpl.getClassDefinition();
   }
-
-  protected abstract boolean requiresProxy(Injectable injectable);
 
   private void declareAndInitializeProxyHelper(final Injectable injectable, final ClassStructureBuilder<?> bodyBlockBuilder) {
     bodyBlockBuilder

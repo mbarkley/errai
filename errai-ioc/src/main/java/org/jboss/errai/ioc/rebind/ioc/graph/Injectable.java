@@ -21,4 +21,6 @@ public interface Injectable {
 
   InjectorType getInjectorType();
 
+  boolean requiresProxy();
+
 }

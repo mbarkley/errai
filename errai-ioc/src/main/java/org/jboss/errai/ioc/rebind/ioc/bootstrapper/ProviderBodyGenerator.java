@@ -47,9 +47,4 @@ public class ProviderBodyGenerator extends AbstractBodyGenerator {
     return statement;
   }
 
-  @Override
-  protected boolean requiresProxy(final Injectable injectable) {
-    return false;
-  }
-
 }

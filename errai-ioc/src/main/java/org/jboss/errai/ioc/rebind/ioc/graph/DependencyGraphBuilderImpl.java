@@ -15,8 +15,11 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.Stack;
 
+import javax.enterprise.context.Dependent;
+
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaField;
+import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 import com.google.common.collect.HashMultimap;
@@ -312,6 +315,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     public Collection<Dependency> getDependencies() {
       return Collections.emptyList();
     }
+
+    @Override
+    public boolean requiresProxy() {
+      return false;
+    }
   }
 
   static class ConcreteInjectable extends BaseInjectable {
@@ -346,6 +354,21 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     @Override
     public Collection<Dependency> getDependencies() {
       return Collections.<Dependency>unmodifiableCollection(dependencies);
+    }
+
+    @Override
+    public boolean requiresProxy() {
+      switch (injectorType) {
+      case Abstract:
+      case ContextualProvider:
+      case Provider:
+        return false;
+      case Producer:
+      case Type:
+        return !(literalScope.equals(Dependent.class) || literalScope.equals(EntryPoint.class));
+      default:
+        throw new RuntimeException("Not yet implemented!");
+      }
     }
   }
 
