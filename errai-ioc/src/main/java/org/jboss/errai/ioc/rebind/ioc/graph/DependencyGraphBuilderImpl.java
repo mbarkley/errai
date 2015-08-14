@@ -233,14 +233,14 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     final Collection<AbstractInjectable> candidates = directAbstractInjectablesByAssignableTypes.get(abstractInjectable.type.getErased());
     for (final AbstractInjectable candidate : candidates) {
       if (abstractInjectable.qualifier.isSatisfiedBy(candidate.qualifier)
-              && typeParametersAreAssignable(candidate.getInjectedType(), abstractInjectable.type)
+              && isAssignable(candidate.getInjectedType(), abstractInjectable.type)
               && !candidate.equals(abstractInjectable)) {
         abstractInjectable.linked.add(candidate);
       }
     }
   }
 
-  private boolean typeParametersAreAssignable(final MetaClass fromType, final MetaClass toType) {
+  private boolean isAssignable(final MetaClass fromType, final MetaClass toType) {
     return toType.isAssignableFrom(fromType);
   }
 
