@@ -23,6 +23,7 @@ import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 
 import java.lang.annotation.Annotation;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -189,44 +190,8 @@ public class IOCProcessor {
 
   private Collection<MetaClass> findRelevantClasses(final IOCProcessingContext processingContext) {
     final Collection<MetaClass> allMetaClasses = new HashSet<MetaClass>();
+    allMetaClasses.addAll(ClassScanner.getSubTypesOf(MetaClassFactory.get(Object.class), processingContext.getGeneratorContext()));
 
-    final WiringElementType[] typeLevelWiringTypes = new WiringElementType[] {
-        WiringElementType.DependentBean,
-        WiringElementType.NormalScopedBean,
-        WiringElementType.TopLevelProvider,
-        WiringElementType.ContextualTopLevelProvider
-    };
-
-    final WiringElementType[] methodLevelWiringTypes = new WiringElementType[] {
-        WiringElementType.ProducerElement
-    };
-
-    final WiringElementType[] fieldLevelWiringTypes = new WiringElementType[] {
-        WiringElementType.ProducerElement,
-        WiringElementType.InjectionPoint
-    };
-
-    for (final WiringElementType wiringType : typeLevelWiringTypes) {
-      for (final Class<? extends Annotation> anno : injectionContext.getAnnotationsForElementType(wiringType)) {
-        allMetaClasses.addAll(ClassScanner.getTypesAnnotatedWith(anno));
-      }
-    }
-
-    for (final WiringElementType wiringType : methodLevelWiringTypes) {
-      for (final Class<? extends Annotation> anno : injectionContext.getAnnotationsForElementType(wiringType)) {
-        for (final MetaMethod method : ClassScanner.getMethodsAnnotatedWith(anno, processingContext.getPackages(), processingContext.getGeneratorContext())) {
-          allMetaClasses.add(method.getDeclaringClass());
-        }
-      }
-    }
-
-    for (final WiringElementType wiringType : fieldLevelWiringTypes) {
-      for (final Class<? extends Annotation> anno : injectionContext.getAnnotationsForElementType(wiringType)) {
-        for (final MetaField field : ClassScanner.getFieldsAnnotatedWith(anno, processingContext.getPackages(), processingContext.getGeneratorContext())) {
-          allMetaClasses.add(field.getDeclaringClass());
-        }
-      }
-    }
     return allMetaClasses;
   }
 
@@ -397,7 +362,33 @@ public class IOCProcessor {
   }
 
   private boolean isTypeInjectable(final MetaClass type) {
-    return type.isConcrete() && isEnabled(type) && hasAtMostOneInjectableConstructor(type);
+    return type.isConcrete() && type.isPublic() &&  isEnabled(type) && isConstructable(type);
+  }
+
+  private boolean isConstructable(final MetaClass type) {
+    final List<MetaConstructor> injectableConstructors = getInjectableConstructors(type);
+
+    if (injectableConstructors.size() > 1) {
+      throw new RuntimeException(type.getFullyQualifiedName() + " has " + injectableConstructors.size() + " constructors annotated with @Inject.");
+    } else if (injectableConstructors.size() == 1) {
+      return getDirectScope(type).equals(Dependent.class) || type.isDefaultInstantiable();
+    } else {
+      return type.isDefaultInstantiable();
+    }
+  }
+
+  private List<MetaConstructor> getInjectableConstructors(final MetaClass type) {
+    final Collection<Class<? extends Annotation>> injectAnnotations = injectionContext.getAnnotationsForElementType(WiringElementType.InjectionPoint);
+    final List<MetaConstructor> cons = new ArrayList<MetaConstructor>();
+    for (final MetaConstructor con : type.getConstructors()) {
+      for (final Class<? extends Annotation> anno : injectAnnotations) {
+        if (con.isAnnotationPresent(anno)) {
+          cons.add(con);
+        }
+      }
+    }
+
+    return cons;
   }
 
   private boolean isEnabled(final MetaClass type) {
@@ -437,25 +428,6 @@ public class IOCProcessor {
 
   private boolean hasEnablingProperty(final MetaClass type) {
     return type.isAnnotationPresent(EnabledByProperty.class);
-  }
-
-  private boolean hasAtMostOneInjectableConstructor(final MetaClass type) {
-    boolean hasInjectableConstructor = false;
-    final Collection<Class<? extends Annotation>> injectAnnotations = injectionContext.getAnnotationsForElementType(WiringElementType.InjectionPoint);
-    for (final MetaConstructor constructor : type.getConstructors()) {
-      for (final Class<? extends Annotation> injectAnnotation : injectAnnotations) {
-        if (constructor.isAnnotationPresent(injectAnnotation)) {
-          if (hasInjectableConstructor) {
-            return false;
-          } else {
-            hasInjectableConstructor = true;
-            break;
-          }
-        }
-      }
-    }
-
-    return true;
   }
 
 }
