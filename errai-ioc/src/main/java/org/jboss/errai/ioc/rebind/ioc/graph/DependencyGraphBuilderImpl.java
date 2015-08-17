@@ -70,10 +70,8 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   private void processInterfaces(final MetaClass type, final AbstractInjectable abstractInjectable) {
     for (final MetaClass iface : type.getInterfaces()) {
-      if (!directAbstractInjectablesByAssignableTypes.containsKey(iface.getErased())) {
-        directAbstractInjectablesByAssignableTypes.put(iface.getErased(), abstractInjectable);
-        processInterfaces(iface, abstractInjectable);
-      }
+      directAbstractInjectablesByAssignableTypes.put(iface.getErased(), abstractInjectable);
+      processInterfaces(iface, abstractInjectable);
     }
   }
 
