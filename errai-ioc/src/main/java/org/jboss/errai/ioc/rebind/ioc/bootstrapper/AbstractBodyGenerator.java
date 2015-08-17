@@ -137,7 +137,8 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
                   public Class<? extends Annotation> annotationType() {
                     return Override.class;
                   }
-                }).body();
+                })
+                .throws_(method.getCheckedExceptions()).body();
         final ContextualStatementBuilder invocation = loadVariable("proxyHelper").invoke("getInstance").invoke(method.getName(), getParametersForInvocation(method));
         if (method.getReturnType().isVoid()) {
           body._(invocation);
