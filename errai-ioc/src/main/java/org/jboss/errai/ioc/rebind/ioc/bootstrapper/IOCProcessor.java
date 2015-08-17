@@ -89,7 +89,7 @@ public class IOCProcessor {
     @SuppressWarnings("rawtypes")
     final BlockBuilder registerInjectorsBody = addScopeContextsToRegisterInjectorsMethod(processingContext, scopeContexts);
 
-    declaraAndRegisterInjectors(processingContext, dependencyGraph, scopeContexts, registerInjectorsBody);
+    declareAndRegisterInjectors(processingContext, dependencyGraph, scopeContexts, registerInjectorsBody);
     final String contextManagerFieldName = declareContextManagerField(processingContext);
     addContextsToContextManager(scopeContexts.values(), contextManagerFieldName, registerInjectorsBody);
 
@@ -116,7 +116,7 @@ public class IOCProcessor {
     return contextManagerFieldName;
   }
 
-  private void declaraAndRegisterInjectors(final IOCProcessingContext processingContext,
+  private void declareAndRegisterInjectors(final IOCProcessingContext processingContext,
           final DependencyGraph dependencyGraph, final Map<Class<? extends Annotation>, MetaClass> scopeContexts,
           @SuppressWarnings("rawtypes") final BlockBuilder registerInjectorsBody) {
     for (final Injectable injectable : dependencyGraph) {
