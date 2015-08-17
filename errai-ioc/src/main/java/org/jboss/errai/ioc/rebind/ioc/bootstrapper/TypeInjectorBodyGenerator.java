@@ -64,7 +64,7 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
   }
 
   private void addPostConstructInvocation(final String methodName, final List<Statement> createInstanceStatements) {
-    createInstanceStatements.add(loadVariable("instance").invoke(methodName));
+    createInstanceStatements.add(loadVariable("this").invoke(methodName, loadVariable("instance")));
   }
 
   private Queue<MetaMethod> gatherPostConstructs(final Injectable injectable) {
