@@ -131,7 +131,7 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
       if (!method.isStatic() && method.isPublic() && !method.isFinal() && (method.asMethod() == null || method.asMethod().getDeclaringClass() == null
               || !method.asMethod().getDeclaringClass().equals(Object.class))) {
         final BlockBuilder<?> body = proxyImpl
-                .publicMethod(method.getReturnType(), method.getName(), getParametersForDeclaration(method))
+                .publicMethod(method.getReturnType().getErased(), method.getName(), getParametersForDeclaration(method))
                 .annotatedWith(new Override() {
                   @Override
                   public Class<? extends Annotation> annotationType() {
@@ -165,7 +165,7 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
     final Parameter[] params = new Parameter[metaParams.length];
 
     for (int i = 0; i < params.length; i++) {
-      params[i] = finalOf(metaParams[i].getType(), metaParams[i].getName());
+      params[i] = finalOf(metaParams[i].getType().getErased(), metaParams[i].getName());
     }
 
     return params;
