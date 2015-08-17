@@ -23,7 +23,9 @@ import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 
 import java.lang.annotation.Annotation;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -32,6 +34,7 @@ import java.util.Set;
 
 import javax.enterprise.context.Dependent;
 import javax.enterprise.context.NormalScope;
+import javax.enterprise.inject.Alternative;
 import javax.inject.Provider;
 import javax.inject.Scope;
 
@@ -42,12 +45,14 @@ import org.jboss.errai.codegen.builder.impl.ClassBuilder;
 import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaConstructor;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.codegen.util.Stmt;
+import org.jboss.errai.config.rebind.EnvUtil;
 import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.client.api.EnabledByProperty;
@@ -72,6 +77,7 @@ public class IOCProcessor {
 
   private final InjectionContext injectionContext;
   private final QualifierFactory qualFactory;
+  private Collection<String> alternatives;
 
   public IOCProcessor(final InjectionContext injectionContext) {
     this.injectionContext = injectionContext;
@@ -391,12 +397,34 @@ public class IOCProcessor {
   }
 
   private boolean isTypeInjectable(final MetaClass type) {
-    // FIXME this logic isn't quite right...
-    if (hasEnablingProperty(type)) {
-      return isEnabledByProperty(type);
+    return type.isConcrete() && isEnabled(type) && hasAtMostOneInjectableConstructor(type);
+  }
+
+  private boolean isEnabled(final MetaClass type) {
+    final boolean hasEnablingProperty = hasEnablingProperty(type);
+
+    return (hasEnablingProperty && isEnabledByProperty(type)) || (!hasEnablingProperty && isActive(type));
+  }
+
+  private boolean isActive(final MetaClass type) {
+    if (type.isAnnotationPresent(Alternative.class)) {
+      return isAlternativeEnabled(type);
     } else {
-      return hasAtMostOneInjectableConstructor(type);
+      return true;
     }
+  }
+
+  private boolean isAlternativeEnabled(final MetaClass type) {
+    if (alternatives == null) {
+      final String userDefinedAlternatives = EnvUtil.getEnvironmentConfig().getFrameworkOrSystemProperty("errai.ioc.enabled.alternatives");
+      if (userDefinedAlternatives != null) {
+        alternatives = new HashSet<String>(Arrays.asList(userDefinedAlternatives.split("\\s+")));
+      } else {
+        alternatives = Collections.emptyList();
+      }
+    }
+
+    return alternatives.contains(type.getFullyQualifiedName());
   }
 
   private boolean isEnabledByProperty(final MetaClass type) {
