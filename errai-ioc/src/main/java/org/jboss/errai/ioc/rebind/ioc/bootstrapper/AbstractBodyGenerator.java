@@ -80,22 +80,23 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
     declareAndInitializeProxyHelper(injectable, bodyBlockBuilder);
 
     final ClassStructureBuilder<?> proxyImpl;
-    if (injectable.getInjectedType().isInterface()) {
+    final MetaClass injectedType = injectable.getInjectedType();
+    if (injectedType.isInterface()) {
       proxyImpl = ClassBuilder
               .define(injectable.getInjectorClassSimpleName() + "ProxyImpl")
               .privateScope()
-              .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectable.getInjectedType())))
-              .implementsInterface(injectable.getInjectedType()).body();
-    } else if (injectable.getInjectedType().isDefaultInstantiable()) {
+              .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectedType)))
+              .implementsInterface(injectedType).body();
+    } else if (isProxiable(injectedType)) {
       proxyImpl = ClassBuilder
-              .define(injectable.getInjectorClassSimpleName() + "ProxyImpl", injectable.getInjectedType())
+              .define(injectable.getInjectorClassSimpleName() + "ProxyImpl", injectedType)
               .privateScope()
-              .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectable.getInjectedType()))).body();
+              .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectedType))).body();
     } else {
       if (!injectable.requiresProxy()) {
-        return parameterizedAs(NonProxiableWrapper.class, typeParametersOf(injectable.getInjectedType()));
+        return parameterizedAs(NonProxiableWrapper.class, typeParametersOf(injectedType));
       } else {
-        throw new RuntimeException(injectable.getInjectedType() + " must be proxiable but is not default instatiable.");
+        throw new RuntimeException(injectedType + " must be proxiable but is not default instatiable.");
       }
     }
 
@@ -106,6 +107,10 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
     bodyBlockBuilder.declaresInnerClass(new InnerClass(proxyImpl.getClassDefinition()));
 
     return proxyImpl.getClassDefinition();
+  }
+
+  private boolean isProxiable(final MetaClass concreteClass) {
+    return concreteClass.isDefaultInstantiable() && !concreteClass.isFinal();
   }
 
   private void declareAndInitializeProxyHelper(final Injectable injectable, final ClassStructureBuilder<?> bodyBlockBuilder) {
@@ -123,7 +128,7 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
     final MetaClass injectableType = injectable.getInjectedType();
     for (final MetaMethod method : injectableType.getMethods()) {
       // TODO clean this up and maybe proxy package private and proetected methods?
-      if (method.isPublic() && (method.asMethod() == null || method.asMethod().getDeclaringClass() == null
+      if (!method.isStatic() && method.isPublic() && !method.isFinal() && (method.asMethod() == null || method.asMethod().getDeclaringClass() == null
               || !method.asMethod().getDeclaringClass().equals(Object.class))) {
         final BlockBuilder<?> body = proxyImpl
                 .publicMethod(method.getReturnType(), method.getName(), getParametersForDeclaration(method))
