@@ -196,10 +196,29 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       // TODO improve message
       throw new RuntimeException("Unsatisfied dependency " + dep.injectable.type.getName() + " in " + concrete.getInjectedType().getName());
     } else if (resolved.size() > 1) {
-      throwAmbiguousDependencyException(dep, resolved);
+      final List<ConcreteInjectable> alternatives = getAlternatives(resolved);
+      if (alternatives.isEmpty()) {
+        throwAmbiguousDependencyException(dep, resolved);
+      } else if (alternatives.size() > 1) {
+        throwAmbiguousDependencyException(dep, alternatives);
+      } else {
+        resolved.clear();
+        resolved.add(alternatives.get(0));
+      }
     }
 
     return (dep.injectable.resolution = resolved.get(0));
+  }
+
+  private List<ConcreteInjectable> getAlternatives(final List<ConcreteInjectable> resolved) {
+    final List<ConcreteInjectable> alternatives = new ArrayList<ConcreteInjectable>();
+    for (final ConcreteInjectable injectable : resolved) {
+      if (injectable.wiringTypes.contains(WiringElementType.AlternativeBean)) {
+        alternatives.add(injectable);
+      }
+    }
+
+    return alternatives;
   }
 
   private void throwAmbiguousDependencyException(final BaseDependency dep, final List<ConcreteInjectable> resolved) {

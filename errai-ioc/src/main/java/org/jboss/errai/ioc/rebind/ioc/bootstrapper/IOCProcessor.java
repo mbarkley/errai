@@ -218,13 +218,29 @@ public class IOCProcessor {
 
   private void processType(final MetaClass type, final DependencyGraphBuilder builder) {
     if (isTypeInjectable(type)) {
+      final Class<? extends Annotation> directScope = getDirectScope(type);
       final Injectable typeInjector = builder.addConcreteInjectable(type, qualFactory.forConcreteInjectable(type),
-              getDirectScope(type), InjectorType.Type, WiringElementType.NormalScopedBean);
+              directScope, InjectorType.Type, getWiringTypes(type, directScope));
       processInjectionPoints(typeInjector, builder);
       processProducerMethods(typeInjector, builder);
       processProducerFields(typeInjector, builder);
       maybeProcessAsProvider(typeInjector, builder);
     }
+  }
+
+  private WiringElementType[] getWiringTypes(final MetaClass type, final Class<? extends Annotation> directScope) {
+    final List<WiringElementType> wiringTypes = new ArrayList<WiringElementType>();
+    if (Dependent.class.equals(directScope)) {
+      wiringTypes.add(WiringElementType.DependentBean);
+    } else {
+      wiringTypes.add(WiringElementType.NormalScopedBean);
+    }
+
+    if (type.isAnnotationPresent(Alternative.class)) {
+      wiringTypes.add(WiringElementType.AlternativeBean);
+    }
+
+    return wiringTypes.toArray(new WiringElementType[wiringTypes.size()]);
   }
 
   private void maybeProcessAsProvider(final Injectable typeInjector, final DependencyGraphBuilder builder) {
