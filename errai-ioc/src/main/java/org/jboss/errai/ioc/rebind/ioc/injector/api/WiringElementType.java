@@ -9,6 +9,7 @@ public enum WiringElementType {
   SingletonBean,
   NormalScopedBean,
   DependentBean,
+  Simpleton, // TODO review name
   ContextualTopLevelProvider,
   TopLevelProvider,
   InjectionPoint,

@@ -35,6 +35,7 @@ import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
@@ -87,7 +88,7 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
               .privateScope()
               .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectedType)))
               .implementsInterface(injectedType).body();
-    } else if (isProxiable(injectedType)) {
+    } else if (isProxiable(injectable)) {
       proxyImpl = ClassBuilder
               .define(injectable.getInjectorClassSimpleName() + "ProxyImpl", injectedType)
               .privateScope()
@@ -109,8 +110,10 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
     return proxyImpl.getClassDefinition();
   }
 
-  private boolean isProxiable(final MetaClass concreteClass) {
-    return concreteClass.isDefaultInstantiable() && !concreteClass.isFinal();
+  private boolean isProxiable(final Injectable injectable) {
+    final MetaClass type = injectable.getInjectedType();
+
+    return !injectable.getWiringElementTypes().contains(WiringElementType.Simpleton) && type.isDefaultInstantiable() && !type.isFinal();
   }
 
   private void declareAndInitializeProxyHelper(final Injectable injectable, final ClassStructureBuilder<?> bodyBlockBuilder) {

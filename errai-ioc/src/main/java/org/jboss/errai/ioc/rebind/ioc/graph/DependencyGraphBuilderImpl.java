@@ -345,7 +345,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     @Override
     public String getInjectorClassSimpleName() {
-      return type.getFullyQualifiedName().replace('.', '_') + "_" + qualifier.getIdentifierSafeString();
+      return type.getFullyQualifiedName().replace('.', '_').replace('$', '_') + "_" + qualifier.getIdentifierSafeString();
     }
  }
 
@@ -380,6 +380,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     @Override
     public boolean requiresProxy() {
       return false;
+    }
+
+    @Override
+    public Collection<WiringElementType> getWiringElementTypes() {
+      return Collections.emptyList();
     }
   }
 
@@ -430,6 +435,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       default:
         throw new RuntimeException("Not yet implemented!");
       }
+    }
+
+    @Override
+    public Collection<WiringElementType> getWiringElementTypes() {
+      return Collections.unmodifiableCollection(wiringTypes);
     }
   }
 

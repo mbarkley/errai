@@ -190,7 +190,7 @@ public class IOCProcessor {
 
   private Collection<MetaClass> findRelevantClasses(final IOCProcessingContext processingContext) {
     final Collection<MetaClass> allMetaClasses = new HashSet<MetaClass>();
-    allMetaClasses.addAll(ClassScanner.getSubTypesOf(MetaClassFactory.get(Object.class), processingContext.getGeneratorContext()));
+    allMetaClasses.addAll(MetaClassFactory.getAllCachedClasses());
 
     return allMetaClasses;
   }
@@ -217,7 +217,10 @@ public class IOCProcessor {
   }
 
   private void processType(final MetaClass type, final DependencyGraphBuilder builder) {
-    if (isTypeInjectable(type)) {
+    if (isSimpleton(type)) {
+      builder.addConcreteInjectable(type, qualFactory.forConcreteInjectable(type), Dependent.class, InjectorType.Type,
+              WiringElementType.DependentBean, WiringElementType.Simpleton);
+    } else if (isTypeInjectable(type)) {
       final Class<? extends Annotation> directScope = getDirectScope(type);
       final Injectable typeInjector = builder.addConcreteInjectable(type, qualFactory.forConcreteInjectable(type),
               directScope, InjectorType.Type, getWiringTypes(type, directScope));
@@ -226,6 +229,28 @@ public class IOCProcessor {
       processProducerFields(typeInjector, builder);
       maybeProcessAsProvider(typeInjector, builder);
     }
+  }
+
+  private boolean isSimpleton(final MetaClass type) {
+    if (!type.isPublic() || !type.isConcrete() || (type.asClass() != null && type.asClass().isMemberClass())
+            || type.isAnnotationPresent(Alternative.class) || hasEnablingProperty(type)) {
+      return false;
+    }
+    final Class<? extends Annotation> scope = getDirectScope(type);
+    if (!(scope.equals(Dependent.class) && !type.isAnnotationPresent(Dependent.class))) {
+      return false;
+    }
+    if (!getInjectableConstructors(type).isEmpty()) {
+      return false;
+    }
+    final Collection<Class<? extends Annotation>> injectAnnos = injectionContext.getAnnotationsForElementType(WiringElementType.InjectionPoint);
+    for (final Class<? extends Annotation> anno : injectAnnos) {
+      if (!type.getFieldsAnnotatedWith(anno).isEmpty()) {
+        return false;
+      }
+    }
+
+    return type.isDefaultInstantiable();
   }
 
   private WiringElementType[] getWiringTypes(final MetaClass type, final Class<? extends Annotation> directScope) {
@@ -390,6 +415,7 @@ public class IOCProcessor {
     if (injectableConstructors.size() > 1) {
       throw new RuntimeException(type.getFullyQualifiedName() + " has " + injectableConstructors.size() + " constructors annotated with @Inject.");
     } else if (injectableConstructors.size() == 1) {
+      // Needs to be proxiable is normal scoped.
       return getDirectScope(type).equals(Dependent.class) || type.isDefaultInstantiable();
     } else {
       return type.isDefaultInstantiable();

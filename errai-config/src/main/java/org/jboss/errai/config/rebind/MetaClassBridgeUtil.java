@@ -71,8 +71,6 @@ public abstract class MetaClassBridgeUtil {
       final Map<String, MetaClass> classesToPush = new HashMap<String, MetaClass>(typeOracle.getTypes().length);
       final Set<String> translatable = new HashSet<String>(RebindUtils.findTranslatablePackages(context));
       final Set<String> reloadable = RebindUtils.getReloadablePackageNames(context);
-      translatable.remove("java.lang");
-      translatable.remove("java.lang.annotation");
 
       for (final JClassType type : typeOracle.getTypes()) {
         if (!translatable.contains(type.getPackage().getName())) {
