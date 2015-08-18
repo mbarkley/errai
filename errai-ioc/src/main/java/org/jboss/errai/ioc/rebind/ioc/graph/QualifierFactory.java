@@ -7,10 +7,12 @@ import org.jboss.errai.codegen.meta.HasAnnotations;
  */
 public interface QualifierFactory {
 
-  Qualifier create(HasAnnotations annotated);
+  Qualifier forConcreteInjectable(HasAnnotations annotated);
 
-  Qualifier unqualified();
+  Qualifier forAbstractInjectable(HasAnnotations annotated);
 
-  Qualifier universalQualifier();
+  Qualifier forUnqualified();
+
+  Qualifier forUniversallyQualified();
 
 }
