@@ -1,10 +1,20 @@
 package org.jboss.errai.ioc.client.container.async;
 
 import java.lang.annotation.Annotation;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.enterprise.inject.Alternative;
 
 import org.jboss.errai.ioc.client.QualifierUtil;
-import org.jboss.errai.ioc.client.api.EnabledByProperty;
 import org.jboss.errai.ioc.client.container.CreationalContext;
 import org.jboss.errai.ioc.client.container.DestructionCallback;
 import org.jboss.errai.ioc.client.container.IOCResolutionException;
@@ -14,7 +24,7 @@ import com.google.gwt.user.client.Timer;
 /**
  * @author Mike Brock
  */
-@EnabledByProperty(value = "errai.ioc.async_bean_manager")
+@Alternative
 public class AsyncBeanManagerImpl implements AsyncBeanManager, AsyncBeanManagerSetup {
   /**
    * A map of all named beans.
@@ -88,7 +98,7 @@ public class AsyncBeanManagerImpl implements AsyncBeanManager, AsyncBeanManagerS
                                      final Class<Object> beanActivatorType) {
 
 
-    _registerNamedBean(beanName, 
+    _registerNamedBean(beanName,
         _registerSingletonBean(type, beanType, callback, instance, qualifiers, beanName, concrete, beanActivatorType));
   }
 
@@ -100,7 +110,7 @@ public class AsyncBeanManagerImpl implements AsyncBeanManager, AsyncBeanManagerS
                                      final boolean concrete,
                                      final Class<Object> beanActivatorType) {
 
-    _registerNamedBean(beanName, 
+    _registerNamedBean(beanName,
         _registerDependentBean(type, beanType, callback, qualifiers, beanName, concrete, beanActivatorType));
   }
 
@@ -221,7 +231,7 @@ public class AsyncBeanManagerImpl implements AsyncBeanManager, AsyncBeanManagerS
 
   /**
    * Associates a bean instance with a creational context.
-   * 
+   *
    * @param ref
    *          the reference to the bean
    * @param creationalContext

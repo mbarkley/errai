@@ -17,11 +17,21 @@
 package org.jboss.errai.ioc.client.container;
 
 import java.lang.annotation.Annotation;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.enterprise.inject.Alternative;
 
 import org.jboss.errai.ioc.client.QualifierUtil;
 import org.jboss.errai.ioc.client.SimpleInjectionContext;
-import org.jboss.errai.ioc.client.api.EnabledByProperty;
 
 /**
  * A simple bean manager provided by the Errai IOC framework. The manager provides access to all of the wired beans
@@ -30,7 +40,7 @@ import org.jboss.errai.ioc.client.api.EnabledByProperty;
  *
  * @author Mike Brock
  */
-@EnabledByProperty(value = "errai.ioc.async_bean_manager", negated = true)
+@Alternative
 public class SyncBeanManagerImpl implements SyncBeanManager, SyncBeanManagerSetup {
   /**
    * A map of all named beans.
@@ -104,7 +114,7 @@ public class SyncBeanManagerImpl implements SyncBeanManager, SyncBeanManagerSetu
                                      final Class<Object> activator) {
 
 
-    _registerNamedBean(beanName, 
+    _registerNamedBean(beanName,
         _registerSingletonBean(type, beanType, callback, instance, qualifiers, beanName, concrete, activator));
   }
 
@@ -116,7 +126,7 @@ public class SyncBeanManagerImpl implements SyncBeanManager, SyncBeanManagerSetu
                                      final boolean concrete,
                                      final Class<Object> activator) {
 
-    _registerNamedBean(beanName, 
+    _registerNamedBean(beanName,
         _registerDependentBean(type, beanType, callback, qualifiers, beanName, concrete, activator));
   }
 

@@ -16,15 +16,14 @@
 
 package org.jboss.errai.ioc.tests.wiring.client.res;
 
-import org.jboss.errai.ioc.client.api.TestMock;
-
+import javax.enterprise.inject.Alternative;
 import javax.inject.Singleton;
 
 /**
  * @author Mike Brock
  */
 @Singleton
-@TestMock
+@Alternative
 public class MockProductionBean implements MockableCommonInterface {
   @Override
   public String doSomething() {

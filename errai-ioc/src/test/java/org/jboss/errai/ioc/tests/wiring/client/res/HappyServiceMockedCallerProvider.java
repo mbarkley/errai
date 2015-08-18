@@ -16,19 +16,20 @@
 
 package org.jboss.errai.ioc.tests.wiring.client.res;
 
+import java.lang.annotation.Annotation;
+
+import javax.enterprise.inject.Alternative;
+
 import org.jboss.errai.common.client.api.Caller;
 import org.jboss.errai.common.client.api.ErrorCallback;
 import org.jboss.errai.common.client.api.RemoteCallback;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.client.api.IOCProvider;
-import org.jboss.errai.ioc.client.api.TestMock;
-
-import java.lang.annotation.Annotation;
 
 /**
  * @author Christian Sadilek <csadilek@redhat.com>
  */
-@TestMock @IOCProvider
+@Alternative @IOCProvider
 public class HappyServiceMockedCallerProvider implements ContextualTypeProvider<Caller<HappyService>> {
   @Override
   public Caller<HappyService> provide(Class<?>[] typeargs, Annotation[] qualifiers) {

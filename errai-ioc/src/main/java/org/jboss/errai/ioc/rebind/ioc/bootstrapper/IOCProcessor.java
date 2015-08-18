@@ -191,6 +191,7 @@ public class IOCProcessor {
   private Collection<MetaClass> findRelevantClasses(final IOCProcessingContext processingContext) {
     final Collection<MetaClass> allMetaClasses = new HashSet<MetaClass>();
     allMetaClasses.addAll(MetaClassFactory.getAllCachedClasses());
+    allMetaClasses.remove(MetaClassFactory.get(Object.class));
 
     return allMetaClasses;
   }
@@ -217,23 +218,29 @@ public class IOCProcessor {
   }
 
   private void processType(final MetaClass type, final DependencyGraphBuilder builder) {
-    if (isSimpleton(type)) {
-      builder.addConcreteInjectable(type, qualFactory.forConcreteInjectable(type), Dependent.class, InjectorType.Type,
-              WiringElementType.DependentBean, WiringElementType.Simpleton);
-    } else if (isTypeInjectable(type)) {
-      final Class<? extends Annotation> directScope = getDirectScope(type);
-      final Injectable typeInjector = builder.addConcreteInjectable(type, qualFactory.forConcreteInjectable(type),
-              directScope, InjectorType.Type, getWiringTypes(type, directScope));
-      processInjectionPoints(typeInjector, builder);
-      processProducerMethods(typeInjector, builder);
-      processProducerFields(typeInjector, builder);
-      maybeProcessAsProvider(typeInjector, builder);
+    if (isTypeInjectableCandidate(type)) {
+      if (isSimpleton(type)) {
+        builder.addConcreteInjectable(type, qualFactory.forConcreteInjectable(type), Dependent.class, InjectorType.Type,
+                WiringElementType.DependentBean, WiringElementType.Simpleton);
+      } else if (isTypeInjectable(type)) {
+        final Class<? extends Annotation> directScope = getDirectScope(type);
+        final Injectable typeInjector = builder.addConcreteInjectable(type, qualFactory.forConcreteInjectable(type),
+                directScope, InjectorType.Type, getWiringTypes(type, directScope));
+        processInjectionPoints(typeInjector, builder);
+        processProducerMethods(typeInjector, builder);
+        processProducerFields(typeInjector, builder);
+        maybeProcessAsProvider(typeInjector, builder);
+      }
     }
   }
 
+  private boolean isTypeInjectableCandidate(MetaClass type) {
+    final boolean isMemberClass = (type.asClass() != null && type.asClass().isMemberClass());
+    return type.isPublic() && type.isConcrete() && !isMemberClass;
+  }
+
   private boolean isSimpleton(final MetaClass type) {
-    if (!type.isPublic() || !type.isConcrete() || (type.asClass() != null && type.asClass().isMemberClass())
-            || type.isAnnotationPresent(Alternative.class) || hasEnablingProperty(type)) {
+    if (type.isAnnotationPresent(Alternative.class) || hasEnablingProperty(type)) {
       return false;
     }
     final Class<? extends Annotation> scope = getDirectScope(type);
