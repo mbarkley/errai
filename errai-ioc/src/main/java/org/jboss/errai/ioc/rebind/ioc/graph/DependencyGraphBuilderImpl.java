@@ -193,8 +193,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     } while (resolutionQueue.size() > 0);
 
     if (resolved.isEmpty()) {
-      // TODO improve message
-      throw new RuntimeException("Unsatisfied dependency " + dep.injectable.type.getName() + " in " + concrete.getInjectedType().getName());
+      throwUnsatisfiedDependencyException(dep, concrete);
     } else if (resolved.size() > 1) {
       final List<ConcreteInjectable> alternatives = getAlternatives(resolved);
       if (alternatives.isEmpty()) {
@@ -208,6 +207,12 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
 
     return (dep.injectable.resolution = resolved.get(0));
+  }
+
+  private void throwUnsatisfiedDependencyException(final BaseDependency dep, final ConcreteInjectable concrete) {
+    final String message = "Unsatisfied " + dep.dependencyType.toString().toLowerCase() + " dependency " + dep.injectable + " for " + concrete;
+
+    throw new RuntimeException(message);
   }
 
   private List<ConcreteInjectable> getAlternatives(final List<ConcreteInjectable> resolved) {
