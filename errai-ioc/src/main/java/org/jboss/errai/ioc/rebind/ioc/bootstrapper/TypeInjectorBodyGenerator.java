@@ -1,6 +1,7 @@
 package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
 
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.addPrivateAccessStubs;
+import static org.jboss.errai.codegen.util.Stmt.castTo;
 import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
 import static org.jboss.errai.codegen.util.Stmt.loadLiteral;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
@@ -119,7 +120,8 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
         final ParamDependency paramDep = ParamDependency.class.cast(dep);
         final String depInjectableName = depInjectable.getInjectorClassSimpleName();
 
-        constructorParameterStatements[paramDep.getParamIndex()] = loadVariable("contextManager").invoke("getInstance", loadLiteral(depInjectableName));
+        constructorParameterStatements[paramDep.getParamIndex()] = castTo(depInjectable.getInjectedType(),
+                loadVariable("contextManager").invoke("getInstance", loadLiteral(depInjectableName)));
       }
 
       createInstanceStatements.add(declareFinalVariable("instance", injectable.getInjectedType(),

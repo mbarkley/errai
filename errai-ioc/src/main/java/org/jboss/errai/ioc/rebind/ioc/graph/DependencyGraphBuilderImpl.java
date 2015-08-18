@@ -19,6 +19,7 @@ import javax.enterprise.context.Dependent;
 
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaField;
+import org.jboss.errai.codegen.meta.MetaParameterizedType;
 import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
@@ -197,9 +198,9 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     } else if (resolved.size() > 1) {
       final List<ConcreteInjectable> alternatives = getAlternatives(resolved);
       if (alternatives.isEmpty()) {
-        throwAmbiguousDependencyException(dep, resolved);
+        throwAmbiguousDependencyException(dep, concrete, resolved);
       } else if (alternatives.size() > 1) {
-        throwAmbiguousDependencyException(dep, alternatives);
+        throwAmbiguousDependencyException(dep, concrete, alternatives);
       } else {
         resolved.clear();
         resolved.add(alternatives.get(0));
@@ -226,9 +227,15 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     return alternatives;
   }
 
-  private void throwAmbiguousDependencyException(final BaseDependency dep, final List<ConcreteInjectable> resolved) {
+  private void throwAmbiguousDependencyException(final BaseDependency dep, final ConcreteInjectable concrete, final List<ConcreteInjectable> resolved) {
     final StringBuilder messageBuilder = new StringBuilder();
-    messageBuilder.append("Ambiguous resolution for type " + dep.injectable.type.getName() + ".\n")
+    messageBuilder.append("Ambiguous resolution for ")
+                  .append(dep.dependencyType.toString().toLowerCase())
+                  .append(" ")
+                  .append(dep.injectable)
+                  .append(" in ")
+                  .append(concrete)
+                  .append(".\n")
                   .append("Resolved types:\n")
                   .append(resolved.get(0));
     for (int i = 1; i < resolved.size(); i++) {
@@ -255,15 +262,41 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     final Collection<AbstractInjectable> candidates = directAbstractInjectablesByAssignableTypes.get(abstractInjectable.type.getErased());
     for (final AbstractInjectable candidate : candidates) {
       if (abstractInjectable.qualifier.isSatisfiedBy(candidate.qualifier)
-              && isAssignable(candidate.getInjectedType(), abstractInjectable.type)
+              && hasAssignableTypeParameters(candidate.getInjectedType(), abstractInjectable.type)
               && !candidate.equals(abstractInjectable)) {
         abstractInjectable.linked.add(candidate);
       }
     }
   }
 
-  private boolean isAssignable(final MetaClass fromType, final MetaClass toType) {
-    return toType.isAssignableFrom(fromType);
+  private boolean hasAssignableTypeParameters(final MetaClass fromType, final MetaClass toType) {
+    final MetaParameterizedType toParamType = toType.getParameterizedType();
+    final MetaParameterizedType fromParamType = getFromTypeParams(fromType, toType);
+
+    return toParamType == null || toParamType.isAssignableFrom(fromParamType);
+  }
+
+  private MetaParameterizedType getFromTypeParams(final MetaClass fromType, final MetaClass toType) {
+    if (toType.isInterface()) {
+      if (fromType.getFullyQualifiedName().equals(toType.getFullyQualifiedName())) {
+        return fromType.getParameterizedType();
+      }
+      for (final MetaClass iface : fromType.getInterfaces()) {
+        if (iface.getFullyQualifiedName().equals(toType.getFullyQualifiedName())) {
+          return iface.getParameterizedType();
+        }
+      }
+      throw new RuntimeException("Could not find interface " + toType.getFullyQualifiedName() + " through type " + fromType.getFullyQualifiedName());
+    } else {
+      MetaClass clazz = fromType;
+      do {
+        if (clazz.getFullyQualifiedName().equals(toType.getFullyQualifiedName())) {
+          return clazz.getParameterizedType();
+        }
+        clazz = clazz.getSuperClass();
+      } while (!clazz.getFullyQualifiedName().equals("java.lang.Object"));
+      throw new RuntimeException("Could not find class " + toType.getFullyQualifiedName() + " through type " + fromType.getFullyQualifiedName());
+    }
   }
 
   @Override
