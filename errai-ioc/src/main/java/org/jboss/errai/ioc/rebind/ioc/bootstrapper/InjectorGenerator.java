@@ -87,7 +87,8 @@ public class InjectorGenerator extends IncrementalGenerator {
   }
 
   private String getInjectorSubTypeSimpleName(final String typeName) {
-    return typeName.replace('.', '_') + "Impl";
+    final int simpleNameStart = Math.max(typeName.lastIndexOf('.'), typeName.lastIndexOf('$')) + 1;
+    return typeName.substring(simpleNameStart);
   }
 
   @Override

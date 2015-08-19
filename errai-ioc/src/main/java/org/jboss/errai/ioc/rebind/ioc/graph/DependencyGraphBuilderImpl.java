@@ -345,7 +345,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     @Override
     public String getInjectorClassSimpleName() {
-      return type.getFullyQualifiedName().replace('.', '_').replace('$', '_') + "_" + qualifier.getIdentifierSafeString();
+      return type.getFullyQualifiedName().replace('.', '_').replace('$', '_') + "__with_qualifiers__" + qualifier.getIdentifierSafeString();
     }
  }
 

@@ -135,7 +135,12 @@ public class DefaultQualifierFactory implements QualifierFactory {
       if (identifier == null) {
         final StringBuilder builder = new StringBuilder();
         for (final AnnotationWrapper wrapper : annotations) {
-          builder.append(wrapper.anno.annotationType().getName().replace('.', '_'));
+          builder.append(wrapper.anno.annotationType().getName().replace('.', '_'))
+                 .append("__");
+        }
+        // Remove last delimeter
+        if (annotations.size() > 0) {
+          builder.delete(builder.length()-2, builder.length());
         }
 
         identifier = builder.toString();
@@ -173,7 +178,7 @@ public class DefaultQualifierFactory implements QualifierFactory {
 
     @Override
     public String getIdentifierSafeString() {
-      return "org_jboss_errai_ioc_qual_Universal";
+      return "Universal";
     }
 
     @Override
