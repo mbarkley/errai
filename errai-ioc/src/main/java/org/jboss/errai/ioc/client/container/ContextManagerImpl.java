@@ -24,7 +24,7 @@ public class ContextManagerImpl implements ContextManager {
   }
 
   @Override
-  public <T> T getNewInstance(String injecorTypeSimpleName) {
+  public <T> T getNewInstance(final String injecorTypeSimpleName) {
     return contextsByInjectorName.get(injecorTypeSimpleName).getNewInstance(injecorTypeSimpleName);
   }
 

@@ -82,6 +82,12 @@
       <groupId>com.google.inject</groupId>
       <artifactId>guice</artifactId>
     </dependency>
+    
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava-gwt</artifactId>
+      <scope>provided</scope>
+    </dependency>
 
     <dependency>
       <groupId>javax.inject</groupId>

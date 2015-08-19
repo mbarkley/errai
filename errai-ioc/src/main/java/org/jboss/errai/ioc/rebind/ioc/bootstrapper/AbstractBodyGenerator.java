@@ -10,9 +10,14 @@ import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 import static org.jboss.errai.codegen.util.Stmt.newObject;
 
 import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
+import org.jboss.errai.codegen.BlockStatement;
 import org.jboss.errai.codegen.InnerClass;
 import org.jboss.errai.codegen.Modifier;
 import org.jboss.errai.codegen.Parameter;
@@ -22,11 +27,13 @@ import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.builder.impl.ClassBuilder;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.container.Context;
 import org.jboss.errai.ioc.client.container.ContextManager;
+import org.jboss.errai.ioc.client.container.InjectorHandleImpl;
 import org.jboss.errai.ioc.client.container.NonProxiableWrapper;
 import org.jboss.errai.ioc.client.container.Proxy;
 import org.jboss.errai.ioc.client.container.ProxyHelper;
@@ -233,8 +240,46 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
     final List<Statement> createInstanceStatements = generateCreateInstanceStatements(bodyBlockBuilder, injectable, graph);
 
     implementCreateInstance(bodyBlockBuilder, injectable, createInstanceStatements);
-
     implementCreateProxy(bodyBlockBuilder, injectable);
+    implementGetHandle(bodyBlockBuilder, injectable);
+  }
+
+  private void implementGetHandle(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable) {
+    bodyBlockBuilder.privateField("handle", InjectorHandleImpl.class)
+            .initializesWith(newObject(InjectorHandleImpl.class, injectable.getInjectedType().asClass(),
+                    injectable.getInjectorClassSimpleName(), injectable.getScope()));
+    final BlockStatement initializer = bodyBlockBuilder.getClassDefinition().getInstanceInitializer();
+    for (final MetaClass assignableType : getAllAssignableTypes(injectable.getInjectedType())) {
+      initializer.addStatement(loadVariable("handle").invoke("addAssignableType", assignableType.asClass()));
+    }
+  }
+
+  private Collection<MetaClass> getAllAssignableTypes(final MetaClass injectedType) {
+    final Collection<MetaClass> assignableTypes = new ArrayList<MetaClass>();
+
+    final Queue<MetaClass> ifaces = new LinkedList<MetaClass>();
+    if (injectedType.isInterface()) {
+      ifaces.add(injectedType);
+    } else {
+      ifaces.addAll(Arrays.asList(injectedType.getInterfaces()));
+    }
+
+    do {
+      final MetaClass iface = ifaces.poll().getErased();
+      assignableTypes.add(iface);
+      ifaces.addAll(Arrays.asList(iface.getInterfaces()));
+    } while (ifaces.size() > 0);
+
+    if (!injectedType.isInterface()) {
+      MetaClass type = injectedType.getErased();
+      do {
+        assignableTypes.add(type);
+        type = type.getSuperClass().getErased();
+      } while (!type.getFullyQualifiedName().equals("java.lang.Object"));
+      assignableTypes.add(MetaClassFactory.get(Object.class));
+    }
+
+    return assignableTypes;
   }
 
 }

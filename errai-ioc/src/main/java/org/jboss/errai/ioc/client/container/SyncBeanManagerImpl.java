@@ -28,8 +28,8 @@ import java.util.Set;
 
 import javax.enterprise.inject.Alternative;
 
-import com.google.gwt.thirdparty.guava.common.collect.ArrayListMultimap;
-import com.google.gwt.thirdparty.guava.common.collect.Multimap;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 
 /**
  * A simple bean manager provided by the Errai IOC framework. The manager provides access to all of the wired beans

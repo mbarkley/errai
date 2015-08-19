@@ -57,7 +57,7 @@ public abstract class AbstractContext implements Context {
   }
 
   @Override
-  public <T> T getNewInstance(String injecorTypeSimpleName) {
+  public <T> T getNewInstance(final String injecorTypeSimpleName) {
     final Injector<Object> injector = getInjector(injecorTypeSimpleName);
     @SuppressWarnings("unchecked")
     final Proxy<T> proxy = (Proxy<T>) injector.createProxy(this);
