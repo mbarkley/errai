@@ -52,7 +52,6 @@ import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.container.DestructionCallback;
 import org.jboss.errai.ioc.client.container.InitializationCallback;
-import org.jboss.errai.ioc.client.container.SimpleCreationalContext;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.exception.InjectionFailure;
 import org.jboss.errai.ioc.rebind.ioc.exception.UnsatisfiedDependenciesException;
@@ -63,10 +62,8 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.DecoratorTask;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionTask;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.TaskType;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 import org.jboss.errai.ioc.rebind.ioc.injector.basic.ProxyInjector;
-import org.jboss.errai.ioc.rebind.ioc.injector.basic.TypeInjector;
 import org.jboss.errai.ioc.rebind.ioc.metadata.QualifyingMetadata;
 
 
@@ -447,100 +444,7 @@ public class InjectUtil {
                                              final MetaClass clazz,
                                              final QualifyingMetadata qualifyingMetadata,
                                              final boolean alwaysProxyDependent) {
-
-    if (ctx.isInjectableQualified(clazz, qualifyingMetadata)) {
-      final Injector inj = ctx.getQualifiedInjector(clazz, qualifyingMetadata);
-      /**
-       * Special handling for cycles. If two beans directly depend on each other, we shimmy in a call to the
-       * binding reference to check the context for the instance to avoid a hanging duplicate reference. It is to
-       * ensure only one instance of each bean is created.
-       */
-      if (ctx.cycles(injectableInstance.getEnclosingType(), clazz) && inj instanceof TypeInjector) {
-        return Stmt.castTo(SimpleCreationalContext.class, Stmt.loadVariable("context")).invoke("getInstanceOrNew",
-            Refs.get(inj.getCreationalCallbackVarName()),
-            inj.getInjectedType(), inj.getQualifyingMetadata().getQualifiers());
-      }
-
-      return ctx.getQualifiedInjector(clazz, qualifyingMetadata).getBeanInstance(injectableInstance);
-    }
-    else {
-      //todo: refactor the BootstrapInjectionContext to provide a cleaner API for interface delegates
-
-      // try to inject it
-      try {
-        if (ctx.isInjectorRegistered(clazz, qualifyingMetadata)) {
-          final Injector inj = ctx.getQualifiedInjector(clazz, qualifyingMetadata);
-          if (inj.isProvider()) {
-            if (inj.isStatic()) {
-              return inj.getBeanInstance(injectableInstance);
-            }
-
-            /**
-             * Inform the caller that we are in a proxy and that the operation they're doing must
-             * necessarily be done within the ProxyResolver resolve operation since this provider operation
-             * relies on a bean which is not yet available.
-             */
-            ctx.recordCycle(inj.getEnclosingType(), injectableInstance.getEnclosingType());
-
-            final ProxyInjector proxyInject = getOrCreateProxy(ctx, inj.getEnclosingType(),
-                ctx.getInjector(inj.getEnclosingType()).getQualifyingMetadata());
-
-            boolean pushedProxy = false;
-
-            try {
-              if (injectableInstance.getTaskType() == TaskType.Parameter
-                  && injectableInstance.getConstructor() != null) {
-                // eek! a producer element is produced by this bean and injected into it's own constructor!
-                final ProxyInjector producedElementProxy
-                    = getOrCreateProxy(ctx, inj.getInjectedType(), qualifyingMetadata);
-
-                proxyInject.addProxyCloseStatement(Stmt.loadVariable("context")
-                    .invoke("addBean", Stmt.load(inj.getInjectedType()),
-                        qualifyingMetadata.getQualifiers(), inj.getBeanInstance(injectableInstance)));
-
-                proxyInject.getBeanInstance(injectableInstance);
-
-                return producedElementProxy.getBeanInstance(injectableInstance);
-              }
-              else {
-                ctx.getProcessingContext().pushBlockBuilder(proxyInject.getProxyResolverBlockBuilder());
-                pushedProxy = true;
-                ctx.markOpenProxy();
-                return proxyInject.getBeanInstance(injectableInstance);
-              }
-            }
-            finally {
-              if (!ctx.isProxyOpen() && pushedProxy) {
-                ctx.getProcessingContext().popBlockBuilder();
-              }
-            }
-
-          }
-          else if (inj.isSoftDisabled()
-              || (inj.isDependent() && (!alwaysProxyDependent || !ctx.typeContainsGraphCycles(inj.getInjectedType())))) {
-
-            inj.setEnabled(true);
-            if (inj.isCreated() && !inj.isRendered()) {
-              throw new InjectionFailure("un-resolveable cycle on dependent scoped bean: "
-                  + inj.getInjectedType().getFullyQualifiedName() + "; does the bean intersect with a normal scope?");
-            }
-            return inj.getBeanInstance(injectableInstance);
-          }
-        }
-      }
-      catch (InjectionFailure e) {
-        e.printStackTrace();
-      }
-
-      if (!ctx.isTypeInjectable(clazz)) {
-        ctx.recordCycle(clazz, injectableInstance.getEnclosingType());
-        return getOrCreateProxy(ctx, clazz, qualifyingMetadata).getBeanInstance(injectableInstance);
-      }
-      else {
-        throw new InjectionFailure("cannot resolve injectable bean for type: " + clazz.getFullyQualifiedName()
-            + "; qualified by: " + qualifyingMetadata.toString());
-      }
-    }
+    throw new RuntimeException("Unsupported: This method will be deleted as soon as all references are removed.");
   }
 
   public static ProxyInjector getOrCreateProxy(final InjectionContext ctx,

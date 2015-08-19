@@ -24,7 +24,7 @@ import javax.enterprise.context.Dependent;
 
 /**
  * Represents a default dependent scoped bean.
- * 
+ *
  * @author Mike Brock
  * @author Christian Sadilek <csadilek@redhat.com>
  */
@@ -71,24 +71,12 @@ public class IOCDependentBean<T> extends AbstractIOCBean<T> {
 
   @Override
   public T newInstance() {
-    final SimpleCreationalContext context = new SimpleCreationalContext(beanManager, Dependent.class);
-    try {
-      return beanProvider.getInstance(context);
-    }
-    finally {
-      context.finish();
-    }
+    throw new RuntimeException("Unsupported: type will be deleted as soon as all references are removed.");
   }
 
   @Override
   public T getInstance() {
-    final SimpleCreationalContext context = new SimpleCreationalContext(beanManager, Dependent.class);
-    try {
-      return getInstance(context);
-    }
-    finally {
-      context.finish();
-    }
+    throw new RuntimeException("Unsupported: type will be deleted as soon as all references are removed.");
   }
 
   @Override
@@ -103,10 +91,10 @@ public class IOCDependentBean<T> extends AbstractIOCBean<T> {
 
   @Override
   public boolean isActivated() {
-    if (beanActivatorType == null) { 
+    if (beanActivatorType == null) {
       return true;
     }
-    
+
     BeanActivator activator = (BeanActivator) beanManager.lookupBean(beanActivatorType).getInstance();
     return activator.isActivated();
   }

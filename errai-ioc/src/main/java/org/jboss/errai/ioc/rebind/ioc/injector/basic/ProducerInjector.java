@@ -2,8 +2,16 @@ package org.jboss.errai.ioc.rebind.ioc.injector.basic;
 
 import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
 import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
-import static org.jboss.errai.codegen.util.Stmt.castTo;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
+
+import java.lang.annotation.Annotation;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
+import javax.enterprise.inject.Disposes;
+import javax.enterprise.inject.Specializes;
+import javax.inject.Named;
 
 import org.jboss.errai.codegen.Modifier;
 import org.jboss.errai.codegen.Parameter;
@@ -24,7 +32,6 @@ import org.jboss.errai.ioc.client.api.qualifiers.BuiltInQualifiers;
 import org.jboss.errai.ioc.client.container.BeanProvider;
 import org.jboss.errai.ioc.client.container.CreationalContext;
 import org.jboss.errai.ioc.client.container.DestructionCallback;
-import org.jboss.errai.ioc.client.container.SimpleCreationalContext;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.exception.InjectionFailure;
 import org.jboss.errai.ioc.rebind.ioc.injector.AbstractInjector;
@@ -39,14 +46,6 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.TypeDiscoveryListener;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 import org.jboss.errai.ioc.rebind.ioc.metadata.JSR330QualifyingMetadata;
 import org.mvel2.util.ReflectionUtil;
-
-import javax.enterprise.inject.Disposes;
-import javax.enterprise.inject.Specializes;
-import javax.inject.Named;
-import java.lang.annotation.Annotation;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * @author Mike Brock
@@ -158,44 +157,7 @@ public class ProducerInjector extends AbstractInjector {
 
   @Override
   public Statement getBeanInstance(final InjectableInstance injectableInstance) {
-    final InjectionContext injectionContext = injectableInstance.getInjectionContext();
-
-    if (isDependent()) {
-      renderGlobalProvider(injectableInstance);
-      return registerDestructorCallback(injectionContext, injectionContext.getProcessingContext().getBlockBuilder(),
-          producerInjectableInstance.getValueStatement(), disposerMethod);
-    }
-
-    final BlockBuilder callbackBuilder = injectionContext.getProcessingContext().getBlockBuilder();
-
-    final MetaClass creationCallbackRef = parameterizedAs(BeanProvider.class,
-        typeParametersOf(injectedType));
-
-    final String var = InjectUtil.getUniqueVarName();
-
-    callbackBuilder.append(Stmt.declareFinalVariable(var, creationCallbackRef,
-        ObjectBuilder.newInstanceOf(creationCallbackRef)
-            .extend()
-            .publicOverridesMethod("getInstance", Parameter.of(CreationalContext.class, "pContext"))
-            ._(Stmt.declareVariable(injectedType)
-                .named(var).initializeWith(producerInjectableInstance.getValueStatement()))
-            ._(loadVariable("context").invoke("addBean",
-                loadVariable("context").invoke("getBeanReference",
-                    Stmt.load(injectedType),
-                    Stmt.load(qualifyingMetadata.getQualifiers())), Refs.get(var)))
-            ._(Stmt.loadVariable(var).returnValue())
-            .finish().finish())
-    );
-
-    return registerDestructorCallback(
-        injectionContext,
-        callbackBuilder,
-        castTo(SimpleCreationalContext.class, loadVariable("context")).invoke("getSingletonInstanceOrNew",
-            Stmt.loadVariable("injContext"),
-            Stmt.loadVariable(var),
-            Stmt.load(injectedType),
-            Stmt.load(qualifyingMetadata.getQualifiers())),
-        disposerMethod);
+    throw new RuntimeException("Unsupported: will be deleted as soon as all references are removed.");
   }
 
   private MetaMethod findDisposerMethod(final IOCProcessingContext ctx) {

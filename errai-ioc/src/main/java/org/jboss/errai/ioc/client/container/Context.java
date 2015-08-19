@@ -19,4 +19,6 @@ public interface Context {
 
   Collection<Injector<?>> getAllInjectors();
 
+  <T> T getNewInstance(String injecorTypeSimpleName);
+
 }

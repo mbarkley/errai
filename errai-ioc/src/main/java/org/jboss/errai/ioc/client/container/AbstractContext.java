@@ -56,4 +56,13 @@ public abstract class AbstractContext implements Context {
     return Collections.unmodifiableCollection(injectors.values());
   }
 
+  @Override
+  public <T> T getNewInstance(String injecorTypeSimpleName) {
+    final Injector<Object> injector = getInjector(injecorTypeSimpleName);
+    @SuppressWarnings("unchecked")
+    final Proxy<T> proxy = (Proxy<T>) injector.createProxy(this);
+
+    return proxy.asBeanType();
+  }
+
 }

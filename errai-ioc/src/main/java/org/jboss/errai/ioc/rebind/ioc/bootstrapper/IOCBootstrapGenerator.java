@@ -58,7 +58,6 @@ import org.jboss.errai.config.rebind.ReachableTypes;
 import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.ioc.client.BootstrapInjectionContext;
 import org.jboss.errai.ioc.client.Bootstrapper;
-import org.jboss.errai.ioc.client.SimpleInjectionContext;
 import org.jboss.errai.ioc.client.WindowInjectionContext;
 import org.jboss.errai.ioc.client.api.CodeDecorator;
 import org.jboss.errai.ioc.client.api.EnabledByProperty;
@@ -69,9 +68,6 @@ import org.jboss.errai.ioc.client.api.TaskOrder;
 import org.jboss.errai.ioc.client.api.TestMock;
 import org.jboss.errai.ioc.client.container.ContextManager;
 import org.jboss.errai.ioc.client.container.CreationalContext;
-import org.jboss.errai.ioc.client.container.SimpleCreationalContext;
-import org.jboss.errai.ioc.client.container.async.AsyncCreationalContext;
-import org.jboss.errai.ioc.client.container.async.AsyncInjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
@@ -154,15 +150,6 @@ public class IOCBootstrapGenerator {
     final Class<? extends BootstrapInjectionContext> contextClass;
     final Class<? extends CreationalContext> creationContextClass;
 
-    if (asyncBootstrap) {
-      contextClass = AsyncInjectionContext.class;
-      creationContextClass = AsyncCreationalContext.class;
-    }
-    else {
-      contextClass = SimpleInjectionContext.class;
-      creationContextClass = SimpleCreationalContext.class;
-    }
-
     final ReachableTypes allDeps = EnvUtil.getAllReachableClasses(context);
 
     final ClassStructureBuilder<?> classStructureBuilder =
@@ -243,8 +230,6 @@ public class IOCBootstrapGenerator {
     }
 
     iocProcContextBuilder.packages(packages);
-    iocProcContextBuilder.bootstrapContextClass(contextClass);
-    iocProcContextBuilder.creationalContextClass(creationContextClass);
 
     final IOCProcessingContext processingContext = iocProcContextBuilder.build();
 

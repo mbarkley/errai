@@ -16,8 +16,6 @@
 
 package org.jboss.errai.ioc.rebind.ioc.injector;
 
-import static org.jboss.errai.codegen.util.Stmt.loadVariable;
-
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,7 +32,6 @@ import org.jboss.errai.codegen.InnerClass;
 import org.jboss.errai.codegen.ProxyMaker;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.WeaveType;
-import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaMethod;
@@ -42,8 +39,6 @@ import org.jboss.errai.codegen.meta.MetaParameterizedType;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
-import org.jboss.errai.ioc.client.SimpleInjectionContext;
-import org.jboss.errai.ioc.client.api.ActivatedBy;
 import org.jboss.errai.ioc.client.api.qualifiers.BuiltInQualifiers;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
@@ -243,44 +238,7 @@ public abstract class AbstractInjector implements Injector {
 
   public void registerWithBeanManager(final InjectionContext context,
                                       Statement valueRef) {
-    if (!isEnabled()) {
-      return;
-    }
-
-    if (InjectUtil.checkIfTypeNeedsAddingToBeanStore(context, this)) {
-      _registerCache = new RegisterCache(context, valueRef);
-
-      if (!context.isAsync() && valueRef == null && isSingleton()) {
-        valueRef = Stmt.loadStatic(SimpleInjectionContext.class, "LAZY_INIT_REF");
-      }
-
-      final ContextualStatementBuilder statement;
-      
-      ActivatedBy ab = getInjectedType().getAnnotation(ActivatedBy.class);
-      if (ab != null) {
-        statement = loadVariable(context.getProcessingContext().getContextVariableReference())
-            .invoke("addBean", getInjectedType(), getInjectedType(), Refs.get(getCreationalCallbackVarName()),
-                valueRef, qualifyingMetadata.render(), beanName, true, Stmt.load(ab.value()));
-      }
-      else {
-        statement = loadVariable(context.getProcessingContext().getContextVariableReference())
-            .invoke("addBean", getInjectedType(), getInjectedType(), Refs.get(getCreationalCallbackVarName()),
-                valueRef, qualifyingMetadata.render(), beanName, true);
-
-      }
-      context.getProcessingContext().appendToEnd(statement);
-
-      addDisablingHook(new Runnable() {
-        @Override
-        public void run() {
-          context.getProcessingContext().getAppendToEnd().remove(statement);
-        }
-      });
-
-      for (final RegistrationHook hook : getRegistrationHooks()) {
-        hook.onRegister(context, valueRef);
-      }
-    }
+    throw new RuntimeException("Unsupported: this type will be deleted as soon as all references are found and removed.");
   }
 
   @Override
@@ -456,7 +414,7 @@ public abstract class AbstractInjector implements Injector {
   /**
    * Add a statement to the end of the bean injector code. Statements added here will be rendered
    * after all other binding activity and right before the injector returns the bean reference.
-   * 
+   *
    * @param statement
    */
   @Override
