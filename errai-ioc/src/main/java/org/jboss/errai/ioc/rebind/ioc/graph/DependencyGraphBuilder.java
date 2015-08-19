@@ -26,7 +26,7 @@ public interface DependencyGraphBuilder {
 
   Dependency createProducerInstanceDependency(Injectable abstractInjectble);
 
-  DependencyGraph createGraph();
+  DependencyGraph createGraph(boolean removeUnreachable);
 
   public static enum InjectorType {
     Type, Producer, Provider, ContextualProvider, Abstract

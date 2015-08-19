@@ -214,7 +214,10 @@ public class IOCProcessor {
       processType(type, builder);
     }
 
-    return builder.createGraph();
+    // FIXME The reachability analysis property is not picked up while running
+    // tests so for now this is hard-coded to avoid generating an overwhelming
+    // amount of code.
+    return builder.createGraph(true);
   }
 
   private void processType(final MetaClass type, final DependencyGraphBuilder builder) {

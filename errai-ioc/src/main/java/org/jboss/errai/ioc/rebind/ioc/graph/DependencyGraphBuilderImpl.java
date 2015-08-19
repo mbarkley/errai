@@ -102,11 +102,36 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   @Override
-  public DependencyGraph createGraph() {
+  public DependencyGraph createGraph(boolean removeUnreachable) {
     linkAbstractInjectables();
     resolveDependencies();
+    if (removeUnreachable) {
+      removeUnreachableConcreteInjectables();
+    }
 
     return new DependencyGraphImpl();
+  }
+
+  private void removeUnreachableConcreteInjectables() {
+    final Set<String> reachableNames = new HashSet<String>();
+    final Queue<ConcreteInjectable> processingQueue = new LinkedList<ConcreteInjectable>();
+    for (final ConcreteInjectable injectable : concretesByName.values()) {
+      if (!injectable.wiringTypes.contains(WiringElementType.Simpleton) && !reachableNames.contains(injectable.getInjectorClassSimpleName())) {
+        processingQueue.add(injectable);
+        do {
+          final ConcreteInjectable processedInjectable = processingQueue.poll();
+          reachableNames.add(processedInjectable.getInjectorClassSimpleName());
+          for (final BaseDependency dep : processedInjectable.dependencies) {
+            final ConcreteInjectable resolvedDep = resolveDependency(dep, processedInjectable);
+            if (!reachableNames.contains(resolvedDep)) {
+              processingQueue.add(resolvedDep);
+            }
+          }
+        } while (processingQueue.size() > 0);
+      }
+    }
+
+    concretesByName.keySet().retainAll(reachableNames);
   }
 
   private void resolveDependencies() {
