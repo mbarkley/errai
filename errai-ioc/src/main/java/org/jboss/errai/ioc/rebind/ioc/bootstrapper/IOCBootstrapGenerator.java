@@ -46,12 +46,8 @@ import org.jboss.errai.codegen.builder.impl.BlockBuilderImpl;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaConstructor;
-import org.jboss.errai.codegen.meta.MetaField;
-import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.codegen.util.Implementations;
-import org.jboss.errai.codegen.util.PrivateAccessType;
-import org.jboss.errai.codegen.util.PrivateAccessUtil;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.common.metadata.MetaDataScanner;
 import org.jboss.errai.common.metadata.RebindUtils;
@@ -71,6 +67,7 @@ import org.jboss.errai.ioc.client.api.IOCBootstrapTask;
 import org.jboss.errai.ioc.client.api.IOCProvider;
 import org.jboss.errai.ioc.client.api.TaskOrder;
 import org.jboss.errai.ioc.client.api.TestMock;
+import org.jboss.errai.ioc.client.container.ContextManager;
 import org.jboss.errai.ioc.client.container.CreationalContext;
 import org.jboss.errai.ioc.client.container.SimpleCreationalContext;
 import org.jboss.errai.ioc.client.container.async.AsyncCreationalContext;
@@ -180,7 +177,7 @@ public class IOCBootstrapGenerator {
     buildContext.addInterningCallback(new BootstrapInterningCallback(classStructureBuilder, buildContext));
 
     final BlockBuilder<?> blockBuilder =
-        classStructureBuilder.publicMethod(contextClass, "bootstrapContainer")
+        classStructureBuilder.publicMethod(ContextManager.class, "bootstrapContainer")
             .methodComment("The main IOC bootstrap method.");
 
     final IOCProcessingContext.Builder iocProcContextBuilder
@@ -275,16 +272,9 @@ public class IOCBootstrapGenerator {
     final ClassStructureBuilder<?> classBuilder = processingContext.getBootstrapBuilder();
     final BlockBuilder<?> blockBuilder = processingContext.getBlockBuilder();
 
-    final Class<? extends BootstrapInjectionContext> bootstrapContextClass
-        = injectionContext.getProcessingContext().getBootstrapContextClass();
-
     classBuilder.privateField("windowContext", WindowInjectionContext.class)
             .modifiers(Modifier.Final)
             .initializesWith(Stmt.invokeStatic(WindowInjectionContext.class, "createOrGet")).finish();
-
-    classBuilder.privateField(processingContext.getContextVariableReference().getName(),
-        processingContext.getContextVariableReference().getType())
-        .modifiers(Modifier.Final).initializesWith(Stmt.newObject(bootstrapContextClass)).finish();
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     final BlockBuilder builder = new BlockBuilderImpl(classBuilder.getClassDefinition().getInstanceInitializer(), null);
@@ -320,21 +310,9 @@ public class IOCBootstrapGenerator {
       declareBeanBody.finish();
     }
 
-    final Map<MetaField, PrivateAccessType> privateFields = injectionContext.getPrivateFieldsToExpose();
-    for (final Map.Entry<MetaField, PrivateAccessType> f : privateFields.entrySet()) {
-      PrivateAccessUtil.addPrivateAccessStubs(f.getValue(),
-          !useReflectionStubs ? "jsni" : "reflection", classBuilder, f.getKey());
-    }
-
-    final Collection<MetaMethod> privateMethods = injectionContext.getPrivateMethodsToExpose();
-
-    for (final MetaMethod m : privateMethods) {
-      PrivateAccessUtil.addPrivateAccessStubs(!useReflectionStubs ? "jsni" : "reflection", classBuilder, m);
-    }
-
     doAfterRunnbales(blockBuilder);
 
-    blockBuilder.append(loadVariable(processingContext.getContextVariableReference()).returnValue());
+    blockBuilder.append(loadVariable("contextManager").returnValue());
 
     blockBuilder.finish();
 
