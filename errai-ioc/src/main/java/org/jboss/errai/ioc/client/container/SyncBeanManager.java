@@ -24,15 +24,6 @@ import java.util.Collection;
  */
 public interface SyncBeanManager extends ClientBeanManager {
 
-
-  /**
-   * Register a bean with the manager.
-   *
-   * @param bean
-   *     an {@link IOCSingletonBean} reference
-   */
-  <T> IOCBeanDef<T> registerBean(IOCBeanDef<T> bean);
-
   /**
    * Looks up all beans with the specified bean name as specified by {@link javax.inject.Named}.
    *

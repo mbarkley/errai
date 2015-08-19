@@ -19,6 +19,7 @@ package org.jboss.errai.ioc.client;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jboss.errai.ioc.client.container.ContextManager;
 import org.jboss.errai.ioc.client.container.IOCEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +54,7 @@ public class Container implements EntryPoint {
       }
 
       final Bootstrapper bootstrapper = GWT.create(Bootstrapper.class);
-      bootstrapper.bootstrapContainer();
+      final ContextManager contextManager = bootstrapper.bootstrapContainer();
 
     }
     catch (Throwable t) {

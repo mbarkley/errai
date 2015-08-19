@@ -6,4 +6,6 @@ public interface Injector<T> {
 
   Proxy<T> createProxy(Context context);
 
+  InjectorHandle getBeanDef();
+
 }
