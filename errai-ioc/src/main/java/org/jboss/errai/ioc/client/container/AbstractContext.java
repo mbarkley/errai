@@ -27,7 +27,7 @@ public abstract class AbstractContext implements Context {
 
   @Override
   public <T> void registerInjector(final Injector<T> injector) {
-    injectors.put(injector.getClass().getSimpleName(), injector);
+    injectors.put(injector.getHandle().getInjectorName(), injector);
   }
 
   protected <T> Proxy<T> getOrCreateProxy(final String injectorTypeSimpleName) {

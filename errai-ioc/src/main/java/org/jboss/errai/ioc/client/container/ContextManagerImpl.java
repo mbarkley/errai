@@ -3,18 +3,23 @@ package org.jboss.errai.ioc.client.container;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 public class ContextManagerImpl implements ContextManager {
 
   private final Map<String, Context> contextsByInjectorName = new HashMap<String, Context>();
-  private final Collection<Context> contexts = new ArrayList<Context>();
+  // XXX bug in bootsrapper generator adds same context multiple times.
+  private final Collection<Context> contexts = new HashSet<Context>();
 
   @Override
   public void addContext(final Context context) {
-    contexts.add(context);
-    for (final Injector<?> injector : context.getAllInjectors()) {
-      contextsByInjectorName.put(injector.getClass().getSimpleName(), context);
+    if (!contexts.contains(context)) {
+      contexts.add(context);
+      context.setContextManager(this);
+      for (final Injector<?> injector : context.getAllInjectors()) {
+        contextsByInjectorName.put(injector.getHandle().getInjectorName(), context);
+      }
     }
   }
 

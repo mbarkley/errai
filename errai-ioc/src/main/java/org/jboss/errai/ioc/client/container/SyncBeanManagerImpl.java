@@ -28,6 +28,8 @@ import java.util.Set;
 
 import javax.enterprise.inject.Alternative;
 
+import org.jboss.errai.ioc.client.QualifierUtil;
+
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
@@ -39,7 +41,7 @@ import com.google.common.collect.Multimap;
  * @author Mike Brock
  */
 @Alternative
-public class SyncBeanManagerImpl implements SyncBeanManager, SyncBeanManagerSetup {
+public class SyncBeanManagerImpl implements SyncBeanManager {
 
   private final class IOCBeanDefImplementation<T> implements IOCBeanDef<T> {
     private final InjectorHandle handle;
@@ -95,7 +97,7 @@ public class SyncBeanManagerImpl implements SyncBeanManager, SyncBeanManagerSetu
 
     @Override
     public boolean matches(Set<Annotation> annotations) {
-      return annotations.containsAll(getQualifiers());
+      return QualifierUtil.matches(annotations, handle.getQualifiers());
     }
 
     @Override
@@ -164,8 +166,7 @@ public class SyncBeanManagerImpl implements SyncBeanManager, SyncBeanManagerSetu
 
   @Override
   public void destroyAllBeans() {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+    // TODO Decide how this should be implemented.
   }
 
   @Override

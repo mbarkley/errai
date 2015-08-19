@@ -24,6 +24,8 @@ import java.util.Collection;
  */
 public interface SyncBeanManager extends ClientBeanManager {
 
+  void setContextManager(ContextManager contextManager);
+
   /**
    * Looks up all beans with the specified bean name as specified by {@link javax.inject.Named}.
    *

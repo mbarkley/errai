@@ -20,7 +20,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.jboss.errai.ioc.client.container.ContextManager;
+import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ioc.client.container.IOCEnvironment;
+import org.jboss.errai.ioc.client.container.SyncBeanManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,7 +57,9 @@ public class Container implements EntryPoint {
 
       final Bootstrapper bootstrapper = GWT.create(Bootstrapper.class);
       final ContextManager contextManager = bootstrapper.bootstrapContainer();
+      final SyncBeanManager beanManager = IOC.getBeanManager();
 
+      beanManager.setContextManager(contextManager);
     }
     catch (Throwable t) {
       t.printStackTrace();

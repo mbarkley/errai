@@ -19,18 +19,11 @@ package org.jboss.errai.ioc.rebind.ioc.injector.basic;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaParameterizedType;
-import org.jboss.errai.codegen.util.Refs;
-import org.jboss.errai.codegen.util.Stmt;
-import org.jboss.errai.ioc.client.api.ActivatedBy;
 import org.jboss.errai.ioc.rebind.ioc.injector.AbstractInjector;
-import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.Injector;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.RegistrationHook;
-import org.jboss.errai.ioc.rebind.ioc.metadata.QualifyingMetadata;
-
-import com.google.gwt.core.client.js.JsType;
 
 /**
  * This injector wraps another injector to create qualifying references based on type parameters and qualifiers
@@ -144,34 +137,7 @@ public class QualifiedTypeInjectorDelegate extends AbstractInjector {
   @Override
   public void registerWithBeanManager(final InjectionContext context,
                                       final Statement valueRef) {
-
-    if (InjectUtil.checkIfTypeNeedsAddingToBeanStore(context, this)) {
-      final QualifyingMetadata md = delegate.getQualifyingMetadata();
-      
-      final ActivatedBy ab = delegate.getInjectedType().getAnnotation(ActivatedBy.class);
-      
-      if (type.isAnnotationPresent(JsType.class) && delegate.getInjectedType().isAnnotationPresent(JsType.class)) {
-        context.getProcessingContext().appendToEnd(
-                Stmt.loadVariable("windowContext")
-                    .invoke("addSuperTypeAlias", type, delegate.getInjectedType()));
-      }
-      else if (ab != null) {
-        context.getProcessingContext().appendToEnd(
-            Stmt.loadVariable(context.getProcessingContext().getContextVariableReference())
-                .invoke("addBean", type, delegate.getInjectedType(), Refs.get(getCreationalCallbackVarName()),
-                    isSingleton() ? valueRef : null, md.render(), delegate.getBeanName(), false, Stmt.load(ab.value())));
-      }
-      else {
-        context.getProcessingContext().appendToEnd(
-            Stmt.loadVariable(context.getProcessingContext().getContextVariableReference())
-                .invoke("addBean", type, delegate.getInjectedType(), Refs.get(getCreationalCallbackVarName()),
-                    isSingleton() ? valueRef : null, md.render(), delegate.getBeanName(), false));
-      }
-      
-      for (final RegistrationHook hook : getRegistrationHooks()) {
-        hook.onRegister(context, valueRef);
-      }
-    }
+    throw new RuntimeException("To be removed.");
   }
 
   @Override

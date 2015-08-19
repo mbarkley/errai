@@ -42,7 +42,7 @@ public class ProxyHelperImpl<T> implements ProxyHelper<T> {
 
   @Override
   public void setContext(final Context context) {
-    if (context != null) {
+    if (this.context != null) {
       throw new RuntimeException("Context can only be set once.");
     }
 

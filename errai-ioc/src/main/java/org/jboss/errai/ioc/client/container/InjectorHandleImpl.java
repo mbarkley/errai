@@ -5,7 +5,24 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.enterprise.inject.Any;
+import javax.enterprise.inject.Default;
+
 public class InjectorHandleImpl implements InjectorHandle {
+
+  private static final Annotation DEFAULT = new Default() {
+    @Override
+    public Class<? extends Annotation> annotationType() {
+      return Default.class;
+    }
+  };
+
+  private static final Annotation ANY = new Any() {
+    @Override
+    public Class<? extends Annotation> annotationType() {
+      return Any.class;
+    }
+  };
 
   private final Set<Annotation> qualifiers = new HashSet<Annotation>();
   private final Set<Class<?>> assignableTypes = new HashSet<Class<?>>();
@@ -17,11 +34,13 @@ public class InjectorHandleImpl implements InjectorHandle {
     this.actualType = actualType;
     this.injectorName = injectorName;
     this.scope = scope;
+    qualifiers.add(ANY);
+    qualifiers.add(DEFAULT);
   }
 
   @Override
   public Set<Annotation> getQualifiers() {
-    return Collections.unmodifiableSet(qualifiers);
+    return qualifiers;
   }
 
   @Override
@@ -46,10 +65,17 @@ public class InjectorHandleImpl implements InjectorHandle {
 
   public void addQualifier(final Annotation qualifier) {
     qualifiers.add(qualifier);
+    // Because this uses Object.equals/hashCode, it should only remove this particular instance of @Default
+    qualifiers.remove(DEFAULT);
   }
 
   public void addAssignableType(final Class<?> type) {
     assignableTypes.add(type);
+  }
+
+  @Override
+  public String toString() {
+    return "[type=" + actualType + ", name=" + injectorName + ", scope=" + scope.getSimpleName() + ", qualifiers=" + qualifiers + "]";
   }
 
 }

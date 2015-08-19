@@ -368,9 +368,10 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       return qualifier;
     }
 
+    // TODO Consolidate this with InjectorGenerator.getInjectorSubTypeSimpleName
     @Override
     public String getInjectorClassSimpleName() {
-      return type.getFullyQualifiedName().replace('.', '_').replace('$', '_') + "__with_qualifiers__" + qualifier.getIdentifierSafeString();
+      return "Injector_for__" + type.getFullyQualifiedName().replace('.', '_').replace('$', '_') + "__with_qualifiers__" + qualifier.getIdentifierSafeString();
     }
  }
 
