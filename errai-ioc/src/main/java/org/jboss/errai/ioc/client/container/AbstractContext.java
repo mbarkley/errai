@@ -12,7 +12,8 @@ public abstract class AbstractContext implements Context {
 
   private ContextManager contextManager;
 
-  protected ContextManager getContextManager() {
+  @Override
+  public ContextManager getContextManager() {
     if (contextManager == null) {
       throw new RuntimeException("ContextManager has not been set.");
     }
@@ -59,9 +60,8 @@ public abstract class AbstractContext implements Context {
 
   @Override
   public <T> T getNewInstance(final String injecorTypeSimpleName) {
-    final Injector<Object> injector = getInjector(injecorTypeSimpleName);
-    @SuppressWarnings("unchecked")
-    final Proxy<T> proxy = (Proxy<T>) injector.createProxy(this);
+    final Injector<T> injector = getInjector(injecorTypeSimpleName);
+    final Proxy<T> proxy = injector.createProxy(this);
 
     return proxy.asBeanType();
   }

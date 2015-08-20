@@ -7,6 +7,8 @@ public interface Context {
 
   void setContextManager(ContextManager contextManager);
 
+  ContextManager getContextManager();
+
   <T> void registerInjector(Injector<T> injector);
 
   <T> T getInstance(String injectorName);

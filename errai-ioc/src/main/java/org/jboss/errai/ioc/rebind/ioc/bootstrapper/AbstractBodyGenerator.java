@@ -32,7 +32,6 @@ import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
-import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.client.container.Context;
 import org.jboss.errai.ioc.client.container.ContextManager;
@@ -75,15 +74,9 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
             .body();
     // TODO clean this up
     if (proxyImpl.getFullyQualifiedName().equals(NonProxiableWrapper.class.getName())) {
-      createProxyBody
-              ._(Stmt.declareFinalVariable("proxyHelper",
-                      parameterizedAs(ProxyHelper.class, typeParametersOf(injectable.getInjectedType())),
-                      initializeProxyHelper(injectable)))
-              ._(loadVariable("proxyHelper").invoke("setContext", loadVariable("context")));
-
       newProxyImplStmt = newObject(
               parameterizedAs(NonProxiableWrapper.class, typeParametersOf(injectable.getInjectedType())),
-              loadVariable("proxyHelper").invoke("getInstance"));
+              loadVariable("this").invoke("createInstance", loadVariable("context").invoke("getContextManager")));
     } else {
       newProxyImplStmt = newObject(proxyImpl);
     }
