@@ -190,7 +190,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   private boolean canBreakCycle(final ConcreteInjectable resolved) {
     for (final WiringElementType wiringType : resolved.wiringTypes) {
-      if (WiringElementType.NormalScopedBean.equals(wiringType)) {
+      if (WiringElementType.NormalScopedBean.equals(wiringType) && resolved.getInjectedType().isDefaultInstantiable()) {
         return true;
       }
     }

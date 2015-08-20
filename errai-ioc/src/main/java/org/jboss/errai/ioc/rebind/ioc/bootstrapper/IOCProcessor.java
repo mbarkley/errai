@@ -57,6 +57,7 @@ import org.jboss.errai.config.rebind.EnvUtil;
 import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.client.api.EnabledByProperty;
+import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.client.api.ScopeContext;
 import org.jboss.errai.ioc.client.container.Context;
 import org.jboss.errai.ioc.client.container.ContextManager;
@@ -416,7 +417,7 @@ public class IOCProcessor {
   }
 
   private boolean isTypeInjectable(final MetaClass type) {
-    return type.isConcrete() && type.isPublic() &&  isEnabled(type) && isConstructable(type);
+    return isEnabled(type) && isConstructable(type);
   }
 
   private boolean isConstructable(final MetaClass type) {
@@ -425,11 +426,16 @@ public class IOCProcessor {
     if (injectableConstructors.size() > 1) {
       throw new RuntimeException(type.getFullyQualifiedName() + " has " + injectableConstructors.size() + " constructors annotated with @Inject.");
     } else if (injectableConstructors.size() == 1) {
-      // Needs to be proxiable is normal scoped.
-      return getDirectScope(type).equals(Dependent.class) || type.isDefaultInstantiable();
+      return scopeDoesNotRequireProxy(type) || type.isDefaultInstantiable();
     } else {
       return type.isDefaultInstantiable();
     }
+  }
+
+  private boolean scopeDoesNotRequireProxy(final MetaClass type) {
+    final Class<? extends Annotation> scope = getDirectScope(type);
+
+    return scope.equals(Dependent.class) || scope.equals(EntryPoint.class);
   }
 
   private List<MetaConstructor> getInjectableConstructors(final MetaClass type) {
