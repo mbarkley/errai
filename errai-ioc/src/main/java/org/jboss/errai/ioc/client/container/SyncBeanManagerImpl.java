@@ -240,4 +240,13 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
       return resolved.iterator().next();
     }
   }
+
+  /**
+   * For testing only.
+   */
+  public void reset() {
+    contextManager = null;
+    typesByName.clear();
+    handlesByTypeName.clear();
+  }
 }
