@@ -37,7 +37,6 @@ public class AsyncProviderInjector extends AsyncTypeInjector {
     context.registerInjector(providerInjector);
     providerInjector.setEnabled(isEnabled());
 
-    this.testMock = context.isElementType(WiringElementType.TestMockBean, providerType);
     this.singleton = context.isElementType(WiringElementType.SingletonBean, providerType);
     this.alternative = context.isElementType(WiringElementType.AlternativeBean, type);
     setRendered(true);

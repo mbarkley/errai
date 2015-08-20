@@ -65,7 +65,6 @@ public class AsyncTypeInjector extends AbstractAsyncInjector {
     }
 
     // check to see if this is a singleton and/or alternative bean
-    this.testMock = context.isElementType(WiringElementType.TestMockBean, type);
     this.singleton = context.isElementType(WiringElementType.SingletonBean, type);
     this.alternative = context.isElementType(WiringElementType.AlternativeBean, type);
 
@@ -199,11 +198,11 @@ public class AsyncTypeInjector extends AbstractAsyncInjector {
 
       final String frameworkOrSystemProperty
           = EnvUtil.getEnvironmentConfig().getFrameworkOrSystemProperty("errai.ioc.testing.simulated_loadasync_latency");
-      
+
       Class<?> fragmentName = type.getAnnotation(LoadAsync.class).value();
-      
+
       Class<?> gwtClass = Boolean.parseBoolean(frameworkOrSystemProperty) ? FakeGWT.class : GWT.class;
-      Statement asyncStatement = (NO_FRAGMENT.class.equals(fragmentName)) ? 
+      Statement asyncStatement = (NO_FRAGMENT.class.equals(fragmentName)) ?
             Stmt.invokeStatic(gwtClass, "runAsync", objectBuilder) :
               Stmt.invokeStatic(gwtClass, "runAsync", fragmentName, objectBuilder);
       callbackBuilder.append(asyncStatement);

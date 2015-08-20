@@ -35,7 +35,6 @@ public class AsyncContextualProviderInjector extends TypeInjector {
     this.providerInjector = context.getInjectorFactory().getTypeInjector(providerType, context);
     context.registerInjector(providerInjector);
 
-    this.testMock = context.isElementType(WiringElementType.TestMockBean, providerType);
     this.singleton = context.isElementType(WiringElementType.SingletonBean, providerType);
     this.alternative = context.isElementType(WiringElementType.AlternativeBean, providerType);
 
@@ -131,7 +130,7 @@ public class AsyncContextualProviderInjector extends TypeInjector {
 
     return null;
   }
-  
+
   @Override
   public boolean matches(MetaParameterizedType parameterizedType, QualifyingMetadata qualifyingMetadata) {
     boolean parmTypesSatisfied = true;

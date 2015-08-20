@@ -41,7 +41,6 @@ public class ContextualProviderInjector extends TypeInjector {
     this.providerInjector = context.getInjectorFactory().getTypeInjector(providerType, context);
     context.registerInjector(providerInjector);
 
-    this.testMock = context.isElementType(WiringElementType.TestMockBean, providerType);
     this.singleton = context.isElementType(WiringElementType.SingletonBean, providerType);
     this.alternative = context.isElementType(WiringElementType.AlternativeBean, providerType);
 
@@ -110,6 +109,6 @@ public class ContextualProviderInjector extends TypeInjector {
 
     return parmTypesSatisfied;
   }
-  
-  
+
+
 }

@@ -65,7 +65,6 @@ import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.client.api.IOCBootstrapTask;
 import org.jboss.errai.ioc.client.api.IOCProvider;
 import org.jboss.errai.ioc.client.api.TaskOrder;
-import org.jboss.errai.ioc.client.api.TestMock;
 import org.jboss.errai.ioc.client.container.ContextManager;
 import org.jboss.errai.ioc.client.container.CreationalContext;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
@@ -436,7 +435,6 @@ public class IOCBootstrapGenerator {
     injectionContext.mapElementType(WiringElementType.InjectionPoint, com.google.inject.Inject.class);
 
     injectionContext.mapElementType(WiringElementType.AlternativeBean, Alternative.class);
-    injectionContext.mapElementType(WiringElementType.TestMockBean, TestMock.class);
   }
 
   private static boolean processStereoType(final InjectionContext injectionContext,

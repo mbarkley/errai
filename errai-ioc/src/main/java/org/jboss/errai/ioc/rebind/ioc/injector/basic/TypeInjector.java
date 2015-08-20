@@ -77,7 +77,6 @@ public class TypeInjector extends AbstractInjector {
     }
 
     // check to see if this is a singleton and/or alternative bean
-    this.testMock = context.isElementType(WiringElementType.TestMockBean, type);
     this.singleton = context.isElementType(WiringElementType.SingletonBean, type);
     this.alternative = context.isElementType(WiringElementType.AlternativeBean, type);
 
@@ -123,8 +122,8 @@ public class TypeInjector extends AbstractInjector {
      get a parameterized version of the BeanProvider class, parameterized with the type of
      bean it produces.
      */
-    final MetaClass creationCallbackRef = (jsType) ? 
-            parameterizedAs(JsTypeProvider.class, typeParametersOf(type)) : 
+    final MetaClass creationCallbackRef = (jsType) ?
+            parameterizedAs(JsTypeProvider.class, typeParametersOf(type)) :
               parameterizedAs(BeanProvider.class, typeParametersOf(type));
 
      /*
@@ -132,11 +131,11 @@ public class TypeInjector extends AbstractInjector {
      and assign its BlockBuilder to a callbackBuilder so we can work with it.
      */
     final AnonymousClassStructureBuilder provider = newInstanceOf(creationCallbackRef).extend();
-    
+
     final BlockBuilder<AnonymousClassStructureBuilder> callbackBuilder = (jsType) ?
-        provider.publicOverridesMethod("getBean") :    
+        provider.publicOverridesMethod("getBean") :
         provider.publicOverridesMethod("getInstance", Parameter.of(CreationalContext.class, "context", true));
-        
+
     if (jsType) {
       provider.publicOverridesMethod("isSingleton").append(Stmt.loadLiteral(isSingleton()).returnValue()).finish();
     }
@@ -150,7 +149,7 @@ public class TypeInjector extends AbstractInjector {
 
     if (this instanceof JsTypeInjector) {
       callbackBuilder.append(
-              Stmt.castTo(type, loadVariable("windowContext").invoke("getBean", 
+              Stmt.castTo(type, loadVariable("windowContext").invoke("getBean",
                       type.getFullyQualifiedName())).returnValue()
           );
     }
@@ -160,14 +159,14 @@ public class TypeInjector extends AbstractInjector {
         @Override
         public void beanConstructed(final ConstructionType constructionType) {
           final Statement beanRef = Refs.get(instanceVarName);
-  
+
           if (!jsType) {
             callbackBuilder.append(
                 loadVariable("context").invoke("addBean", loadVariable("context").invoke("getBeanReference", load(type),
                     load(qualifyingMetadata.getQualifiers())), beanRef)
             );
           }
-  
+
            /* mark this injector as injected so we don't go into a loop if there is a cycle. */
           setCreated(true);
         }
@@ -209,10 +208,10 @@ public class TypeInjector extends AbstractInjector {
     else {
       registerWithBeanManager(injectContext, null);
     }
-    
+
     if (jsType && !(this instanceof JsTypeInjector)) {
       ctx.getBootstrapBuilder().privateField(instanceVarName+"_js", JsTypeProvider.class).modifiers(Modifier.Final)
-        .initializesWith(loadVariable("windowContext").invoke("addBean", type.getFullyQualifiedName(), 
+        .initializesWith(loadVariable("windowContext").invoke("addBean", type.getFullyQualifiedName(),
                 loadVariable(creationalCallbackVarName))).finish();
     }
 

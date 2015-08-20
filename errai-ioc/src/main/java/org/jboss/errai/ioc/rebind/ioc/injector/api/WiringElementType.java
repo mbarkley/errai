@@ -15,6 +15,5 @@ public enum WiringElementType {
   InjectionPoint,
   ProducerElement,
   AlternativeBean,
-  TestMockBean,
   NotSupported
 }
