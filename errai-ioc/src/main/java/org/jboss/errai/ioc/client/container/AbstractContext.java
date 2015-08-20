@@ -30,22 +30,23 @@ public abstract class AbstractContext implements Context {
     injectors.put(injector.getHandle().getInjectorName(), injector);
   }
 
-  protected <T> Proxy<T> getOrCreateProxy(final String injectorTypeSimpleName) {
+  protected <T> Proxy<T> getOrCreateProxy(final String injectorName) {
     @SuppressWarnings("unchecked")
-    Proxy<T> proxy = (Proxy<T>) proxies.get(injectorTypeSimpleName);
+    Proxy<T> proxy = (Proxy<T>) proxies.get(injectorName);
     if (proxy == null) {
-      final Injector<T> injector = getInjector(injectorTypeSimpleName);
+      final Injector<T> injector = getInjector(injectorName);
       proxy = injector.createProxy(this);
+      proxies.put(injectorName, proxy);
     }
 
     return proxy;
   }
 
-  protected <T> Injector<T> getInjector(final String injectorTypeSimpleName) {
+  protected <T> Injector<T> getInjector(final String injectorName) {
     @SuppressWarnings("unchecked")
-    final Injector<T> injector = (Injector<T>) injectors.get(injectorTypeSimpleName);
+    final Injector<T> injector = (Injector<T>) injectors.get(injectorName);
     if (injector == null) {
-      throw new RuntimeException("Could not find registered injector " + injectorTypeSimpleName);
+      throw new RuntimeException("Could not find registered injector " + injectorName);
     }
 
     return injector;
