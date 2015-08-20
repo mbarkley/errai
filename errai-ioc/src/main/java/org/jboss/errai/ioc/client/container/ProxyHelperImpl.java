@@ -7,8 +7,8 @@ public class ProxyHelperImpl<T> implements ProxyHelper<T> {
   private Context context;
   private T instance;
 
-  public ProxyHelperImpl(final String injectorTypeSimpleName) {
-    this.injectorTypeSimpleName = injectorTypeSimpleName;
+  public ProxyHelperImpl(final String injectorName) {
+    this.injectorTypeSimpleName = injectorName;
   }
 
   @Override

@@ -99,7 +99,7 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
       final MetaField field = fieldDep.getField();
       final Injectable depInjectable = fieldDep.getInjectable();
       final Object injectedValue = Stmt.castTo(depInjectable.getInjectedType(), loadVariable("contextManager")
-              .invoke("getInstance", loadLiteral(depInjectable.getInjectorClassSimpleName())));
+              .invoke("getInstance", loadLiteral(depInjectable.getInjectorName())));
 
       if (!field.isPublic()) {
         addPrivateAccessStubs(PrivateAccessType.Write, "jsni", bodyBlockBuilder, field);
@@ -118,7 +118,7 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
       for (final Dependency dep : constructorDependencies) {
         final Injectable depInjectable = dep.getInjectable();
         final ParamDependency paramDep = ParamDependency.class.cast(dep);
-        final String depInjectableName = depInjectable.getInjectorClassSimpleName();
+        final String depInjectableName = depInjectable.getInjectorName();
 
         constructorParameterStatements[paramDep.getParamIndex()] = castTo(depInjectable.getInjectedType(),
                 loadVariable("contextManager").invoke("getInstance", loadLiteral(depInjectableName)));

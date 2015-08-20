@@ -39,7 +39,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   public Injectable addConcreteInjectable(final MetaClass injectedType, final Qualifier qualifier, Class<? extends Annotation> literalScope,
           final InjectorType injectorType, final WiringElementType... wiringTypes) {
     final ConcreteInjectable concrete = new ConcreteInjectable(injectedType, qualifier, literalScope, injectorType, Arrays.asList(wiringTypes));
-    concretesByName.put(concrete.getInjectorClassSimpleName(), concrete);
+    concretesByName.put(concrete.getInjectorName(), concrete);
     linkDirectAbstractInjectable(concrete);
 
     return concrete;
@@ -116,11 +116,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     final Set<String> reachableNames = new HashSet<String>();
     final Queue<ConcreteInjectable> processingQueue = new LinkedList<ConcreteInjectable>();
     for (final ConcreteInjectable injectable : concretesByName.values()) {
-      if (!injectable.wiringTypes.contains(WiringElementType.Simpleton) && !reachableNames.contains(injectable.getInjectorClassSimpleName())) {
+      if (!injectable.wiringTypes.contains(WiringElementType.Simpleton) && !reachableNames.contains(injectable.getInjectorName())) {
         processingQueue.add(injectable);
         do {
           final ConcreteInjectable processedInjectable = processingQueue.poll();
-          reachableNames.add(processedInjectable.getInjectorClassSimpleName());
+          reachableNames.add(processedInjectable.getInjectorName());
           for (final BaseDependency dep : processedInjectable.dependencies) {
             final ConcreteInjectable resolvedDep = resolveDependency(dep, processedInjectable);
             if (!reachableNames.contains(resolvedDep)) {
@@ -370,7 +370,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     // TODO Consolidate this with InjectorGenerator.getInjectorSubTypeSimpleName
     @Override
-    public String getInjectorClassSimpleName() {
+    public String getInjectorName() {
       return "Injector_for__" + type.getFullyQualifiedName().replace('.', '_').replace('$', '_') + "__with_qualifiers__" + qualifier.getIdentifierSafeString();
     }
  }

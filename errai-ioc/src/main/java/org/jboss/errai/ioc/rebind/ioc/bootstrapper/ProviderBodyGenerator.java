@@ -25,9 +25,9 @@ public class ProviderBodyGenerator extends AbstractBodyGenerator {
   @Override
   protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable, final DependencyGraph graph) {
     final Multimap<DependencyType, Dependency> dependenciesByType = separateByType(injectable.getDependencies());
-    assert dependenciesByType.size() == 1 : "The injector " + injectable.getInjectorClassSimpleName() + " is a Provider and should have exactly one dependency";
+    assert dependenciesByType.size() == 1 : "The injector " + injectable.getInjectorName() + " is a Provider and should have exactly one dependency";
     final Collection<Dependency> providerInstanceDeps = dependenciesByType.get(DependencyType.ProducerInstance);
-    assert providerInstanceDeps.size() == 1 : "The injector " + injectable.getInjectorClassSimpleName()
+    assert providerInstanceDeps.size() == 1 : "The injector " + injectable.getInjectorName()
             + " is a Provider but does not have a " + DependencyType.ProducerInstance.toString() + " depenency.";
 
     final Dependency providerDep = providerInstanceDeps.iterator().next();
@@ -41,7 +41,7 @@ public class ProviderBodyGenerator extends AbstractBodyGenerator {
     final List<Statement> statement = new ArrayList<Statement>(1);
 
     statement.add(castTo(parameterizedAs(Provider.class, typeParametersOf(injectable.getInjectedType())),
-            loadVariable("contextManager").invoke("getInstance", providerInjectable.getInjectorClassSimpleName()))
+            loadVariable("contextManager").invoke("getInstance", providerInjectable.getInjectorName()))
                     .invoke("get").returnValue());
 
     return statement;

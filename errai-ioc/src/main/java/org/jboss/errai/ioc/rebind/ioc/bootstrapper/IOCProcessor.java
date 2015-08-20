@@ -200,7 +200,7 @@ public class IOCProcessor {
 
   private MetaClass addRuntimeInjectorDeclaration(final Injectable injector, final IOCProcessingContext processingContext) {
     final ClassStructureBuilder<?> builder = processingContext.getBootstrapBuilder();
-    final BuildMetaClass runtimeInjector = ClassBuilder.define(injector.getInjectorClassSimpleName())
+    final BuildMetaClass runtimeInjector = ClassBuilder.define(injector.getInjectorName())
                                                        .publicScope()
                                                        .abstractClass()
                                                        .implementsInterface(parameterizedAs(Injector.class, typeParametersOf(injector.getInjectedType())))

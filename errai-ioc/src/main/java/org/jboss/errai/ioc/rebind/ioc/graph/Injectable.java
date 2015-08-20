@@ -16,7 +16,7 @@ public interface Injectable {
 
   Qualifier getQualifier();
 
-  String getInjectorClassSimpleName();
+  String getInjectorName();
 
   Collection<Dependency> getDependencies();
 
