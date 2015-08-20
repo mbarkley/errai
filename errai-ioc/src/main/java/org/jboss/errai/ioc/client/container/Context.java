@@ -9,9 +9,9 @@ public interface Context {
 
   <T> void registerInjector(Injector<T> injector);
 
-  <T> T getInstance(String injectorTypeSimpleName);
+  <T> T getInstance(String injectorName);
 
-  <T> T getActiveNonProxiedInstance(String injectorTypeSimpleName);
+  <T> T getActiveNonProxiedInstance(String injectorName);
 
   Class<? extends Annotation> getScope();
 
@@ -19,6 +19,6 @@ public interface Context {
 
   Collection<Injector<?>> getAllInjectors();
 
-  <T> T getNewInstance(String injecorTypeSimpleName);
+  <T> T getNewInstance(String injecorName);
 
 }
