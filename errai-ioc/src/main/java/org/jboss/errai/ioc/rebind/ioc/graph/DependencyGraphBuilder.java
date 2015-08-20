@@ -4,6 +4,7 @@ import java.lang.annotation.Annotation;
 
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaField;
+import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 /**
@@ -26,6 +27,8 @@ public interface DependencyGraphBuilder {
 
   Dependency createProducerInstanceDependency(Injectable abstractInjectble);
 
+  SetterParameterDependency createSetterMethodDependency(Injectable abstractInjectable, MetaMethod setter);
+
   DependencyGraph createGraph(boolean removeUnreachable);
 
   public static enum InjectorType {
@@ -33,7 +36,7 @@ public interface DependencyGraphBuilder {
   }
 
   public static enum DependencyType {
-    Constructor, Field, ProducerInstance, ProducerParameter
+    Constructor, Field, ProducerInstance, ProducerParameter, SetterParameter
   }
 
   public static interface Dependency {
@@ -53,6 +56,12 @@ public interface DependencyGraphBuilder {
   public static interface FieldDependency extends Dependency {
 
     MetaField getField();
+
+  }
+
+  public static interface SetterParameterDependency extends Dependency {
+
+    MetaMethod getMethod();
 
   }
 }

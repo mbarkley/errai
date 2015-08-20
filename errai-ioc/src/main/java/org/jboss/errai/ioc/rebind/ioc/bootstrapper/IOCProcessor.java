@@ -382,6 +382,24 @@ public class IOCProcessor {
       addConstructorInjectionPoints(typeInjector, injectableConstructor, builder);
     }
     addFieldInjectionPoints(typeInjector, builder);
+    addMethodInjectionPoints(typeInjector, builder);
+  }
+
+  private void addMethodInjectionPoints(Injectable typeInjector, DependencyGraphBuilder builder) {
+    final MetaClass type = typeInjector.getInjectedType();
+    final Collection<Class<? extends Annotation>> injectAnnotations = injectionContext.getAnnotationsForElementType(WiringElementType.InjectionPoint);
+    for (final Class<? extends Annotation> inject : injectAnnotations) {
+      for (final MetaMethod setter : type.getMethodsAnnotatedWith(inject)) {
+        if (setter.getParameters().length != 1) {
+          throw new RuntimeException("The method injection point " + setter.getName() + " in "
+                  + setter.getDeclaringClass().getFullyQualifiedName() + " should have exactly one parameter, not "
+                  + setter.getParameters().length + ".");
+        }
+        final MetaParameter metaParam = setter.getParameters()[0];
+        final Injectable abstractInjectable = builder.lookupAbstractInjectable(metaParam.getType(), qualFactory.forAbstractInjectable(setter));
+        builder.addDependency(typeInjector, builder.createSetterMethodDependency(abstractInjectable, setter));
+      }
+    }
   }
 
   private void addFieldInjectionPoints(final Injectable typeInjector, final DependencyGraphBuilder builder) {

@@ -1,6 +1,8 @@
 package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
 
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.addPrivateAccessStubs;
+import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateFieldInjectorName;
+import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateMethodName;
 import static org.jboss.errai.codegen.util.Stmt.castTo;
 import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
 import static org.jboss.errai.codegen.util.Stmt.loadLiteral;
@@ -22,13 +24,12 @@ import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.util.PrivateAccessType;
-import org.jboss.errai.codegen.util.PrivateAccessUtil;
-import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.FieldDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.ParamDependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.SetterParameterDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
 
 import com.google.common.collect.Multimap;
@@ -41,11 +42,13 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
 
     final Collection<Dependency> constructorDependencies = dependenciesByType.get(DependencyType.Constructor);
     final Collection<Dependency> fieldDependencies = dependenciesByType.get(DependencyType.Field);
+    final Collection<Dependency> setterDependencies = dependenciesByType.get(DependencyType.SetterParameter);
 
     final List<Statement> createInstanceStatements = new ArrayList<Statement>();
 
     constructInstance(injectable, constructorDependencies, createInstanceStatements);
     injectFieldDependencies(injectable, fieldDependencies, createInstanceStatements, bodyBlockBuilder);
+    injectSetterMethodDependencies(injectable, setterDependencies, createInstanceStatements, bodyBlockBuilder);
     maybeInvokePostConstructs(injectable, createInstanceStatements, bodyBlockBuilder);
     addReturnStatement(createInstanceStatements);
     return createInstanceStatements;
@@ -98,15 +101,34 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
       final FieldDependency fieldDep = FieldDependency.class.cast(dep);
       final MetaField field = fieldDep.getField();
       final Injectable depInjectable = fieldDep.getInjectable();
-      final Object injectedValue = Stmt.castTo(depInjectable.getInjectedType(), loadVariable("contextManager")
+      final Object injectedValue = castTo(depInjectable.getInjectedType(), loadVariable("contextManager")
               .invoke("getInstance", loadLiteral(depInjectable.getInjectorName())));
 
       if (!field.isPublic()) {
         addPrivateAccessStubs(PrivateAccessType.Write, "jsni", bodyBlockBuilder, field);
-        final String privateFieldInjectorName = PrivateAccessUtil.getPrivateFieldInjectorName(field);
+        final String privateFieldInjectorName = getPrivateFieldInjectorName(field);
         createInstanceStatements.add(loadVariable("this").invoke(privateFieldInjectorName, loadVariable("instance"), injectedValue));
       } else {
         createInstanceStatements.add(loadVariable("instance").loadField(field).assignValue(injectedValue));
+      }
+    }
+  }
+
+  private void injectSetterMethodDependencies(Injectable injectable, Collection<Dependency> setterDependencies,
+          List<Statement> createInstanceStatements, ClassStructureBuilder<?> bodyBlockBuilder) {
+    for (final Dependency dep : setterDependencies) {
+      final SetterParameterDependency setterDep = SetterParameterDependency.class.cast(dep);
+      final MetaMethod setter = setterDep.getMethod();
+      final Injectable depInjectable = setterDep.getInjectable();
+      final Object injectedValue = castTo(depInjectable.getInjectedType(), loadVariable("contextManager")
+              .invoke("getInstance", loadLiteral(depInjectable.getInjectorName())));
+
+      if (!setter.isPublic()) {
+        addPrivateAccessStubs("jsni", bodyBlockBuilder, setter);
+        final String privateFieldInjectorName = getPrivateMethodName(setter);
+        createInstanceStatements.add(loadVariable("this").invoke(privateFieldInjectorName, loadVariable("instance"), injectedValue));
+      } else {
+        createInstanceStatements.add(loadVariable("instance").invoke(setter, injectedValue));
       }
     }
   }

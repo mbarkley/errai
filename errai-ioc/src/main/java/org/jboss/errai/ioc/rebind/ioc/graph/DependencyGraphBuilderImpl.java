@@ -19,6 +19,7 @@ import javax.enterprise.context.Dependent;
 
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaField;
+import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameterizedType;
 import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
@@ -326,7 +327,12 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   @Override
   public FieldDependency createFieldDependency(final Injectable abstractInjectable, final MetaField dependentField) {
-    return new FieldDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.Field, dependentField);
+    return new FieldDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), dependentField);
+  }
+
+  @Override
+  public SetterParameterDependency createSetterMethodDependency(final Injectable abstractInjectable, final MetaMethod setter) {
+    return new SetterParameterDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), setter);
   }
 
   @Override
@@ -514,14 +520,30 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     private final MetaField field;
 
-    FieldDependencyImpl(final AbstractInjectable abstractInjectable, final DependencyType dependencyType, final MetaField field) {
-      super(abstractInjectable, dependencyType);
+    FieldDependencyImpl(final AbstractInjectable abstractInjectable, final MetaField field) {
+      super(abstractInjectable, DependencyType.Field);
       this.field = field;
     }
 
     @Override
     public MetaField getField() {
       return field;
+    }
+
+  }
+
+  static class SetterParameterDependencyImpl extends BaseDependency implements SetterParameterDependency {
+
+    private final MetaMethod method;
+
+    SetterParameterDependencyImpl(final AbstractInjectable abstractInjectable, final MetaMethod method) {
+      super(abstractInjectable, DependencyType.SetterParameter);
+      this.method = method;
+    }
+
+    @Override
+    public MetaMethod getMethod() {
+      return method;
     }
 
   }
