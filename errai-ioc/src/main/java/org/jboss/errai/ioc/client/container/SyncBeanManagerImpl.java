@@ -225,7 +225,7 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
   public <T> IOCBeanDef<T> lookupBean(Class<T> type, Annotation... qualifiers) {
     final Collection<IOCBeanDef<T>> resolved = lookupBeans(type, qualifiers);
     if (resolved.isEmpty()) {
-      throw new RuntimeException("No beans matched " + type.getName() + " with qualifiers " + qualifiers);
+      throw new IOCResolutionException("No beans matched " + type.getName() + " with qualifiers " + qualifiers);
     } else if (resolved.size() > 1) {
       final StringBuilder builder = new StringBuilder();
       builder.append("Multiple beans matched " + type.getName() + " with qualifiers " + qualifiers + "\n")
@@ -235,7 +235,7 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
                .append(beanDef.toString())
                .append("\n");
       }
-      throw new RuntimeException(builder.toString());
+      throw new IOCResolutionException(builder.toString());
     } else {
       return resolved.iterator().next();
     }

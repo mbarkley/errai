@@ -449,7 +449,8 @@ public class IOCProcessor {
   private boolean isEnabled(final MetaClass type) {
     final boolean hasEnablingProperty = hasEnablingProperty(type);
 
-    return (hasEnablingProperty && isEnabledByProperty(type)) || (!hasEnablingProperty && isActive(type));
+    return (injectionContext.isWhitelisted(type) && !injectionContext.isBlacklisted(type))
+            && ((hasEnablingProperty && isEnabledByProperty(type)) || (!hasEnablingProperty && isActive(type)));
   }
 
   private boolean isActive(final MetaClass type) {
