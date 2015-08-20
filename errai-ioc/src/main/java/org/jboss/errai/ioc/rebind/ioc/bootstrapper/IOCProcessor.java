@@ -58,6 +58,7 @@ import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.client.api.EnabledByProperty;
 import org.jboss.errai.ioc.client.api.EntryPoint;
+import org.jboss.errai.ioc.client.api.IOCProvider;
 import org.jboss.errai.ioc.client.api.ScopeContext;
 import org.jboss.errai.ioc.client.container.Context;
 import org.jboss.errai.ioc.client.container.ContextManager;
@@ -244,7 +245,7 @@ public class IOCProcessor {
   }
 
   private boolean isSimpleton(final MetaClass type) {
-    if (type.isAnnotationPresent(Alternative.class) || hasEnablingProperty(type)) {
+    if (type.isAnnotationPresent(Alternative.class) || type.isAnnotationPresent(IOCProvider.class) || hasEnablingProperty(type)) {
       return false;
     }
     final Class<? extends Annotation> scope = getDirectScope(type);
