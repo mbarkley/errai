@@ -24,13 +24,26 @@ public class ContextManagerImpl implements ContextManager {
   }
 
   @Override
-  public <T> T getInstance(final String injectorTypeSimpleName) {
-    return contextsByInjectorName.get(injectorTypeSimpleName).getInstance(injectorTypeSimpleName);
+  public <T> T getInstance(final String injectorName) {
+    return contextsByInjectorName.get(injectorName).getInstance(injectorName);
+  }
+
+  @SuppressWarnings("unchecked")
+  @Override
+  public <T> T getEagerInstance(final String injectorName) {
+    final Context context = contextsByInjectorName.get(injectorName);
+    final T instance = context.<T>getInstance(injectorName);
+    if ((instance instanceof Proxy) && !(instance instanceof NonProxiableWrapper)) {
+      final T nonProxiedInstance = context.<T>getActiveNonProxiedInstance(injectorName);
+      ((Proxy<T>) instance).setInstance(nonProxiedInstance);
+    }
+
+    return instance;
   }
 
   @Override
-  public <T> T getNewInstance(final String injecorTypeSimpleName) {
-    return contextsByInjectorName.get(injecorTypeSimpleName).getNewInstance(injecorTypeSimpleName);
+  public <T> T getNewInstance(final String injecorName) {
+    return contextsByInjectorName.get(injecorName).getNewInstance(injecorName);
   }
 
   @Override

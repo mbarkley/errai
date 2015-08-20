@@ -29,11 +29,14 @@ public class InjectorHandleImpl implements InjectorHandle {
   private final Class<?> actualType;
   private final String injectorName;
   private final Class<? extends Annotation> scope;
+  private final boolean eager;
 
-  public InjectorHandleImpl(final Class<?> actualType, final String injectorName, final Class<? extends Annotation> scope) {
+
+  public InjectorHandleImpl(final Class<?> actualType, final String injectorName, final Class<? extends Annotation> scope, final boolean eager) {
     this.actualType = actualType;
     this.injectorName = injectorName;
     this.scope = scope;
+    this.eager = eager;
     qualifiers.add(ANY);
     qualifiers.add(DEFAULT);
   }
@@ -76,6 +79,11 @@ public class InjectorHandleImpl implements InjectorHandle {
   @Override
   public String toString() {
     return "[type=" + actualType + ", name=" + injectorName + ", scope=" + scope.getSimpleName() + ", qualifiers=" + qualifiers + "]";
+  }
+
+  @Override
+  public boolean isEager() {
+    return eager;
   }
 
 }

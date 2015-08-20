@@ -15,4 +15,6 @@ public interface InjectorHandle {
 
   Class<? extends Annotation> getScope();
 
+  boolean isEager();
+
 }

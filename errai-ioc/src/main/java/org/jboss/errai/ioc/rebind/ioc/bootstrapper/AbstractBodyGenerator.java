@@ -6,6 +6,7 @@ import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.addPrivateAccessStubs;
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateMethodName;
 import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
+import static org.jboss.errai.codegen.util.Stmt.load;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 import static org.jboss.errai.codegen.util.Stmt.newObject;
 
@@ -32,7 +33,7 @@ import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
-import org.jboss.errai.codegen.util.Stmt;
+import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.client.container.Context;
 import org.jboss.errai.ioc.client.container.ContextManager;
 import org.jboss.errai.ioc.client.container.InjectorHandle;
@@ -71,7 +72,7 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
     if (proxyImpl.getFullyQualifiedName().equals(NonProxiableWrapper.class.getName())) {
       newProxyImplStmt = newObject(
               parameterizedAs(NonProxiableWrapper.class, typeParametersOf(injectable.getInjectedType())),
-              loadVariable("proxyHelper").invoke("getInstance"));
+              load(initializeProxyHelper(injectable)).invoke("getInstance"));
     } else {
       newProxyImplStmt = newObject(proxyImpl);
     }
@@ -87,8 +88,6 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
   }
 
   private MetaClass maybeCreateProxyImplementation(final Injectable injectable, final ClassStructureBuilder<?> bodyBlockBuilder) {
-    // TODO need to rename "createProxy" to something more accurate like "getProxyOrInstance" or "getLazyInstance".
-    declareAndInitializeProxyHelper(injectable, bodyBlockBuilder);
 
     final ClassStructureBuilder<?> proxyImpl;
     final MetaClass injectedType = injectable.getInjectedType();
@@ -98,11 +97,13 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
               .privateScope()
               .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectedType)))
               .implementsInterface(injectedType).body();
+      declareAndInitializeProxyHelper(injectable, proxyImpl);
     } else if (isProxiable(injectable)) {
       proxyImpl = ClassBuilder
               .define(injectable.getInjectorClassSimpleName() + "ProxyImpl", injectedType)
               .privateScope()
               .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectedType))).body();
+      declareAndInitializeProxyHelper(injectable, proxyImpl);
     } else {
       if (!injectable.requiresProxy()) {
         return parameterizedAs(NonProxiableWrapper.class, typeParametersOf(injectedType));
@@ -131,10 +132,14 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
             .privateField("proxyHelper",
                     parameterizedAs(ProxyHelper.class, typeParametersOf(injectable.getInjectedType())))
             .modifiers(Modifier.Final)
-            .initializesWith(Stmt.newObject(
-                    parameterizedAs(ProxyHelperImpl.class, typeParametersOf(injectable.getInjectedType())),
-                    injectable.getInjectorClassSimpleName()))
+            .initializesWith(initializeProxyHelper(injectable))
             .finish();
+  }
+
+  private Statement initializeProxyHelper(final Injectable injectable) {
+    return newObject(
+            parameterizedAs(ProxyHelperImpl.class, typeParametersOf(injectable.getInjectedType())),
+            injectable.getInjectorClassSimpleName());
   }
 
   private void implementAccessibleMethods(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {
@@ -250,7 +255,7 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
   private void implementGetHandle(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable) {
     bodyBlockBuilder.privateField("handle", InjectorHandleImpl.class)
             .initializesWith(newObject(InjectorHandleImpl.class, injectable.getInjectedType().asClass(),
-                    injectable.getInjectorClassSimpleName(), injectable.getScope()))
+                    injectable.getInjectorClassSimpleName(), injectable.getScope(), isEager(injectable.getInjectedType())))
             .finish();
     final ConstructorBlockBuilder<?> con = bodyBlockBuilder.publicConstructor();
     for (final MetaClass assignableType : getAllAssignableTypes(injectable.getInjectedType())) {
@@ -262,6 +267,11 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
     con.finish();
     bodyBlockBuilder.publicMethod(InjectorHandle.class, "getHandle").body()._(loadVariable("handle").returnValue())
             .finish();
+  }
+
+  private Object isEager(final MetaClass injectedType) {
+    // TODO Support other annotations like @Startup
+    return injectedType.isAnnotationPresent(EntryPoint.class);
   }
 
   private Object annotationLiteral(final Annotation qual) {
