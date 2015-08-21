@@ -16,15 +16,12 @@ import java.util.Set;
 import java.util.Stack;
 
 import javax.enterprise.context.Dependent;
-import javax.inject.Provider;
 
-import org.apache.commons.collections.CollectionUtils;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.MetaParameterizedType;
-import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
@@ -39,7 +36,6 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   private final Map<AbstractInjectableHandle, AbstractInjectable> abstractInjectables = new HashMap<AbstractInjectableHandle, AbstractInjectable>();
   private final Multimap<MetaClass, AbstractInjectable> directAbstractInjectablesByAssignableTypes = HashMultimap.create();
   private final Map<String, ConcreteInjectable> concretesByName = new HashMap<String, ConcreteInjectable>();
-  private final Multimap<MetaClass, ConcreteInjectable> providersByType = HashMultimap.create();
 
   @Override
   public Injectable addConcreteInjectable(final MetaClass injectedType, final Qualifier qualifier, Class<? extends Annotation> literalScope,
@@ -48,21 +44,6 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     concretesByName.put(concrete.getInjectorName(), concrete);
     linkDirectAbstractInjectable(concrete);
 
-    if (CollectionUtils.containsAny(
-            Arrays.asList(WiringElementType.ContextualTopLevelProvider, WiringElementType.TopLevelProvider),
-            concrete.wiringTypes)) {
-      final MetaClass providerType = concrete.getInjectedType();
-      MetaClass providedType = null;
-      if (providerType.isAssignableTo(Provider.class)) {
-        providedType = providerType.getMethod("get", new Class[0]).getReturnType();
-      } else if (providerType.isAssignableTo(ContextualTypeProvider.class)) {
-        providedType = providerType.getMethod("provide", Class[].class, Annotation[].class).getReturnType();
-      }
-
-      for (final MetaClass mc : providedType.getAllSuperTypesAndInterfaces()) {
-        providersByType.put(mc.getErased(), concrete);
-      }
-    }
     return concrete;
   }
 
@@ -224,14 +205,6 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       return dep.injectable.resolution;
     }
 
-    final Collection<ConcreteInjectable> providersForType = providersByType.get(dep.injectable.getInjectedType().getErased());
-    if (providersForType.size() > 1) {
-      throwAmbiguousDependencyException(dep, concrete, new ArrayList<ConcreteInjectable>(providersForType));
-    } else if (providersForType.size() == 1) {
-      dep.injectable.provided = true;
-      return (dep.injectable.resolution = providersForType.iterator().next());
-    }
-
     final List<ConcreteInjectable> resolved = new ArrayList<ConcreteInjectable>();
     final Queue<AbstractInjectable> resolutionQueue = new LinkedList<AbstractInjectable>();
     resolutionQueue.add(dep.injectable);
@@ -250,18 +223,37 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     if (resolved.isEmpty()) {
       throwUnsatisfiedDependencyException(dep, concrete);
     } else if (resolved.size() > 1) {
-      final List<ConcreteInjectable> alternatives = getAlternatives(resolved);
-      if (alternatives.isEmpty()) {
-        throwAmbiguousDependencyException(dep, concrete, resolved);
-      } else if (alternatives.size() > 1) {
-        throwAmbiguousDependencyException(dep, concrete, alternatives);
+      final List<ConcreteInjectable> providers = getProviders(resolved);
+      if (providers.isEmpty()) {
+        final List<ConcreteInjectable> alternatives = getAlternatives(resolved);
+        if (alternatives.isEmpty()) {
+          throwAmbiguousDependencyException(dep, concrete, resolved);
+        } else if (alternatives.size() > 1) {
+          throwAmbiguousDependencyException(dep, concrete, alternatives);
+        } else {
+          resolved.clear();
+          resolved.add(alternatives.get(0));
+        }
+      } else if (providers.size() > 1) {
+        throwAmbiguousDependencyException(dep, concrete, providers);
       } else {
         resolved.clear();
-        resolved.add(alternatives.get(0));
+        resolved.add(providers.get(0));
       }
     }
 
     return (dep.injectable.resolution = resolved.get(0));
+  }
+
+  private List<ConcreteInjectable> getProviders(final List<ConcreteInjectable> resolved) {
+    final List<ConcreteInjectable> providers = new ArrayList<ConcreteInjectable>();
+    for (final ConcreteInjectable injectable : resolved) {
+      if (InjectorType.Provider.equals(injectable.injectorType) || InjectorType.ContextualProvider.equals(injectable.injectorType)) {
+        providers.add(injectable);
+      }
+    }
+
+    return providers;
   }
 
   private void throwUnsatisfiedDependencyException(final BaseDependency dep, final ConcreteInjectable concrete) {
@@ -412,7 +404,6 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   static class AbstractInjectable extends BaseInjectable {
     final Collection<BaseInjectable> linked = new HashSet<BaseInjectable>();
     ConcreteInjectable resolution;
-    private boolean provided;
 
     AbstractInjectable(final MetaClass type, final Qualifier qualifier) {
       super(type, qualifier);
@@ -435,7 +426,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     @Override
     public Collection<Dependency> getDependencies() {
-      return Collections.emptyList();
+      if (resolution == null) {
+        return Collections.emptyList();
+      } else {
+        return resolution.getDependencies();
+      }
     }
 
     @Override
@@ -450,7 +445,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     @Override
     public boolean isProvided() {
-      return provided;
+      return resolution != null && resolution.isProvided();
     }
   }
 
@@ -510,7 +505,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     @Override
     public boolean isProvided() {
-      return false;
+      return Arrays.asList(InjectorType.Provider, InjectorType.ContextualProvider).contains(injectorType);
     }
   }
 

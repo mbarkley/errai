@@ -216,9 +216,6 @@ public class IOCProcessor {
       processType(type, builder);
     }
 
-    // FIXME The reachability analysis property is not picked up while running
-    // tests so for now this is hard-coded to avoid generating an overwhelming
-    // amount of code.
     return builder.createGraph(true);
   }
 
@@ -234,6 +231,7 @@ public class IOCProcessor {
         processInjectionPoints(typeInjector, builder);
         processProducerMethods(typeInjector, builder);
         processProducerFields(typeInjector, builder);
+        maybeProcessAsProvider(typeInjector, builder);
       }
     }
   }
@@ -276,18 +274,44 @@ public class IOCProcessor {
       wiringTypes.add(WiringElementType.AlternativeBean);
     }
 
-    if (type.isAnnotationPresent(IOCProvider.class)) {
-      if (type.isAssignableTo(ContextualTypeProvider.class)) {
-        wiringTypes.add(WiringElementType.ContextualTopLevelProvider);
-      } else if (type.isAssignableTo(Provider.class)) {
-        wiringTypes.add(WiringElementType.TopLevelProvider);
-      } else {
-        throw new RuntimeException("@IOCProvider,  " + type.getFullyQualifiedName() + ", must implement "
-                + Provider.class.getName() + " or " + ContextualTypeProvider.class.getName());
+    return wiringTypes.toArray(new WiringElementType[wiringTypes.size()]);
+  }
+
+  private void maybeProcessAsProvider(final Injectable typeInjector, final DependencyGraphBuilder builder) {
+    final MetaClass type = typeInjector.getInjectedType();
+    final Collection<Class<? extends Annotation>> providerAnnotations = injectionContext.getAnnotationsForElementType(WiringElementType.TopLevelProvider);
+    for (final Class<? extends Annotation> anno : providerAnnotations) {
+      if (type.isAnnotationPresent(anno)) {
+        if (type.isAssignableTo(Provider.class)) {
+          addProviderInjector(typeInjector, builder);
+        }
+        else if (type.isAssignableTo(ContextualTypeProvider.class)) {
+          addContextualProviderInjector(typeInjector, builder);
+        }
+
+        break;
       }
     }
+  }
 
-    return wiringTypes.toArray(new WiringElementType[wiringTypes.size()]);
+  private void addContextualProviderInjector(final Injectable providerInjectable, final DependencyGraphBuilder builder) {
+    final MetaClass providerImpl = providerInjectable.getInjectedType();
+    final MetaMethod providerMethod = providerImpl.getMethod("provide", Class[].class, Annotation[].class);
+    final MetaClass providedType = providerMethod.getReturnType();
+    final Injectable providedInjectable = builder.addConcreteInjectable(providedType, qualFactory.forUniversallyQualified(),
+            Dependent.class, InjectorType.ContextualProvider, WiringElementType.TopLevelProvider);
+    final Injectable abstractProviderInjectable = builder.lookupAbstractInjectable(providerImpl, providerInjectable.getQualifier());
+    builder.addDependency(providedInjectable, builder.createProducerInstanceDependency(abstractProviderInjectable));
+  }
+
+  private void addProviderInjector(final Injectable providerImplInjectable, final DependencyGraphBuilder builder) {
+    final MetaClass providerImpl = providerImplInjectable.getInjectedType();
+    final MetaMethod providerMethod = providerImpl.getMethod("get", new Class[0]);
+    final MetaClass providedType = providerMethod.getReturnType();
+    final Injectable providedInjectable = builder.addConcreteInjectable(providedType, qualFactory.forUniversallyQualified(),
+            Dependent.class, InjectorType.Provider, WiringElementType.TopLevelProvider);
+    final Injectable abstractProviderImplInjectable = builder.lookupAbstractInjectable(providerImplInjectable.getInjectedType(), providerImplInjectable.getQualifier());
+    builder.addDependency(providedInjectable, builder.createProducerInstanceDependency(abstractProviderImplInjectable));
   }
 
   private Class<? extends Annotation> getDirectScope(final HasAnnotations annotated) {
