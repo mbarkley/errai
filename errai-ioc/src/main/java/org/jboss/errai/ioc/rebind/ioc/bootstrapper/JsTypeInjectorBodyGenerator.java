@@ -1,0 +1,25 @@
+package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
+
+import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
+
+import java.util.Collections;
+import java.util.List;
+
+import org.jboss.errai.codegen.Statement;
+import org.jboss.errai.codegen.builder.ClassStructureBuilder;
+import org.jboss.errai.codegen.util.Stmt;
+import org.jboss.errai.ioc.client.WindowInjectionContext;
+import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
+import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
+
+public class JsTypeInjectorBodyGenerator extends TypeInjectorBodyGenerator {
+
+  @Override
+  protected List<Statement> generateCreateInstanceStatements(ClassStructureBuilder<?> bodyBlockBuilder,
+          Injectable injectable, DependencyGraph graph) {
+    return Collections.<Statement> singletonList(
+            Stmt.castTo(injectable.getInjectedType(), invokeStatic(WindowInjectionContext.class, "createOrGet")
+                    .invoke("getBean", injectable.getInjectedType().getFullyQualifiedName())).returnValue());
+  }
+
+}

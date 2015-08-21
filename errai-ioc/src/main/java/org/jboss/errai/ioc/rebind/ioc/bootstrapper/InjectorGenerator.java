@@ -71,6 +71,9 @@ public class InjectorGenerator extends IncrementalGenerator {
     case Provider:
       generator = new ProviderBodyGenerator();
       break;
+    case JsType:
+      generator = new JsTypeInjectorBodyGenerator();
+      break;
     case ContextualProvider:
       throw new RuntimeException();
     case Producer:

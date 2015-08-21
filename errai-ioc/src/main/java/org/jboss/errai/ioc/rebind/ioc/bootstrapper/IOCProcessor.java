@@ -268,6 +268,8 @@ public class IOCProcessor {
         processProducerFields(typeInjector, builder);
         maybeProcessAsProvider(typeInjector, builder);
       }
+    } else if (type.isAnnotationPresent(JsType.class)) {
+      builder.addConcreteInjectable(type, qualFactory.forUniversallyQualified(), Dependent.class, InjectorType.JsType);
     }
   }
 

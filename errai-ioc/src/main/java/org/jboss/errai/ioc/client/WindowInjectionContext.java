@@ -35,10 +35,6 @@ public class WindowInjectionContext {
     return !($wnd.injectionContext === undefined);
   }-*/;
 
- public <T> T getInstance(String injectorName) {
-   return null;
- }
-
   public void addBeanProvider(final String name, final JsTypeProvider<?> provider) {
     beanProviders.put(name, provider);
   }
