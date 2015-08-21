@@ -5,6 +5,7 @@ import java.lang.annotation.Annotation;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
+import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 /**
@@ -21,9 +22,9 @@ public interface DependencyGraphBuilder {
 
   FieldDependency createFieldDependency(Injectable abstractInjectable, MetaField dependentField);
 
-  ParamDependency createConstructorDependency(Injectable abstractInjectable, int paramIndex);
+  ParamDependency createConstructorDependency(Injectable abstractInjectable, int paramIndex, MetaParameter param);
 
-  ParamDependency createProducerParamDependency(Injectable abstractInjectable, int paramIndex);
+  ParamDependency createProducerParamDependency(Injectable abstractInjectable, int paramIndex, MetaParameter param);
 
   Dependency createProducerInstanceDependency(Injectable abstractInjectble);
 
@@ -50,6 +51,8 @@ public interface DependencyGraphBuilder {
   public static interface ParamDependency extends Dependency {
 
     int getParamIndex();
+
+    MetaParameter getParameter();
 
   }
 

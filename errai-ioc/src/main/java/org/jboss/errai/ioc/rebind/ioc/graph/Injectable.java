@@ -26,4 +26,6 @@ public interface Injectable {
 
   boolean requiresProxy();
 
+  boolean isProvided();
+
 }

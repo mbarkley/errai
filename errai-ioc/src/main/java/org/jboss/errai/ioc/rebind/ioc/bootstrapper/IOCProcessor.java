@@ -234,7 +234,6 @@ public class IOCProcessor {
         processInjectionPoints(typeInjector, builder);
         processProducerMethods(typeInjector, builder);
         processProducerFields(typeInjector, builder);
-        maybeProcessAsProvider(typeInjector, builder);
       }
     }
   }
@@ -277,34 +276,18 @@ public class IOCProcessor {
       wiringTypes.add(WiringElementType.AlternativeBean);
     }
 
-    return wiringTypes.toArray(new WiringElementType[wiringTypes.size()]);
-  }
-
-  private void maybeProcessAsProvider(final Injectable typeInjector, final DependencyGraphBuilder builder) {
-    final MetaClass type = typeInjector.getInjectedType();
-    final Collection<Class<? extends Annotation>> providerAnnotations = injectionContext.getAnnotationsForElementType(WiringElementType.TopLevelProvider);
-    for (final Class<? extends Annotation> anno : providerAnnotations) {
-      if (type.isAnnotationPresent(anno)) {
-        if (type.isAssignableTo(Provider.class)) {
-          addProviderInjector(typeInjector, builder);
-        }
-        else if (type.isAssignableTo(ContextualTypeProvider.class)) {
-          addContextualProviderInjector(typeInjector, builder);
-        }
-
-        break;
+    if (type.isAnnotationPresent(IOCProvider.class)) {
+      if (type.isAssignableTo(ContextualTypeProvider.class)) {
+        wiringTypes.add(WiringElementType.ContextualTopLevelProvider);
+      } else if (type.isAssignableTo(Provider.class)) {
+        wiringTypes.add(WiringElementType.TopLevelProvider);
+      } else {
+        throw new RuntimeException("@IOCProvider,  " + type.getFullyQualifiedName() + ", must implement "
+                + Provider.class.getName() + " or " + ContextualTypeProvider.class.getName());
       }
     }
-  }
 
-  private void addContextualProviderInjector(final Injectable providerInjectable, final DependencyGraphBuilder builder) {
-    final MetaClass providerImpl = providerInjectable.getInjectedType();
-    final MetaMethod providerMethod = providerImpl.getMethod("provide", Class[].class, Annotation[].class);
-    final MetaClass providedType = providerMethod.getReturnType();
-    final Injectable providedInjectable = builder.addConcreteInjectable(providedType, qualFactory.forUniversallyQualified(),
-            Dependent.class, InjectorType.ContextualProvider, WiringElementType.TopLevelProvider);
-    final Injectable abstractProviderInjectable = builder.lookupAbstractInjectable(providerImpl, providerInjectable.getQualifier());
-    builder.addDependency(providedInjectable, builder.createProducerInstanceDependency(abstractProviderInjectable));
+    return wiringTypes.toArray(new WiringElementType[wiringTypes.size()]);
   }
 
   private Class<? extends Annotation> getDirectScope(final HasAnnotations annotated) {
@@ -317,16 +300,6 @@ public class IOCProcessor {
     }
 
     return Dependent.class;
-  }
-
-  private void addProviderInjector(final Injectable providerImplInjectable, final DependencyGraphBuilder builder) {
-    final MetaClass providerImpl = providerImplInjectable.getInjectedType();
-    final MetaMethod providerMethod = providerImpl.getMethod("get", new Class[0]);
-    final MetaClass providedType = providerMethod.getReturnType();
-    final Injectable providedInjectable = builder.addConcreteInjectable(providedType, qualFactory.forUniversallyQualified(),
-            Dependent.class, InjectorType.Provider, WiringElementType.TopLevelProvider);
-    final Injectable abstractProviderImplInjectable = builder.lookupAbstractInjectable(providerImplInjectable.getInjectedType(), providerImplInjectable.getQualifier());
-    builder.addDependency(providedInjectable, builder.createProducerInstanceDependency(abstractProviderImplInjectable));
   }
 
   private void processProducerMethods(final Injectable typeInjectable, final DependencyGraphBuilder builder) {
@@ -345,7 +318,7 @@ public class IOCProcessor {
         for (int i = 0; i < params.length; i++) {
           final MetaParameter param = params[i];
           final Injectable abstractParamInjectable = builder.lookupAbstractInjectable(param.getType(), qualFactory.forAbstractInjectable(param));
-          builder.addDependency(producedInjectable, builder.createProducerParamDependency(abstractParamInjectable, i));
+          builder.addDependency(producedInjectable, builder.createProducerParamDependency(abstractParamInjectable, i, param));
         }
       }
     }
@@ -418,7 +391,7 @@ public class IOCProcessor {
     for (int i = 0; i < params.length; i++) {
       final MetaParameter param = params[i];
       final Injectable abstractInjectable = builder.lookupAbstractInjectable(param.getType(), qualFactory.forAbstractInjectable(param));
-      builder.addDependency(concreteInjectable, builder.createConstructorDependency(abstractInjectable, i));
+      builder.addDependency(concreteInjectable, builder.createConstructorDependency(abstractInjectable, i, param));
     }
   }
 

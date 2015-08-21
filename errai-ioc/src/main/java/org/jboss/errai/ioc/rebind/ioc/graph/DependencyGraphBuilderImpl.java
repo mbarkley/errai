@@ -16,11 +16,15 @@ import java.util.Set;
 import java.util.Stack;
 
 import javax.enterprise.context.Dependent;
+import javax.inject.Provider;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
+import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.MetaParameterizedType;
+import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
@@ -35,6 +39,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   private final Map<AbstractInjectableHandle, AbstractInjectable> abstractInjectables = new HashMap<AbstractInjectableHandle, AbstractInjectable>();
   private final Multimap<MetaClass, AbstractInjectable> directAbstractInjectablesByAssignableTypes = HashMultimap.create();
   private final Map<String, ConcreteInjectable> concretesByName = new HashMap<String, ConcreteInjectable>();
+  private final Multimap<MetaClass, ConcreteInjectable> providersByType = HashMultimap.create();
 
   @Override
   public Injectable addConcreteInjectable(final MetaClass injectedType, final Qualifier qualifier, Class<? extends Annotation> literalScope,
@@ -43,6 +48,21 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     concretesByName.put(concrete.getInjectorName(), concrete);
     linkDirectAbstractInjectable(concrete);
 
+    if (CollectionUtils.containsAny(
+            Arrays.asList(WiringElementType.ContextualTopLevelProvider, WiringElementType.TopLevelProvider),
+            concrete.wiringTypes)) {
+      final MetaClass providerType = concrete.getInjectedType();
+      MetaClass providedType = null;
+      if (providerType.isAssignableTo(Provider.class)) {
+        providedType = providerType.getMethod("get", new Class[0]).getReturnType();
+      } else if (providerType.isAssignableTo(ContextualTypeProvider.class)) {
+        providedType = providerType.getMethod("provide", Class[].class, Annotation[].class).getReturnType();
+      }
+
+      for (final MetaClass mc : providedType.getAllSuperTypesAndInterfaces()) {
+        providersByType.put(mc.getErased(), concrete);
+      }
+    }
     return concrete;
   }
 
@@ -204,6 +224,14 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       return dep.injectable.resolution;
     }
 
+    final Collection<ConcreteInjectable> providersForType = providersByType.get(dep.injectable.getInjectedType().getErased());
+    if (providersForType.size() > 1) {
+      throwAmbiguousDependencyException(dep, concrete, new ArrayList<ConcreteInjectable>(providersForType));
+    } else if (providersForType.size() == 1) {
+      dep.injectable.provided = true;
+      return (dep.injectable.resolution = providersForType.iterator().next());
+    }
+
     final List<ConcreteInjectable> resolved = new ArrayList<ConcreteInjectable>();
     final Queue<AbstractInjectable> resolutionQueue = new LinkedList<AbstractInjectable>();
     resolutionQueue.add(dep.injectable);
@@ -336,13 +364,13 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   @Override
-  public ParamDependency createConstructorDependency(final Injectable abstractInjectable, final int paramIndex) {
-    return new ParamDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.Constructor, paramIndex);
+  public ParamDependency createConstructorDependency(final Injectable abstractInjectable, final int paramIndex, final MetaParameter param) {
+    return new ParamDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.Constructor, paramIndex, param);
   }
 
   @Override
-  public ParamDependency createProducerParamDependency(final Injectable abstractInjectable, final int paramIndex) {
-    return new ParamDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerParameter, paramIndex);
+  public ParamDependency createProducerParamDependency(final Injectable abstractInjectable, final int paramIndex, final MetaParameter param) {
+    return new ParamDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerParameter, paramIndex, param);
   }
 
   @Override
@@ -384,6 +412,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   static class AbstractInjectable extends BaseInjectable {
     final Collection<BaseInjectable> linked = new HashSet<BaseInjectable>();
     ConcreteInjectable resolution;
+    private boolean provided;
 
     AbstractInjectable(final MetaClass type, final Qualifier qualifier) {
       super(type, qualifier);
@@ -417,6 +446,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     @Override
     public Collection<WiringElementType> getWiringElementTypes() {
       return Collections.emptyList();
+    }
+
+    @Override
+    public boolean isProvided() {
+      return provided;
     }
   }
 
@@ -473,6 +507,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     public Collection<WiringElementType> getWiringElementTypes() {
       return Collections.unmodifiableCollection(wiringTypes);
     }
+
+    @Override
+    public boolean isProvided() {
+      return false;
+    }
   }
 
   static class BaseDependency implements Dependency {
@@ -503,15 +542,22 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   static class ParamDependencyImpl extends BaseDependency implements ParamDependency {
 
     private final int paramIndex;
+    private final MetaParameter parameter;
 
-    ParamDependencyImpl(final AbstractInjectable abstractInjectable, final DependencyType dependencyType, final int paramIndex) {
+    ParamDependencyImpl(final AbstractInjectable abstractInjectable, final DependencyType dependencyType, final int paramIndex, final MetaParameter parameter) {
       super(abstractInjectable, dependencyType);
       this.paramIndex = paramIndex;
+      this.parameter = parameter;
     }
 
     @Override
     public int getParamIndex() {
       return paramIndex;
+    }
+
+    @Override
+    public MetaParameter getParameter() {
+      return parameter;
     }
 
   }

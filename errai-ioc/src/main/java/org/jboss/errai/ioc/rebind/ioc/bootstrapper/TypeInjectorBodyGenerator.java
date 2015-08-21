@@ -9,6 +9,7 @@ import static org.jboss.errai.codegen.util.Stmt.loadLiteral;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 import static org.jboss.errai.codegen.util.Stmt.newObject;
 
+import java.lang.annotation.Annotation;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -17,13 +18,18 @@ import java.util.List;
 import java.util.Queue;
 
 import javax.annotation.PostConstruct;
+import javax.inject.Provider;
 
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
+import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
+import org.jboss.errai.codegen.meta.MetaParameterizedType;
+import org.jboss.errai.codegen.meta.MetaType;
 import org.jboss.errai.codegen.util.PrivateAccessType;
+import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.DependencyType;
@@ -101,8 +107,20 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
       final FieldDependency fieldDep = FieldDependency.class.cast(dep);
       final MetaField field = fieldDep.getField();
       final Injectable depInjectable = fieldDep.getInjectable();
-      final Object injectedValue = castTo(depInjectable.getInjectedType(), loadVariable("contextManager")
-              .invoke("getInstance", loadLiteral(depInjectable.getInjectorName())));
+      ContextualStatementBuilder injectedValue = castTo(depInjectable.getInjectedType(),
+              loadVariable("contextManager").invoke("getInstance", loadLiteral(depInjectable.getInjectorName())));
+      if (depInjectable.isProvided()) {
+        final MetaClass providerType = fieldDep.getInjectable().getInjectedType();
+        if (providerType.isAssignableTo(ContextualTypeProvider.class)) {
+          final MetaClass[] typeArgsClasses = getTypeArguments(field.getType());
+          final Annotation[] qualifiers = getQualifiers(field).toArray(new Annotation[0]);
+          injectedValue = injectedValue.invoke("provide", typeArgsClasses, qualifiers);
+        } else if (providerType.isAssignableTo(Provider.class)) {
+          injectedValue = injectedValue.invoke("get");
+        } else {
+          throw new RuntimeException("Unrecognized provider type " + providerType.getFullyQualifiedName() + " for dependency in " + field.getDeclaringClassName());
+        }
+      }
 
       if (!field.isPublic()) {
         addPrivateAccessStubs(PrivateAccessType.Write, "jsni", bodyBlockBuilder, field);
@@ -114,14 +132,44 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
     }
   }
 
+  private MetaClass[] getTypeArguments(final MetaClass type) {
+    final MetaParameterizedType pType = type.getParameterizedType();
+    final MetaType[] typeArgs = (pType != null ? pType.getTypeParameters() : new MetaType[0]);
+    final MetaClass[] typeArgsClasses = new MetaClass[typeArgs.length];
+
+    for (int i = 0; i < typeArgs.length; i++) {
+      final MetaType argType = typeArgs[i];
+
+      if (argType instanceof MetaClass) {
+        typeArgsClasses[i] = (MetaClass) argType;
+      }
+      else if (argType instanceof MetaParameterizedType) {
+        typeArgsClasses[i] = (MetaClass) ((MetaParameterizedType) argType).getRawType();
+      }
+    }
+    return typeArgsClasses;
+  }
+
   private void injectSetterMethodDependencies(Injectable injectable, Collection<Dependency> setterDependencies,
           List<Statement> createInstanceStatements, ClassStructureBuilder<?> bodyBlockBuilder) {
     for (final Dependency dep : setterDependencies) {
       final SetterParameterDependency setterDep = SetterParameterDependency.class.cast(dep);
       final MetaMethod setter = setterDep.getMethod();
       final Injectable depInjectable = setterDep.getInjectable();
-      final Object injectedValue = castTo(depInjectable.getInjectedType(), loadVariable("contextManager")
+      ContextualStatementBuilder injectedValue = castTo(depInjectable.getInjectedType(), loadVariable("contextManager")
               .invoke("getInstance", loadLiteral(depInjectable.getInjectorName())));
+      if (depInjectable.isProvided()) {
+        final MetaClass providerType = setterDep.getInjectable().getInjectedType();
+        if (providerType.isAssignableTo(ContextualTypeProvider.class)) {
+          final MetaClass[] typeArgsClasses = getTypeArguments(setter.getParameters()[0].getType());
+          final Annotation[] qualifiers = getQualifiers(setter).toArray(new Annotation[0]);
+          injectedValue = injectedValue.invoke("provide", typeArgsClasses, qualifiers);
+        } else if (providerType.isAssignableTo(Provider.class)) {
+          injectedValue = injectedValue.invoke("get");
+        } else {
+          throw new RuntimeException("Unrecognized provider type " + providerType.getFullyQualifiedName() + " for dependency in " + setter.getDeclaringClassName());
+        }
+      }
 
       if (!setter.isPublic()) {
         addPrivateAccessStubs("jsni", bodyBlockBuilder, setter);
@@ -142,8 +190,25 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
         final ParamDependency paramDep = ParamDependency.class.cast(dep);
         final String depInjectableName = depInjectable.getInjectorName();
 
-        constructorParameterStatements[paramDep.getParamIndex()] = castTo(depInjectable.getInjectedType(),
+        ContextualStatementBuilder injectedValue = castTo(depInjectable.getInjectedType(),
                 loadVariable("contextManager").invoke("getInstance", loadLiteral(depInjectableName)));
+        if (depInjectable.isProvided()) {
+          final MetaClass providerType = paramDep.getInjectable().getInjectedType();
+          if (providerType.isAssignableTo(ContextualTypeProvider.class)) {
+            final MetaClass[] typeArgsClasses = getTypeArguments(paramDep.getParameter().getType());
+            final Annotation[] qualifiers = getQualifiers(paramDep.getParameter()).toArray(new Annotation[0]);
+            injectedValue = injectedValue.invoke("provide", typeArgsClasses, qualifiers);
+          }
+          else if (providerType.isAssignableTo(Provider.class)) {
+            injectedValue = injectedValue.invoke("get");
+          }
+          else {
+            throw new RuntimeException("Unrecognized provider type " + providerType.getFullyQualifiedName()
+                    + " for dependency in " + paramDep.getParameter().getDeclaringMember().getDeclaringClassName());
+          }
+        }
+
+        constructorParameterStatements[paramDep.getParamIndex()] = injectedValue;
       }
 
       createInstanceStatements.add(declareFinalVariable("instance", injectable.getInjectedType(),

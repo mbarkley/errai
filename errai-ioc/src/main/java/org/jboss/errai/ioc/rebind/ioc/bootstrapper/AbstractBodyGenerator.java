@@ -28,6 +28,7 @@ import org.jboss.errai.codegen.builder.ConstructorBlockBuilder;
 import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.builder.impl.ClassBuilder;
 import org.jboss.errai.codegen.literal.LiteralFactory;
+import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaMethod;
@@ -279,7 +280,7 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
     return LiteralFactory.getLiteral(qual);
   }
 
-  private Collection<Annotation> getQualifiers(final MetaClass injectedType) {
+  protected Collection<Annotation> getQualifiers(final HasAnnotations injectedType) {
     final Collection<Annotation> annos = new ArrayList<Annotation>();
     for (final Annotation anno : injectedType.getAnnotations()) {
       if (anno.annotationType().isAnnotationPresent(Qualifier.class)) {
