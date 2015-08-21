@@ -444,8 +444,8 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
 
     @Override
-    public boolean isProvided() {
-      return resolution != null && resolution.isProvided();
+    public boolean isContextual() {
+      return resolution != null && resolution.isContextual();
     }
   }
 
@@ -504,8 +504,8 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
 
     @Override
-    public boolean isProvided() {
-      return Arrays.asList(InjectorType.Provider, InjectorType.ContextualProvider).contains(injectorType);
+    public boolean isContextual() {
+      return InjectorType.ContextualProvider.equals(injectorType);
     }
   }
 

@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Queue;
 
 import javax.annotation.PostConstruct;
-import javax.inject.Provider;
 
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
@@ -109,7 +108,7 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
       final Injectable depInjectable = fieldDep.getInjectable();
 
       final ContextualStatementBuilder injectedValue;
-      if (depInjectable.isProvided()) {
+      if (depInjectable.isContextual()) {
         final Injectable providerInjectable = getProviderInjectable(depInjectable);
         final MetaClass providerType = providerInjectable.getInjectedType();
         if (providerType.isAssignableTo(ContextualTypeProvider.class)) {
@@ -119,12 +118,9 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
                   loadVariable("contextManager").invoke("getInstance",
                           loadLiteral(providerInjectable.getInjectorName()))).invoke("provide", typeArgsClasses,
                                   qualifiers);
-        } else if (providerType.isAssignableTo(Provider.class)) {
-          injectedValue = castTo(providerType,
-                  loadVariable("contextManager").invoke("getInstance",
-                          loadLiteral(providerInjectable.getInjectorName()))).invoke("get");
         } else {
-          throw new RuntimeException("Unrecognized provider type " + providerType.getFullyQualifiedName() + " for dependency in " + field.getDeclaringClassName());
+          throw new RuntimeException("Unrecognized contextual provider type " + providerType.getFullyQualifiedName()
+                  + " for dependency in " + field.getDeclaringClassName());
         }
       } else {
         injectedValue = castTo(depInjectable.getInjectedType(),
@@ -167,7 +163,7 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
       final Injectable depInjectable = setterDep.getInjectable();
 
       final ContextualStatementBuilder injectedValue;
-      if (depInjectable.isProvided()) {
+      if (depInjectable.isContextual()) {
         final Injectable providerInjectable = getProviderInjectable(depInjectable);
         final MetaClass providerType = providerInjectable.getInjectedType();
         if (providerType.isAssignableTo(ContextualTypeProvider.class)) {
@@ -177,11 +173,9 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
                   loadVariable("contextManager").invoke("getInstance",
                           loadLiteral(providerInjectable.getInjectorName()))).invoke("provide", typeArgsClasses,
                                   qualifiers);
-        } else if (providerType.isAssignableTo(Provider.class)) {
-          injectedValue = castTo(providerType, loadVariable("contextManager").invoke("getInstance",
-                  loadLiteral(providerInjectable.getInjectorName()))).invoke("get");
         } else {
-          throw new RuntimeException("Unrecognized provider type " + providerType.getFullyQualifiedName() + " for dependency in " + setter.getDeclaringClassName());
+          throw new RuntimeException("Unrecognized contextual provider type " + providerType.getFullyQualifiedName()
+                  + " for dependency in " + setter.getDeclaringClassName());
         }
       } else {
         injectedValue = castTo(depInjectable.getInjectedType(), loadVariable("contextManager")
@@ -207,7 +201,7 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
         final ParamDependency paramDep = ParamDependency.class.cast(dep);
 
         final ContextualStatementBuilder injectedValue;
-        if (depInjectable.isProvided()) {
+        if (depInjectable.isContextual()) {
           final Injectable providerInjectable = getProviderInjectable(depInjectable);
           final MetaClass providerType = providerInjectable.getInjectedType();
           if (providerType.isAssignableTo(ContextualTypeProvider.class)) {
@@ -216,14 +210,8 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
             injectedValue = castTo(providerType,
                     loadVariable("contextManager").invoke("getInstance", loadLiteral(providerInjectable.getInjectorName())))
                             .invoke("provide", typeArgsClasses, qualifiers);
-          }
-          else if (providerType.isAssignableTo(Provider.class)) {
-            injectedValue = castTo(providerType,
-                    loadVariable("contextManager").invoke("getInstance", loadLiteral(providerInjectable.getInjectorName())))
-                            .invoke("get");
-          }
-          else {
-            throw new RuntimeException("Unrecognized provider type " + providerType.getFullyQualifiedName()
+          } else {
+            throw new RuntimeException("Unrecognized contextual provider type " + providerType.getFullyQualifiedName()
                     + " for dependency in " + paramDep.getParameter().getDeclaringMember().getDeclaringClassName());
           }
         } else {

@@ -129,8 +129,10 @@ public class IOCProcessor {
           final DependencyGraph dependencyGraph, final Map<Class<? extends Annotation>, MetaClass> scopeContexts,
           @SuppressWarnings("rawtypes") final BlockBuilder registerInjectorsBody) {
     for (final Injectable injectable : dependencyGraph) {
-      final MetaClass injectorClass = addRuntimeInjectorDeclaration(injectable, processingContext);
-      registerInjectorWithContext(injectable, injectorClass, scopeContexts, registerInjectorsBody);
+      if (!injectable.isContextual()) {
+        final MetaClass injectorClass = addRuntimeInjectorDeclaration(injectable, processingContext);
+        registerInjectorWithContext(injectable, injectorClass, scopeContexts, registerInjectorsBody);
+      }
     }
   }
 
