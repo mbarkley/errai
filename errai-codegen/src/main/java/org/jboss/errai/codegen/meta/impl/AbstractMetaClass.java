@@ -22,6 +22,7 @@ import static org.jboss.errai.codegen.util.GenUtil.getArrayDimensions;
 import java.beans.Introspector;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -530,6 +531,31 @@ public abstract class AbstractMetaClass<T> extends MetaClass {
   }
 
   @Override
+  public Collection<MetaClass> getAllSuperTypesAndInterfaces() {
+    final Collection<MetaClass> supersAndIfaces = new ArrayList<MetaClass>();
+    addSuperTypesAndInterfaces(this, supersAndIfaces);
+
+    return supersAndIfaces;
+  }
+
+  private static void addInterfaces(final MetaClass metaClass, final Collection<MetaClass> supersAndIfaces) {
+    for (final MetaClass iface : metaClass.getInterfaces()) {
+      supersAndIfaces.add(iface);
+      addInterfaces(iface, supersAndIfaces);
+    }
+  }
+
+  private static void addSuperTypesAndInterfaces(final MetaClass metaClass, final Collection<MetaClass> supersAndIfaces) {
+    if (metaClass == null) {
+      return;
+    }
+
+    supersAndIfaces.add(metaClass);
+    addSuperTypesAndInterfaces(metaClass.getSuperClass(), supersAndIfaces);
+    addInterfaces(metaClass, supersAndIfaces);
+  }
+
+  @Override
   public synchronized Class<?> asClass() {
     if (_asClassCache != null) {
       return _asClassCache;
@@ -725,7 +751,7 @@ public abstract class AbstractMetaClass<T> extends MetaClass {
   }
 
   private String contentString;
-  
+
   @Override
   public int hashContent() {
     if (contentString == null) {
@@ -753,13 +779,13 @@ public abstract class AbstractMetaClass<T> extends MetaClass {
       if (getSuperClass() != null) {
         sb.append(getSuperClass().hashContent());
       }
-      
+
       contentString = sb.toString();
     }
-    
+
     return contentString.hashCode();
   }
-  
+
   private String _hashString;
   static final private String MetaClassName = MetaClass.class.getName();
 
@@ -772,7 +798,7 @@ public abstract class AbstractMetaClass<T> extends MetaClass {
     }
     return _hashString;
   }
-  
+
   private Integer _hashCode;
 
   @Override

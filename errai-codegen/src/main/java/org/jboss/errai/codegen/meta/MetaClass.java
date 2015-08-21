@@ -17,6 +17,7 @@
 package org.jboss.errai.codegen.meta;
 
 import java.lang.annotation.Annotation;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -125,6 +126,8 @@ public abstract class MetaClass extends AbstractHasAnnotations implements MetaTy
   public abstract MetaClass[] getInterfaces();
 
   public abstract MetaClass getSuperClass();
+
+  public abstract Collection<MetaClass> getAllSuperTypesAndInterfaces();
 
   public abstract MetaClass getComponentType();
 
@@ -242,7 +245,7 @@ public abstract class MetaClass extends AbstractHasAnnotations implements MetaTy
   public abstract MetaField getInheritedField(String name);
 
   public abstract BeanDescriptor getBeanDescriptor();
-  
+
   public abstract int hashContent();
 
 }
