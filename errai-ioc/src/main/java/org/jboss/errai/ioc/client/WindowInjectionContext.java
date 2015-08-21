@@ -15,7 +15,6 @@ import com.google.gwt.core.client.js.JsType;
 @JsType
 public class WindowInjectionContext {
   private Map<String, JsTypeProvider<?>> beanProviders = new HashMap<String, JsTypeProvider<?>>();
-  private Map<JsTypeProvider<?>, Object> singletonBeans = new HashMap<JsTypeProvider<?>, Object>();
 
   public static WindowInjectionContext createOrGet() {
     if (!isWindowInjectionContextDefined()) {
@@ -36,8 +35,12 @@ public class WindowInjectionContext {
     return !($wnd.injectionContext === undefined);
   }-*/;
 
-  public JsTypeProvider<?> addBean(final String name, final JsTypeProvider<?> provider) {
-    return beanProviders.put(name, provider);
+ public <T> T getInstance(String injectorName) {
+   return null;
+ }
+
+  public void addBeanProvider(final String name, final JsTypeProvider<?> provider) {
+    beanProviders.put(name, provider);
   }
 
   public void addSuperTypeAlias(final String superTypeName, final String typeName) {
@@ -55,17 +58,7 @@ public class WindowInjectionContext {
       throw new IOCResolutionException("no matching bean instances for: " + name);
     }
 
-    final Object bean;
-    if (provider.isSingleton()) {
-      if (!singletonBeans.containsKey(provider)) {
-        singletonBeans.put(provider, provider.getBean());
-      }
-      bean = singletonBeans.get(provider);
-    }
-    else {
-      bean = provider.getBean();
-    }
-    return bean;
+    return provider.getInstance();
   }
 
 }

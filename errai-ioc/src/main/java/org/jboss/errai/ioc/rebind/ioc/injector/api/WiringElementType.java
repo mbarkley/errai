@@ -8,10 +8,10 @@ public enum WiringElementType {
   QualifiyingType,
   SingletonBean,
   NormalScopedBean,
+  JsType,
   DependentBean,
   Simpleton, // TODO review name
-  ContextualTopLevelProvider,
-  TopLevelProvider,
+  Provider,
   InjectionPoint,
   ProducerElement,
   AlternativeBean,

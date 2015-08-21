@@ -38,7 +38,6 @@ import javax.inject.Scope;
 import javax.inject.Singleton;
 
 import org.jboss.errai.codegen.Context;
-import org.jboss.errai.codegen.Modifier;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.BlockBuilder;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
@@ -58,7 +57,6 @@ import org.jboss.errai.config.rebind.ReachableTypes;
 import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.ioc.client.BootstrapInjectionContext;
 import org.jboss.errai.ioc.client.Bootstrapper;
-import org.jboss.errai.ioc.client.WindowInjectionContext;
 import org.jboss.errai.ioc.client.api.CodeDecorator;
 import org.jboss.errai.ioc.client.api.EnabledByProperty;
 import org.jboss.errai.ioc.client.api.EntryPoint;
@@ -256,10 +254,6 @@ public class IOCBootstrapGenerator {
     final ClassStructureBuilder<?> classBuilder = processingContext.getBootstrapBuilder();
     final BlockBuilder<?> blockBuilder = processingContext.getBlockBuilder();
 
-    classBuilder.privateField("windowContext", WindowInjectionContext.class)
-            .modifiers(Modifier.Final)
-            .initializesWith(Stmt.invokeStatic(WindowInjectionContext.class, "createOrGet")).finish();
-
     @SuppressWarnings({ "unchecked", "rawtypes" })
     final BlockBuilder builder = new BlockBuilderImpl(classBuilder.getClassDefinition().getInstanceInitializer(), null);
 
@@ -429,7 +423,7 @@ public class IOCBootstrapGenerator {
       processStereoType(injectionContext, mc.asClass().asSubclass(Annotation.class));
     }
 
-    injectionContext.mapElementType(WiringElementType.TopLevelProvider, IOCProvider.class);
+    injectionContext.mapElementType(WiringElementType.Provider, IOCProvider.class);
 
     injectionContext.mapElementType(WiringElementType.InjectionPoint, Inject.class);
     injectionContext.mapElementType(WiringElementType.InjectionPoint, com.google.inject.Inject.class);
