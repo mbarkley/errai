@@ -1,7 +1,5 @@
 package org.jboss.errai.ioc.rebind.ioc.injector;
 
-import java.util.Map;
-
 import org.jboss.errai.codegen.ProxyMaker;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.meta.MetaClass;
@@ -122,13 +120,4 @@ public interface Injector {
    */
   ProxyMaker.ProxyProperty addProxyProperty(String propertyName, MetaClass type, Statement statement);
 
-
-  /**
-   * Returns a map of all proxy properties in the injector. The keys are the names of the property, and the values
-   * are {@link org.jboss.errai.codegen.ProxyMaker.ProxyProperty} references.
-   *
-   * @return
-   *      a map of proxy properties.
-   */
-  Map<String, ProxyMaker.ProxyProperty> getProxyPropertyMap();
 }
