@@ -44,7 +44,7 @@ import com.google.common.collect.Multimap;
 public class SyncBeanManagerImpl implements SyncBeanManager {
 
   private ContextManager contextManager;
-  private final Multimap<String, InjectorHandle> handlesByTypeName = ArrayListMultimap.create();
+  private final Multimap<String, FactoryHandle> handlesByTypeName = ArrayListMultimap.create();
   private final Map<String, Class<?>> typesByName = new HashMap<String, Class<?>>();
 
   @Override
@@ -104,8 +104,8 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
   }
 
   private void init() {
-    final Collection<InjectorHandle> eager = new ArrayList<InjectorHandle>();
-    for (final InjectorHandle handle : contextManager.getAllInjectorHandles()) {
+    final Collection<FactoryHandle> eager = new ArrayList<FactoryHandle>();
+    for (final FactoryHandle handle : contextManager.getAllFactoryHandles()) {
       if (handle.isEager()) {
         eager.add(handle);
       }
@@ -115,8 +115,8 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
       }
     }
 
-    for (final InjectorHandle handle : eager) {
-      contextManager.getEagerInstance(handle.getInjectorName());
+    for (final FactoryHandle handle : eager) {
+      contextManager.getEagerInstance(handle.getFactoryName());
     }
   }
 
@@ -129,10 +129,10 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
   @Override
   public <T> Collection<IOCBeanDef<T>> lookupBeans(final Class<T> type) {
     final String name = type.getName();
-    final Collection<InjectorHandle> handles = handlesByTypeName.get(name);
+    final Collection<FactoryHandle> handles = handlesByTypeName.get(name);
     final Collection<IOCBeanDef<T>> beanDefs = new ArrayList<IOCBeanDef<T>>(handles.size());
 
-    for (final InjectorHandle handle : handles) {
+    for (final FactoryHandle handle : handles) {
       beanDefs.add(new IOCBeanDefImplementation<T>(handle, name, type));
     }
 
@@ -184,11 +184,11 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
   }
 
   private final class IOCBeanDefImplementation<T> implements IOCBeanDef<T> {
-    private final InjectorHandle handle;
+    private final FactoryHandle handle;
     private final String name;
     private final Class<T> type;
 
-    private IOCBeanDefImplementation(InjectorHandle handle, String name, Class<T> type) {
+    private IOCBeanDefImplementation(FactoryHandle handle, String name, Class<T> type) {
       this.handle = handle;
       this.name = name;
       this.type = type;
@@ -217,7 +217,7 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
 
     @Override
     public T getInstance() {
-      return contextManager.getInstance(handle.getInjectorName());
+      return contextManager.getInstance(handle.getFactoryName());
     }
 
     @Override
@@ -227,7 +227,7 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
 
     @Override
     public T newInstance() {
-      return contextManager.getNewInstance(handle.getInjectorName());
+      return contextManager.getNewInstance(handle.getFactoryName());
     }
 
     @Override

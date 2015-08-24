@@ -36,8 +36,8 @@ import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.client.container.Context;
 import org.jboss.errai.ioc.client.container.ContextManager;
-import org.jboss.errai.ioc.client.container.InjectorHandle;
-import org.jboss.errai.ioc.client.container.InjectorHandleImpl;
+import org.jboss.errai.ioc.client.container.FactoryHandle;
+import org.jboss.errai.ioc.client.container.FactoryHandleImpl;
 import org.jboss.errai.ioc.client.container.NonProxiableWrapper;
 import org.jboss.errai.ioc.client.container.Proxy;
 import org.jboss.errai.ioc.client.container.ProxyHelper;
@@ -53,7 +53,7 @@ import com.google.common.collect.Multimap;
 import com.google.gwt.core.ext.GeneratorContext;
 import com.google.gwt.core.ext.TreeLogger;
 
-public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
+public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
 
   protected static Multimap<DependencyType, Dependency> separateByType(final Collection<Dependency> dependencies) {
     final Multimap<DependencyType, Dependency> separated = HashMultimap.create();
@@ -95,14 +95,14 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
     final MetaClass injectedType = injectable.getInjectedType();
     if (injectedType.isInterface()) {
       proxyImpl = ClassBuilder
-              .define(injectable.getInjectorName() + "ProxyImpl")
+              .define(injectable.getFactoryName() + "ProxyImpl")
               .privateScope()
               .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectedType)))
               .implementsInterface(injectedType).body();
       declareAndInitializeProxyHelper(injectable, proxyImpl);
     } else if (isProxiable(injectable)) {
       proxyImpl = ClassBuilder
-              .define(injectable.getInjectorName() + "ProxyImpl", injectedType)
+              .define(injectable.getFactoryName() + "ProxyImpl", injectedType)
               .privateScope()
               .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectedType))).body();
       declareAndInitializeProxyHelper(injectable, proxyImpl);
@@ -141,7 +141,7 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
   private Statement initializeProxyHelper(final Injectable injectable) {
     return newObject(
             parameterizedAs(ProxyHelperImpl.class, typeParametersOf(injectable.getInjectedType())),
-            injectable.getInjectorName());
+            injectable.getFactoryName());
   }
 
   private void implementAccessibleMethods(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {
@@ -255,9 +255,9 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
   }
 
   private void implementGetHandle(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable) {
-    bodyBlockBuilder.privateField("handle", InjectorHandleImpl.class)
-            .initializesWith(newObject(InjectorHandleImpl.class, injectable.getInjectedType().asClass(),
-                    injectable.getInjectorName(), injectable.getScope(), isEager(injectable.getInjectedType())))
+    bodyBlockBuilder.privateField("handle", FactoryHandleImpl.class)
+            .initializesWith(newObject(FactoryHandleImpl.class, injectable.getInjectedType().asClass(),
+                    injectable.getFactoryName(), injectable.getScope(), isEager(injectable.getInjectedType())))
             .finish();
     final ConstructorBlockBuilder<?> con = bodyBlockBuilder.publicConstructor();
     for (final MetaClass assignableType : getAllAssignableTypes(injectable.getInjectedType())) {
@@ -267,7 +267,7 @@ public abstract class AbstractBodyGenerator implements InjectorBodyGenerator {
       con._(loadVariable("handle").invoke("addQualifier", annotationLiteral(qual)));
     }
     con.finish();
-    bodyBlockBuilder.publicMethod(InjectorHandle.class, "getHandle").body()._(loadVariable("handle").returnValue())
+    bodyBlockBuilder.publicMethod(FactoryHandle.class, "getHandle").body()._(loadVariable("handle").returnValue())
             .finish();
   }
 

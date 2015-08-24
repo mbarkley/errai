@@ -8,7 +8,7 @@ import java.util.Map;
 
 public class ContextManagerImpl implements ContextManager {
 
-  private final Map<String, Context> contextsByInjectorName = new HashMap<String, Context>();
+  private final Map<String, Context> contextsByFactoryName = new HashMap<String, Context>();
   // XXX bug in bootsrapper generator adds same context multiple times.
   private final Collection<Context> contexts = new HashSet<Context>();
 
@@ -17,24 +17,24 @@ public class ContextManagerImpl implements ContextManager {
     if (!contexts.contains(context)) {
       contexts.add(context);
       context.setContextManager(this);
-      for (final Injector<?> injector : context.getAllInjectors()) {
-        contextsByInjectorName.put(injector.getHandle().getInjectorName(), context);
+      for (final Factory<?> factory : context.getAllFactories()) {
+        contextsByFactoryName.put(factory.getHandle().getFactoryName(), context);
       }
     }
   }
 
   @Override
-  public <T> T getInstance(final String injectorName) {
-    return contextsByInjectorName.get(injectorName).getInstance(injectorName);
+  public <T> T getInstance(final String factoryName) {
+    return contextsByFactoryName.get(factoryName).getInstance(factoryName);
   }
 
   @SuppressWarnings("unchecked")
   @Override
-  public <T> T getEagerInstance(final String injectorName) {
-    final Context context = contextsByInjectorName.get(injectorName);
-    final T instance = context.<T>getInstance(injectorName);
+  public <T> T getEagerInstance(final String factoryName) {
+    final Context context = contextsByFactoryName.get(factoryName);
+    final T instance = context.<T>getInstance(factoryName);
     if ((instance instanceof Proxy) && !(instance instanceof NonProxiableWrapper)) {
-      final T nonProxiedInstance = context.<T>getActiveNonProxiedInstance(injectorName);
+      final T nonProxiedInstance = context.<T>getActiveNonProxiedInstance(factoryName);
       ((Proxy<T>) instance).setInstance(nonProxiedInstance);
     }
 
@@ -42,16 +42,16 @@ public class ContextManagerImpl implements ContextManager {
   }
 
   @Override
-  public <T> T getNewInstance(final String injectorName) {
-    return contextsByInjectorName.get(injectorName).getNewInstance(injectorName);
+  public <T> T getNewInstance(final String factoryName) {
+    return contextsByFactoryName.get(factoryName).getNewInstance(factoryName);
   }
 
   @Override
-  public Collection<InjectorHandle> getAllInjectorHandles() {
-    final Collection<InjectorHandle> allHandles = new ArrayList<InjectorHandle>();
+  public Collection<FactoryHandle> getAllFactoryHandles() {
+    final Collection<FactoryHandle> allHandles = new ArrayList<FactoryHandle>();
     for (final Context context : contexts) {
-      for (final Injector<?> injector : context.getAllInjectors()) {
-        allHandles.add(injector.getHandle());
+      for (final Factory<?> factory : context.getAllFactories()) {
+        allHandles.add(factory.getHandle());
       }
     }
 

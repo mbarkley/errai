@@ -1,11 +1,11 @@
 package org.jboss.errai.ioc.client.container;
 
-public interface Injector<T> {
+public interface Factory<T> {
 
   T createInstance(ContextManager contextManager);
 
   Proxy<T> createProxy(Context context);
 
-  InjectorHandle getHandle();
+  FactoryHandle getHandle();
 
 }

@@ -10,12 +10,12 @@ import org.jboss.errai.ioc.client.api.ScopeContext;
 public class DependentScopeContext extends AbstractContext {
 
   @Override
-  public <T> T getInstance(final String injectorTypeSimpleName) {
-    return this.<T>getInjector(injectorTypeSimpleName).createInstance(getContextManager());
+  public <T> T getInstance(final String factoryName) {
+    return this.<T>getFactory(factoryName).createInstance(getContextManager());
   }
 
   @Override
-  public <T> T getActiveNonProxiedInstance(final String injectorType) {
+  public <T> T getActiveNonProxiedInstance(final String factoryType) {
     throw new RuntimeException("This method should never be called on the DependentScopeContext because it's beans are not proxied.");
   }
 

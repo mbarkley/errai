@@ -7,7 +7,7 @@ import java.util.Map;
 
 public abstract class AbstractContext implements Context {
 
-  private final Map<String, Injector<?>> injectors = new HashMap<String, Injector<?>>();
+  private final Map<String, Factory<?>> factories = new HashMap<String, Factory<?>>();
   private final Map<String, Proxy<?>> proxies = new HashMap<String, Proxy<?>>();
 
   private ContextManager contextManager;
@@ -27,41 +27,41 @@ public abstract class AbstractContext implements Context {
   }
 
   @Override
-  public <T> void registerInjector(final Injector<T> injector) {
-    injectors.put(injector.getHandle().getInjectorName(), injector);
+  public <T> void registerFactory(final Factory<T> factory) {
+    factories.put(factory.getHandle().getFactoryName(), factory);
   }
 
-  protected <T> Proxy<T> getOrCreateProxy(final String injectorName) {
+  protected <T> Proxy<T> getOrCreateProxy(final String factoryName) {
     @SuppressWarnings("unchecked")
-    Proxy<T> proxy = (Proxy<T>) proxies.get(injectorName);
+    Proxy<T> proxy = (Proxy<T>) proxies.get(factoryName);
     if (proxy == null) {
-      final Injector<T> injector = getInjector(injectorName);
-      proxy = injector.createProxy(this);
-      proxies.put(injectorName, proxy);
+      final Factory<T> factory = getFactory(factoryName);
+      proxy = factory.createProxy(this);
+      proxies.put(factoryName, proxy);
     }
 
     return proxy;
   }
 
-  protected <T> Injector<T> getInjector(final String injectorName) {
+  protected <T> Factory<T> getFactory(final String factoryName) {
     @SuppressWarnings("unchecked")
-    final Injector<T> injector = (Injector<T>) injectors.get(injectorName);
-    if (injector == null) {
-      throw new RuntimeException("Could not find registered injector " + injectorName);
+    final Factory<T> factory = (Factory<T>) factories.get(factoryName);
+    if (factory == null) {
+      throw new RuntimeException("Could not find registered factory " + factoryName);
     }
 
-    return injector;
+    return factory;
   }
 
   @Override
-  public Collection<Injector<?>> getAllInjectors() {
-    return Collections.unmodifiableCollection(injectors.values());
+  public Collection<Factory<?>> getAllFactories() {
+    return Collections.unmodifiableCollection(factories.values());
   }
 
   @Override
-  public <T> T getNewInstance(final String injecorTypeSimpleName) {
-    final Injector<T> injector = getInjector(injecorTypeSimpleName);
-    final Proxy<T> proxy = injector.createProxy(this);
+  public <T> T getNewInstance(final String factoryName) {
+    final Factory<T> factory = getFactory(factoryName);
+    final Proxy<T> proxy = factory.createProxy(this);
 
     return proxy.asBeanType();
   }

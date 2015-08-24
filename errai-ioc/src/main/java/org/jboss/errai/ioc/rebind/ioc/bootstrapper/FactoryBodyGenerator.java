@@ -7,6 +7,6 @@ import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
 import com.google.gwt.core.ext.GeneratorContext;
 import com.google.gwt.core.ext.TreeLogger;
 
-interface InjectorBodyGenerator {
+interface FactoryBodyGenerator {
   void generate(ClassStructureBuilder<?> bodyBlockBuilder, Injectable injectable, DependencyGraph graph, TreeLogger logger, GeneratorContext context);
 }

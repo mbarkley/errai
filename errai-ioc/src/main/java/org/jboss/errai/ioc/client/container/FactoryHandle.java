@@ -3,7 +3,7 @@ package org.jboss.errai.ioc.client.container;
 import java.lang.annotation.Annotation;
 import java.util.Set;
 
-public interface InjectorHandle {
+public interface FactoryHandle {
 
   Set<Annotation> getQualifiers();
 
@@ -11,7 +11,7 @@ public interface InjectorHandle {
 
   Class<?> getActualType();
 
-  String getInjectorName();
+  String getFactoryName();
 
   Class<? extends Annotation> getScope();
 

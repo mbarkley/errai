@@ -9,18 +9,18 @@ public interface Context {
 
   ContextManager getContextManager();
 
-  <T> void registerInjector(Injector<T> injector);
+  <T> void registerFactory(Factory<T> factory);
 
-  <T> T getInstance(String injectorName);
+  <T> T getInstance(String factoryName);
 
-  <T> T getActiveNonProxiedInstance(String injectorName);
+  <T> T getActiveNonProxiedInstance(String factoryName);
 
   Class<? extends Annotation> getScope();
 
   boolean isActive();
 
-  Collection<Injector<?>> getAllInjectors();
+  Collection<Factory<?>> getAllFactories();
 
-  <T> T getNewInstance(String injecorName);
+  <T> T getNewInstance(String factoryName);
 
 }

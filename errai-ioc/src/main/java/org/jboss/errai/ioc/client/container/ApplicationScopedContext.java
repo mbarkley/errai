@@ -16,19 +16,19 @@ public class ApplicationScopedContext extends AbstractContext {
   private final Map<String, Object> instances = new HashMap<String, Object>();
 
   @Override
-  public <T> T getInstance(final String injectorTypeSimpleName) {
-    final Proxy<T> proxy = getOrCreateProxy(injectorTypeSimpleName);
+  public <T> T getInstance(final String factoryName) {
+    final Proxy<T> proxy = getOrCreateProxy(factoryName);
 
     return proxy.asBeanType();
   }
 
   @Override
-  public <T> T getActiveNonProxiedInstance(final String injectorTypeSimpleName) {
+  public <T> T getActiveNonProxiedInstance(final String factoryName) {
     @SuppressWarnings("unchecked")
-    T instance = (T) instances.get(injectorTypeSimpleName);
+    T instance = (T) instances.get(factoryName);
     if (instance == null) {
-      instance = this.<T>getInjector(injectorTypeSimpleName).createInstance(getContextManager());
-      instances.put(injectorTypeSimpleName, instance);
+      instance = this.<T>getFactory(factoryName).createInstance(getContextManager());
+      instances.put(factoryName, instance);
     }
 
     return instance;

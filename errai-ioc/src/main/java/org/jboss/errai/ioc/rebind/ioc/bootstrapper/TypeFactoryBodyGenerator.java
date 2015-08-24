@@ -39,7 +39,7 @@ import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
 
 import com.google.common.collect.Multimap;
 
-class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
+class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
 
   @Override
   protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable, final DependencyGraph graph) {
@@ -116,7 +116,7 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
           final Annotation[] qualifiers = getQualifiers(field).toArray(new Annotation[0]);
           injectedValue = castTo(providerType,
                   loadVariable("contextManager").invoke("getInstance",
-                          loadLiteral(providerInjectable.getInjectorName()))).invoke("provide", typeArgsClasses,
+                          loadLiteral(providerInjectable.getFactoryName()))).invoke("provide", typeArgsClasses,
                                   qualifiers);
         } else {
           throw new RuntimeException("Unrecognized contextual provider type " + providerType.getFullyQualifiedName()
@@ -124,7 +124,7 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
         }
       } else {
         injectedValue = castTo(depInjectable.getInjectedType(),
-                loadVariable("contextManager").invoke("getInstance", loadLiteral(depInjectable.getInjectorName())));
+                loadVariable("contextManager").invoke("getInstance", loadLiteral(depInjectable.getFactoryName())));
       }
 
       if (!field.isPublic()) {
@@ -171,7 +171,7 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
           final Annotation[] qualifiers = getQualifiers(setter).toArray(new Annotation[0]);
           injectedValue = castTo(providerType,
                   loadVariable("contextManager").invoke("getInstance",
-                          loadLiteral(providerInjectable.getInjectorName()))).invoke("provide", typeArgsClasses,
+                          loadLiteral(providerInjectable.getFactoryName()))).invoke("provide", typeArgsClasses,
                                   qualifiers);
         } else {
           throw new RuntimeException("Unrecognized contextual provider type " + providerType.getFullyQualifiedName()
@@ -179,7 +179,7 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
         }
       } else {
         injectedValue = castTo(depInjectable.getInjectedType(), loadVariable("contextManager")
-                .invoke("getInstance", loadLiteral(depInjectable.getInjectorName())));
+                .invoke("getInstance", loadLiteral(depInjectable.getFactoryName())));
       }
 
       if (!setter.isPublic()) {
@@ -208,7 +208,7 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
             final MetaClass[] typeArgsClasses = getTypeArguments(paramDep.getParameter().getType());
             final Annotation[] qualifiers = getQualifiers(paramDep.getParameter()).toArray(new Annotation[0]);
             injectedValue = castTo(providerType,
-                    loadVariable("contextManager").invoke("getInstance", loadLiteral(providerInjectable.getInjectorName())))
+                    loadVariable("contextManager").invoke("getInstance", loadLiteral(providerInjectable.getFactoryName())))
                             .invoke("provide", typeArgsClasses, qualifiers);
           } else {
             throw new RuntimeException("Unrecognized contextual provider type " + providerType.getFullyQualifiedName()
@@ -216,7 +216,7 @@ class TypeInjectorBodyGenerator extends AbstractBodyGenerator {
           }
         } else {
           injectedValue = castTo(depInjectable.getInjectedType(),
-                  loadVariable("contextManager").invoke("getInstance", loadLiteral(depInjectable.getInjectorName())));
+                  loadVariable("contextManager").invoke("getInstance", loadLiteral(depInjectable.getFactoryName())));
         }
 
         constructorParameterStatements[paramDep.getParamIndex()] = injectedValue;

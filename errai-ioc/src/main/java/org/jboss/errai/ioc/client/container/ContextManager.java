@@ -6,12 +6,12 @@ public interface ContextManager {
 
   void addContext(Context context);
 
-  <T> T getInstance(String injectorName);
+  <T> T getInstance(String factoryName);
 
-  <T> T getEagerInstance(String injectorName);
+  <T> T getEagerInstance(String factoryName);
 
-  <T> T getNewInstance(String injectorName);
+  <T> T getNewInstance(String factoryName);
 
-  Collection<InjectorHandle> getAllInjectorHandles();
+  Collection<FactoryHandle> getAllFactoryHandles();
 
 }

@@ -12,7 +12,7 @@ import org.jboss.errai.ioc.client.WindowInjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
 
-public class JsTypeInjectorBodyGenerator extends TypeInjectorBodyGenerator {
+public class JsTypeFactoryBodyGenerator extends TypeFactoryBodyGenerator {
 
   @Override
   protected List<Statement> generateCreateInstanceStatements(ClassStructureBuilder<?> bodyBlockBuilder,

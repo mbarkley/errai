@@ -8,7 +8,7 @@ import java.util.Set;
 import javax.enterprise.inject.Any;
 import javax.enterprise.inject.Default;
 
-public class InjectorHandleImpl implements InjectorHandle {
+public class FactoryHandleImpl implements FactoryHandle {
 
   private static final Annotation DEFAULT = new Default() {
     @Override
@@ -27,14 +27,14 @@ public class InjectorHandleImpl implements InjectorHandle {
   private final Set<Annotation> qualifiers = new HashSet<Annotation>();
   private final Set<Class<?>> assignableTypes = new HashSet<Class<?>>();
   private final Class<?> actualType;
-  private final String injectorName;
+  private final String factoryName;
   private final Class<? extends Annotation> scope;
   private final boolean eager;
 
 
-  public InjectorHandleImpl(final Class<?> actualType, final String injectorName, final Class<? extends Annotation> scope, final boolean eager) {
+  public FactoryHandleImpl(final Class<?> actualType, final String factoryName, final Class<? extends Annotation> scope, final boolean eager) {
     this.actualType = actualType;
-    this.injectorName = injectorName;
+    this.factoryName = factoryName;
     this.scope = scope;
     this.eager = eager;
     qualifiers.add(ANY);
@@ -57,8 +57,8 @@ public class InjectorHandleImpl implements InjectorHandle {
   }
 
   @Override
-  public String getInjectorName() {
-    return injectorName;
+  public String getFactoryName() {
+    return factoryName;
   }
 
   @Override
@@ -78,7 +78,7 @@ public class InjectorHandleImpl implements InjectorHandle {
 
   @Override
   public String toString() {
-    return "[type=" + actualType + ", name=" + injectorName + ", scope=" + scope.getSimpleName() + ", qualifiers=" + qualifiers + "]";
+    return "[type=" + actualType + ", name=" + factoryName + ", scope=" + scope.getSimpleName() + ", qualifiers=" + qualifiers + "]";
   }
 
   @Override
