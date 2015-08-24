@@ -1,6 +1,5 @@
 package org.jboss.errai.ioc.tests.unit;
 
-import java.lang.annotation.Annotation;
 import java.util.Collections;
 
 import javax.inject.Inject;
@@ -14,7 +13,6 @@ import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionPoint;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.TaskType;
 import org.jboss.errai.ioc.tests.wiring.client.res.ConstructorInjectedBean;
 import org.jboss.errai.ioc.tests.wiring.client.res.FooService;
 
@@ -62,18 +60,13 @@ public class InjectionPointTest extends TestCase {
         .build();
     final InjectionContext ctx = InjectionContext.Builder.create().processingContext(processingContext).build();
     final MetaConstructor constructor = MetaClassFactory.get(ConstructorInjectedBean.class).getConstructor(FooService.class);
-    final InjectionPoint<Inject> injectionPoint = new InjectionPoint<Inject>(new Inject() {
-
-      @Override
-      public Class<? extends Annotation> annotationType() {
-        return Inject.class;
-      }
-    }, TaskType.Parameter, constructor,
-        null, null, null, constructor.getParameters()[0], null, ctx);
+    final InjectionPoint<Inject> injectionPoint = null;
 
     // holy crap that was a lot of setup. Here comes the actual test:
-
     injectionPoint.ensureMemberExposed();
+
+    // FIXME
+    throw new RuntimeException("API involved in this test has changed. Needs fixing.!");
   }
 
 }

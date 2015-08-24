@@ -27,7 +27,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -50,15 +49,10 @@ import org.jboss.errai.codegen.util.PrivateAccessUtil;
 import org.jboss.errai.common.client.api.Assert;
 import org.jboss.errai.config.rebind.ReachableTypes;
 import org.jboss.errai.config.util.ClassScanner;
-import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCGenerator;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
-import org.jboss.errai.ioc.rebind.ioc.exception.InjectionFailure;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.graph.GraphBuilder;
-import org.jboss.errai.ioc.rebind.ioc.injector.AbstractInjector;
 import org.jboss.errai.ioc.rebind.ioc.injector.Injector;
-import org.jboss.errai.ioc.rebind.ioc.injector.InjectorFactory;
-import org.jboss.errai.ioc.rebind.ioc.metadata.QualifyingMetadata;
 import org.jboss.errai.reflections.util.SimplePackageFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,7 +68,6 @@ public class InjectionContext {
   private final Multimap<WiringElementType, Class<? extends Annotation>> elementBindings = HashMultimap.create();
 
   private final boolean async;
-  private final InjectorFactory injectorFactory;
 
   // do not refactor to a MultiMap. the resolution algorithm has dynamic replacement of injectors that is difficult
   // to achieve with a MultiMap
@@ -126,7 +119,6 @@ public class InjectionContext {
     this.whitelist = Assert.notNull(builder.whitelist);
     this.blacklist = Assert.notNull(builder.blacklist);
     this.async = builder.async;
-    this.injectorFactory = new InjectorFactory(this.async);
   }
 
   public static class Builder {
@@ -178,149 +170,6 @@ public class InjectionContext {
     }
   }
 
-  public Injector getProxiedInjector(final MetaClass type, final QualifyingMetadata metadata) {
-    //todo: figure out why I was doing this.
-    final MetaClass erased = type.getErased();
-    final Collection<Injector> injectors = proxiedInjectors.get(erased);
-    final List<Injector> matching = new ArrayList<Injector>();
-
-    if (injectors != null) {
-      for (final Injector inj : injectors) {
-        if (inj.matches(type.getParameterizedType(), metadata)) {
-          matching.add(inj);
-        }
-      }
-    }
-
-    if (matching.isEmpty()) {
-      throw new InjectionFailure(erased);
-    }
-    else {
-      // proxies can only be used once, so just receive the last declared one.
-      return matching.get(matching.size() - 1);
-    }
-  }
-
-  public Injector getQualifiedInjector(final MetaClass type, final Annotation[] annotations) {
-    return getQualifiedInjector(type, getProcessingContext().getQualifyingMetadataFactory().createFrom(annotations));
-  }
-
-  public Injector getQualifiedInjector(final MetaClass type, final QualifyingMetadata metadata) {
-    final MetaClass erased = type.getErased();
-    final List<Injector> injectors = this.injectors.get(erased);
-    final List<Injector> matching = new ArrayList<Injector>();
-
-    boolean alternativeBeans = false;
-
-    if (injectors != null) {
-      for (final Injector inj : injectors) {
-        if (inj.matches(type.getParameterizedType(), metadata)) {
-
-          if (!inj.isEnabled()) {
-            if (inj.isSoftDisabled()) {
-              inj.setEnabled(true);
-            }
-            else {
-              continue;
-            }
-          }
-
-          matching.add(inj);
-          if (inj.isAlternative()) {
-            alternativeBeans = true;
-          }
-        }
-      }
-    }
-
-    if (matching.size() > 1) {
-      if (type.isConcrete()) {
-        // perform second pass
-        final Iterator<Injector> secondIterator = matching.iterator();
-        while (secondIterator.hasNext()) {
-          if (!secondIterator.next().getInjectedType().equals(erased))
-            secondIterator.remove();
-        }
-      }
-    }
-
-    if (matching.isEmpty()) {
-      throw new InjectionFailure(erased);
-    }
-    else if (matching.size() > 1) {
-      if (alternativeBeans) {
-        final Iterator<Injector> matchIterator = matching.iterator();
-        while (matchIterator.hasNext()) {
-          if (!enabledAlternatives.contains(matchIterator.next().getInjectedType().getFullyQualifiedName())) {
-            matchIterator.remove();
-          }
-        }
-      }
-
-      if (IOCGenerator.isTestMode) {
-        final List<Injector> matchingMocks = new ArrayList<Injector>();
-        for (final Injector inj : matching) {
-          if (inj.isTestMock()) {
-            matchingMocks.add(inj);
-          }
-        }
-
-        if (!matchingMocks.isEmpty()) {
-          matching.clear();
-          matching.addAll(matchingMocks);
-        }
-      }
-
-      if (matching.isEmpty()) {
-        throw new InjectionFailure(erased);
-      }
-      if (matching.size() == 1) {
-        return matching.get(0);
-      }
-
-      final StringBuilder buf = new StringBuilder();
-      for (final Injector inj : matching) {
-        buf.append("     matching> ").append(inj.toString()).append("\n");
-      }
-
-      buf.append("  Note: configure an alternative to take precedence or remove all but one matching bean.");
-
-      throw new InjectionFailure("ambiguous injection type (multiple injectors resolved): "
-          + erased.getFullyQualifiedName() + " " + (metadata == null ? "" : metadata.toString()) + ":\n" +
-          buf.toString());
-    }
-    else {
-      return matching.get(0);
-    }
-  }
-
-  public boolean hasInjectorForType(final MetaClass type) {
-    final List<Injector> injectorList = injectors.get(type);
-    return injectorList != null && !injectorList.isEmpty();
-  }
-
-  public boolean isTypeInjectable(final MetaClass type) {
-    if (type == null) return false;
-
-    final List<Injector> injectorList = injectors.get(type);
-    if (injectorList != null) {
-      for (final Injector injector : injectorList) {
-        if (!injector.isEnabled()) {
-          continue;
-        }
-
-        if (!injector.isRendered()) {
-          return false;
-        }
-      }
-
-      return true;
-    }
-    else {
-      return false;
-    }
-  }
-
   public void recordCycle(final MetaClass from, final MetaClass to) {
     cyclingTypes.put(from, to);
   }
@@ -331,68 +180,6 @@ public class InjectionContext {
 
   public void addProxiedInjector(final Injector proxyInjector) {
     proxiedInjectors.put(proxyInjector.getInjectedType(), proxyInjector);
-  }
-
-  /**
-   * Marks the proxy for te specified type and qualifying metadata closed.
-   *
-   * @param injectorType
-   * @param qualifyingMetadata
-   */
-  public void markProxyClosedIfNeeded(final MetaClass injectorType,
-                                      final QualifyingMetadata qualifyingMetadata) {
-
-    if (proxiedInjectors.containsKey(injectorType.getErased())) {
-      final Collection<Injector> collection = proxiedInjectors.get(injectorType.getErased());
-      final Iterator<Injector> iterator = collection.iterator();
-      while (iterator.hasNext()) {
-        if (iterator.next().matches(injectorType.getParameterizedType(), qualifyingMetadata)) {
-          iterator.remove();
-        }
-      }
-      if (collection.isEmpty()) {
-        proxiedInjectors.removeAll(injectorType.getErased());
-      }
-    }
-  }
-
-  public boolean isProxiedInjectorRegistered(final MetaClass injectorType,
-                                             final QualifyingMetadata qualifyingMetadata) {
-
-    if (proxiedInjectors.containsKey(injectorType.getErased())) {
-      for (final Injector inj : proxiedInjectors.get(injectorType.getErased())) {
-        if (inj.isEnabled() && inj.matches(injectorType.getParameterizedType(), qualifyingMetadata)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  public boolean isInjectorRegistered(final MetaClass injectorType,
-                                      final QualifyingMetadata qualifyingMetadata) {
-
-    if (injectors.containsKey(injectorType.getErased())) {
-      for (final Injector inj : injectors.get(injectorType.getErased())) {
-        if (inj.isEnabled() && inj.matches(injectorType.getParameterizedType(), qualifyingMetadata)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  public boolean isInjectableQualified(final MetaClass injectorType,
-                                       final QualifyingMetadata qualifyingMetadata) {
-
-    if (injectors.containsKey(injectorType.getErased())) {
-      for (final Injector inj : injectors.get(injectorType.getErased())) {
-        if (inj.isEnabled() && inj.matches(injectorType.getParameterizedType(), qualifyingMetadata)) {
-          return inj.isRendered();
-        }
-      }
-    }
-    return false;
   }
 
   public boolean isIncluded(final MetaClass type) {
@@ -424,122 +211,6 @@ public class InjectionContext {
       injectorList = Collections.emptyList();
     }
     return Collections.unmodifiableList(injectorList);
-  }
-
-  public Injector getInjector(final MetaClass type) {
-    final MetaClass erased = type.getErased();
-    if (!injectors.containsKey(erased)) {
-      throw new InjectionFailure("could not resolve type for injection: " + erased.getFullyQualifiedName());
-    }
-
-    final List<Injector> injectorList = new ArrayList<Injector>(injectors.get(erased));
-    final Iterator<Injector> iterator = injectorList.iterator();
-    Injector inj;
-
-    if (injectorList.size() > 1) {
-      while (iterator.hasNext()) {
-        inj = iterator.next();
-
-        if (type.getParameterizedType() != null) {
-          if (inj.getQualifyingTypeInformation() != null) {
-            if (!type.getParameterizedType().isAssignableFrom(inj.getQualifyingTypeInformation())) {
-              iterator.remove();
-            }
-          }
-        }
-
-        if (!inj.isEnabled()) {
-          iterator.remove();
-        }
-      }
-    }
-
-    if (injectorList.size() > 1) {
-      // perform second pass
-      final Iterator<Injector> secondIterator = injectorList.iterator();
-      while (secondIterator.hasNext()) {
-        if (!secondIterator.next().getInjectedType().equals(erased))
-          secondIterator.remove();
-      }
-    }
-
-    if (injectorList.size() > 1) {
-      throw new InjectionFailure("ambiguous injection type (multiple injectors resolved): "
-          + erased.getFullyQualifiedName());
-    }
-    if (injectorList.isEmpty()) {
-      throw new InjectionFailure("could not resolve type for injection: " + erased.getFullyQualifiedName());
-    }
-
-    return injectorList.get(0);
-  }
-
-  public void registerInjector(final Injector injector) {
-    registerInjector(injector.getInjectedType(), injector, new HashSet<MetaClass>(), true);
-  }
-
-  private void registerInjector(final MetaClass type,
-                                final Injector injector,
-                                final Set<MetaClass> processedTypes,
-                                final boolean allowOverride) {
-
-    List<Injector> injectorList = injectors.get(type.getErased());
-
-    if (injectorList == null) {
-      injectors.put(type.getErased(), injectorList = new ArrayList<Injector>());
-    }
-    else if (allowOverride) {
-      final Iterator<Injector> iterator = injectorList.iterator();
-
-      while (iterator.hasNext()) {
-        final Injector inj = iterator.next();
-
-        if (inj.isPseudo()) {
-          inj.setEnabled(false);
-          iterator.remove();
-        }
-      }
-    }
-
-    registerInjectorsForSuperTypesAndInterfaces(type, injector, processedTypes);
-    injectorList.add(injector);
-
-    notifyInjectorRegistered(injector);
-  }
-
-  private void registerInjectorsForSuperTypesAndInterfaces(final MetaClass type,
-                                                           final Injector injector,
-                                                           final Set<MetaClass> processedTypes) {
-    MetaClass cls = type;
-    do {
-      if (cls != type && cls.isPublic()) {
-        if (processedTypes.add(cls)) {
-          final Injector injectorDelegate =
-              getInjectorFactory().getQualifyingTypeInjector(cls, injector, cls.getParameterizedType());
-
-          registerInjector(cls, injectorDelegate, processedTypes, false);
-        }
-        continue;
-      }
-
-      for (final MetaClass iface : cls.getInterfaces()) {
-        if (!iface.isPublic())
-          continue;
-
-        // workaround for https://code.google.com/p/google-web-toolkit/issues/detail?id=8369
-        if (iface.getFullyQualifiedName()
-            .equals("com.google.gwt.user.cellview.client.AbstractCellTable$TableSectionChangeHandler"))
-          continue;
-
-        if (processedTypes.add(iface)) {
-          final Injector injectorDelegate =
-              getInjectorFactory().getQualifyingTypeInjector(iface, injector, iface.getParameterizedType());
-
-          registerInjector(iface, injectorDelegate, processedTypes, false);
-        }
-      }
-    }
-    while ((cls = cls.getSuperClass()) != null && !cls.getFullyQualifiedName().equals("java.lang.Object"));
   }
 
   public void registerDecorator(final IOCDecoratorExtension<?> iocExtension) {
@@ -655,20 +326,6 @@ public class InjectionContext {
 
   public Collection<MetaMethod> getPrivateMethodsToExpose() {
     return unmodifiableCollection(privateMethodsToExpose);
-  }
-
-  public void addType(final MetaClass type) {
-    if (injectors.containsKey(type))
-      return;
-
-    registerInjector(getInjectorFactory().getTypeInjector(type, this));
-  }
-
-  public void addPseudoScopeForType(final MetaClass type) {
-    // final TypeInjector inj = new TypeInjector(type, this);
-    final AbstractInjector inj = (AbstractInjector) getInjectorFactory().getTypeInjector(type, this);
-    inj.setReplaceable(true);
-    registerInjector(inj);
   }
 
   public IOCProcessingContext getProcessingContext() {
@@ -903,10 +560,6 @@ public class InjectionContext {
 
   public GraphBuilder getGraphBuilder() {
     return graphBuilder;
-  }
-
-  public InjectorFactory getInjectorFactory() {
-    return injectorFactory;
   }
 
   public boolean isAsync() {

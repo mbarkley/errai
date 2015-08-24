@@ -355,8 +355,6 @@ public class IOCBootstrapGenerator {
       throw new ErraiBootstrapFailure("unable to load IOC Extension Configurator: " + e.getMessage(), e);
     }
 
-    computeDependentScope(context, injectionContext);
-
     final Collection<MetaClass> bootstrapClassCollection = ClassScanner.getTypesAnnotatedWith(IOCBootstrapTask.class, context);
     for (final MetaClass clazz : bootstrapClassCollection) {
       final IOCBootstrapTask task = clazz.getAnnotation(IOCBootstrapTask.class);
@@ -450,95 +448,5 @@ public class IOCBootstrapGenerator {
     }
 
     return defaultScope;
-  }
-
-  private static void computeDependentScope(final GeneratorContext context, final InjectionContext injectionContext) {
-    log.debug("computing dependent scope...");
-    final long start = System.currentTimeMillis();
-
-    final Set<String> translatablePackages = RebindUtils.findTranslatablePackages(context);
-
-    if (context != null) {
-      final Collection<MetaClass> allNewOrUpdatedClasses = MetaClassFactory.getAllNewOrUpdatedClasses();
-      final Set<String> removedClasses = MetaClassFactory.getAllDeletedClasses();
-
-      log.debug(allNewOrUpdatedClasses.size() + " new or updated classes in the MetaClassFactory");
-      log.trace("New or updated classes : " + allNewOrUpdatedClasses);
-
-      log.debug(removedClasses.size() + " removed classes in the MetaClassFactory");
-      log.trace("Removed class names : " + removedClasses);
-
-      final Map<String, MetaClass> newPsuedoDependentScoped = getNewPseudoDependentScopedClasses(injectionContext,
-              translatablePackages, allNewOrUpdatedClasses);
-
-      updateCachedPseudoDepdentScopedClasses(allNewOrUpdatedClasses, removedClasses, newPsuedoDependentScoped);
-      addPseudoDependentScopedClasses(injectionContext);
-    }
-
-    log.debug("computed dependent scope in " + (System.currentTimeMillis() - start) + "ms");
-  }
-
-  private static Map<String, MetaClass> getNewPseudoDependentScopedClasses(final InjectionContext injectionContext,
-          final Set<String> translatablePackages, final Collection<MetaClass> allNewOrUpdatedClasses) {
-    final Map<String, MetaClass> newPsuedoDependentScoped = new HashMap<String, MetaClass>();
-
-    for (final MetaClass clazz : allNewOrUpdatedClasses) {
-      if (isPseudoDependentScoped(injectionContext, translatablePackages, clazz))
-        newPsuedoDependentScoped.put(clazz.getFullyQualifiedName(), clazz);
-    }
-    return newPsuedoDependentScoped;
-  }
-
-  private static void addPseudoDependentScopedClasses(final InjectionContext injectionContext) {
-    for (final MetaClass clazz : cachedPseudoDependentScoped.values()) {
-      injectionContext.addPseudoScopeForType(clazz);
-    }
-  }
-
-  private static void updateCachedPseudoDepdentScopedClasses(final Collection<MetaClass> allNewOrUpdatedClasses,
-          final Set<String> removedClasses, final Map<String, MetaClass> newPsuedoDependentScoped) {
-    if (cachedPseudoDependentScoped == null) {
-      cachedPseudoDependentScoped = newPsuedoDependentScoped;
-    }
-    else {
-      for (final MetaClass clazz : allNewOrUpdatedClasses) {
-        cachedPseudoDependentScoped.remove(clazz.getFullyQualifiedName());
-      }
-      cachedPseudoDependentScoped.putAll(newPsuedoDependentScoped);
-      cachedPseudoDependentScoped.keySet().removeAll(removedClasses);
-    }
-  }
-
-  private static boolean isPseudoDependentScoped(final InjectionContext injectionContext, final Set<String> translatablePackages,
-          final MetaClass clazz) {
-    if (translatablePackages.contains(clazz.getPackageName())) {
-
-      for (final Annotation a : clazz.getAnnotations()) {
-        final Class<? extends Annotation> clazz1 = a.annotationType();
-
-        if (clazz1.isAnnotationPresent(Scope.class) || clazz1.isAnnotationPresent(NormalScope.class)
-            || clazz1.equals(EnabledByProperty.class)) {
-          return false;
-        }
-      }
-
-      if (!clazz.isDefaultInstantiable()) {
-        boolean hasInjectableConstructor = false;
-        for (final MetaConstructor c : clazz.getConstructors()) {
-          if (injectionContext.isElementType(WiringElementType.InjectionPoint, c)) {
-            hasInjectableConstructor = true;
-            break;
-          }
-        }
-
-        if (!hasInjectableConstructor) {
-          return false;
-        }
-      }
-
-      return true;
-    }
-
-    return false;
   }
 }

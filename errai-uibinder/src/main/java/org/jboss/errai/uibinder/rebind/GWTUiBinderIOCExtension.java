@@ -16,15 +16,11 @@
 
 package org.jboss.errai.uibinder.rebind;
 
-import com.google.gwt.core.client.GWT;
-import com.google.gwt.safehtml.client.SafeHtmlTemplates;
-import com.google.gwt.safehtml.shared.SafeUri;
-import com.google.gwt.uibinder.client.UiBinder;
-import com.google.gwt.uibinder.client.UiTemplate;
+import java.lang.annotation.Annotation;
+
 import org.jboss.errai.codegen.BlockStatement;
 import org.jboss.errai.codegen.InnerClass;
 import org.jboss.errai.codegen.Parameter;
-import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.impl.ClassBuilder;
 import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
 import org.jboss.errai.codegen.literal.LiteralFactory;
@@ -35,17 +31,19 @@ import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.api.IOCExtension;
 import org.jboss.errai.ioc.client.api.PackageTarget;
-import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessor;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessor;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
-import org.jboss.errai.ioc.rebind.ioc.injector.AbstractInjector;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionPoint;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.TypeDiscoveryListener;
 import org.jboss.errai.uibinder.client.UiBinderProvider;
 
-import java.lang.annotation.Annotation;
+import com.google.gwt.core.client.GWT;
+import com.google.gwt.safehtml.client.SafeHtmlTemplates;
+import com.google.gwt.safehtml.shared.SafeUri;
+import com.google.gwt.uibinder.client.UiBinder;
+import com.google.gwt.uibinder.client.UiTemplate;
 
 /**
  * @author Mike Brock
@@ -150,41 +148,43 @@ public class GWTUiBinderIOCExtension implements IOCExtensionConfigurator {
           }
 
 
-          injectionContext.registerInjector(new AbstractInjector() {
-            @Override
-            public void renderProvider(InjectableInstance injectableInstance) {
-            }
-
-            @Override
-            public Statement getBeanInstance(InjectableInstance injectableInstance) {
-              return Refs.get(varName);
-            }
-
-            @Override
-            public boolean isRendered() {
-              return false;
-            }
-
-            @Override
-            public boolean isSingleton() {
-              return false;
-            }
-
-            @Override
-            public boolean isPseudo() {
-              return false;
-            }
-
-            @Override
-            public String getInstanceVarName() {
-              return varName;
-            }
-
-            @Override
-            public MetaClass getInjectedType() {
-              return type;
-            }
-          });
+          // FIXME
+          throw new RuntimeException("Not yet implemented!");
+//          injectionContext.registerInjector(new AbstractInjector() {
+//            @Override
+//            public void renderProvider(InjectableInstance injectableInstance) {
+//            }
+//
+//            @Override
+//            public Statement getBeanInstance(InjectableInstance injectableInstance) {
+//              return Refs.get(varName);
+//            }
+//
+//            @Override
+//            public boolean isRendered() {
+//              return false;
+//            }
+//
+//            @Override
+//            public boolean isSingleton() {
+//              return false;
+//            }
+//
+//            @Override
+//            public boolean isPseudo() {
+//              return false;
+//            }
+//
+//            @Override
+//            public String getInstanceVarName() {
+//              return varName;
+//            }
+//
+//            @Override
+//            public MetaClass getInjectedType() {
+//              return type;
+//            }
+//          });
         }
       }
     });

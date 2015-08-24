@@ -16,24 +16,22 @@
 
 package org.jboss.errai.ioc.rebind.ioc.injector.api;
 
+import java.lang.annotation.Annotation;
+import java.util.Arrays;
+
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaConstructor;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.util.PrivateAccessType;
-import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.Injector;
 import org.jboss.errai.ioc.rebind.ioc.metadata.QualifyingMetadata;
-
-import java.lang.annotation.Annotation;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * @author Mike Brock
  */
-public class InjectionPoint<T> {
+public abstract class InjectionPoint<T> {
   protected T annotation;
   protected TaskType taskType;
 
@@ -75,7 +73,7 @@ public class InjectionPoint<T> {
   }
 
   public MetaConstructor getConstructor() {
-    return constructor;
+    throw new RuntimeException("Cannot invoke on a non-constructor injection point.");
   }
 
   public TaskType getTaskType() {
@@ -83,11 +81,11 @@ public class InjectionPoint<T> {
   }
 
   public MetaMethod getMethod() {
-    return method;
+    throw new RuntimeException("Cannot invoke on a non-method injection point.");
   }
 
   public MetaField getField() {
-    return field;
+    throw new RuntimeException("Cannot invoke on a non-field injection point.");
   }
 
   /**
@@ -147,38 +145,9 @@ public class InjectionPoint<T> {
    *
    * @return The underlying type of the element or return type for a method.
    */
-  public MetaClass getElementTypeOrMethodReturnType() {
-    switch (taskType) {
-      case PrivateField:
-      case Field:
-        return field.getType();
-      case PrivateMethod:
-      case Method:
-        return method.getReturnType();
-      case Parameter:
-        return parm.getType();
-      case Type:
-        return type;
-      default:
-        throw new RuntimeException("unsupported operation: getType for task: " + taskType);
-    }
-  }
+  public abstract MetaClass getElementTypeOrMethodReturnType();
 
-  public MetaClass getElementType() {
-    switch (taskType) {
-      case PrivateField:
-      case Field:
-        return field.getType();
-      case PrivateMethod:
-      case Method:
-      case Parameter:
-        return parm.getType();
-      case Type:
-        return type;
-      default:
-        throw new RuntimeException("unsupported operation: getType for task: " + taskType);
-    }
-  }
+  public abstract MetaClass getElementType();
 
   /**
    * Returns the parameter reference if the injection point is a parameter, otherwise returns <tt>null</tt>.
@@ -186,7 +155,7 @@ public class InjectionPoint<T> {
    * @return the {@link MetaParameter} reference if the injection point is a parameter, otherwise <tt>null</tt>.
    */
   public MetaParameter getParm() {
-    return parm;
+    throw new RuntimeException("Cannot invoke on a non-parameter injection point.");
   }
 
   /**
@@ -206,98 +175,23 @@ public class InjectionPoint<T> {
     ensureMemberExposed(PrivateAccessType.Both);
   }
 
-  public void ensureMemberExposed(final PrivateAccessType accessType) {
-    switch (taskType) {
-      case Parameter:
-        if (parm.getDeclaringMember() instanceof MetaMethod) {
-          final MetaMethod declMeth = (MetaMethod) parm.getDeclaringMember();
-          injectionContext.addExposedMethod(declMeth);
-        }
-        break;
-      case PrivateMethod:
-        injectionContext.addExposedMethod(method);
-        break;
-      case PrivateField:
-        injectionContext.addExposedField(field, accessType);
-        break;
-    }
-  }
+  public abstract void ensureMemberExposed(final PrivateAccessType accessType);
 
-  public String getMemberName() {
-    switch (taskType) {
-      case PrivateField:
-      case Field:
-        return field.getName();
+  public abstract String getMemberName();
 
-      case Parameter:
-        return parm.getName();
-      case PrivateMethod:
-      case Method:
-        return method.getName();
+  public abstract MetaClass getEnclosingType();
 
-      case Type:
-        return type.getName();
-
-      default:
-        return null;
-    }
-  }
-
-  public MetaClass getEnclosingType() {
-    switch (taskType) {
-      case PrivateField:
-      case Field:
-        return field.getDeclaringClass();
-      case PrivateMethod:
-      case Method:
-        return method.getDeclaringClass();
-      case Type:
-        return type;
-      case Parameter:
-        return parm.getDeclaringMember().getDeclaringClass();
-      default:
-        throw new RuntimeException("unsupported operation: getEncodingType for task: " + taskType);
-    }
-  }
-
-  public Annotation[] getQualifiers() {
-    final List<Annotation> annotations;
-    switch (taskType) {
-      case PrivateField:
-      case Field:
-        annotations = InjectUtil.getQualifiersFromAnnotations(field.getAnnotations());
-        return annotations.toArray(new Annotation[annotations.size()]);
-
-      case Parameter:
-        annotations = InjectUtil.getQualifiersFromAnnotations(parm.getAnnotations());
-        return annotations.toArray(new Annotation[annotations.size()]);
-
-      case PrivateMethod:
-      case Method:
-        annotations = InjectUtil.getQualifiersFromAnnotations(method.getAnnotations());
-        return annotations.toArray(new Annotation[annotations.size()]);
-
-      case Type:
-        annotations = InjectUtil.getQualifiersFromAnnotations(type.getAnnotations());
-        return annotations.toArray(new Annotation[annotations.size()]);
-
-      default:
-        return new Annotation[0];
-    }
-  }
+  public abstract Annotation[] getQualifiers();
 
   public QualifyingMetadata getQualifyingMetadata() {
     return injectionContext.getProcessingContext().getQualifyingMetadataFactory().createFrom(getQualifiers());
-  }
-
-  public boolean isProxy() {
-    return injectionContext.isProxiedInjectorRegistered(getEnclosingType(), getQualifyingMetadata());
   }
 
   public boolean isAnnotationPresent(Class<? extends Annotation> annotation) {
     return getAnnotation(annotation) != null;
   }
 
+  @SuppressWarnings("unchecked")
   public <A extends Annotation> A getAnnotation(Class<A> annotation) {
     for (Annotation a : Arrays.asList(getAnnotations())) {
       if (annotation != null && annotation.isAssignableFrom(a.annotationType())) {
@@ -307,24 +201,6 @@ public class InjectionPoint<T> {
     return null;
   }
 
-  public Annotation[] getAnnotations() {
-    switch (taskType) {
-      case PrivateField:
-      case Field:
-        return field.getAnnotations();
+  public abstract Annotation[] getAnnotations();
 
-      case Parameter:
-        return parm.getAnnotations();
-
-      case PrivateMethod:
-      case Method:
-        return method.getAnnotations();
-
-      case Type:
-        return type.getAnnotations();
-
-      default:
-        return new Annotation[0];
-    }
-  }
 }
