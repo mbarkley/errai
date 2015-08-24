@@ -102,8 +102,8 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
   @Override
   public List<? extends Statement> generateDecorator(final InjectableInstance<Templated> ctx) {
     final MetaClass declaringClass = ctx.getEnclosingType();
-    
-    Class<?> templateProvider =  
+
+    Class<?> templateProvider =
             ctx.getEnclosingType().getAnnotation(Templated.class).provider();
     boolean customProvider = templateProvider != Templated.DEFAULT_PROVIDER.class;
 
@@ -114,7 +114,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
 
     for (final MetaField field : declaringClass.getFields()) {
       if (field.isAnnotationPresent(DataField.class)) {
-        ctx.getInjectionContext().addExposedField(field, PrivateAccessType.Both);
+        ctx.addExposedField(field, PrivateAccessType.Both);
       }
     }
 
@@ -128,9 +128,9 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
 
     final Statement initCallback;
     if (customProvider) {
-      Statement init = 
+      Statement init =
         Stmt.invokeStatic(TemplateUtil.class, "provideTemplate",
-          templateProvider,      
+          templateProvider,
           getTemplateUrl(ctx.getEnclosingType()),
           Stmt.newObject(TemplateRenderingCallback.class)
             .extend()
@@ -138,14 +138,14 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
             .appendAll(initStmts)
             .finish()
             .finish());
-      
+
       initCallback = InjectUtil.createInitializationCallback(declaringClass, "obj", Collections.singletonList(init));
-    } 
+    }
     else {
-      initCallback = InjectUtil.createInitializationCallback(declaringClass, "obj", initStmts);  
+      initCallback = InjectUtil.createInitializationCallback(declaringClass, "obj", initStmts);
     }
     Statement addInitCallback
-      = Stmt.loadVariable("context").invoke("addInitializationCallback",  
+      = Stmt.loadVariable("context").invoke("addInitializationCallback",
           Refs.get(ctx.getInjector().getInstanceVarName()), initCallback);
 
     List<Statement> stmts = new ArrayList<Statement>();
@@ -160,7 +160,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
     else {
       stmts.add(addInitCallback);
     }
-    
+
     Statement destructionCallback = generateTemplateDestruction(ctx);
     if (destructionCallback != null) {
       stmts.add(destructionCallback);
@@ -209,10 +209,10 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
 
     final Map<MetaClass, BuildMetaClass> constructed = getConstructedTemplateTypes(ctx);
     final MetaClass declaringClass = ctx.getEnclosingType();
-    
+
     if (!constructed.containsKey(declaringClass)) {
       final String templateVarName = InjectUtil.getUniqueVarName();
-      
+
       /*
        * Generate this component's ClientBundle resource if necessary
        */
@@ -228,7 +228,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
           .initializeWith(
               Stmt.invokeStatic(GWT.class, "create", getConstructedTemplateTypes(ctx).get(declaringClass))));
       }
-      
+
       /*
        * Get root Template Element
        */
@@ -237,8 +237,8 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
           .declareVariable(Element.class)
           .named(rootTemplateElementVarName)
           .initializeWith(
-              Stmt.invokeStatic(TemplateUtil.class, "getRootTemplateElement", 
-                  (customProvider) ? Variable.get("template") : 
+              Stmt.invokeStatic(TemplateUtil.class, "getRootTemplateElement",
+                  (customProvider) ? Variable.get("template") :
                     Stmt.loadVariable(templateVarName).invoke("getContents").invoke("getText"),
                   getTemplateFileName(ctx.getEnclosingType()),
                   getTemplateFragmentName(declaringClass))));
@@ -263,7 +263,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
       final String dataFieldElementsVarName = InjectUtil.getUniqueVarName();
       initStmts.add(Stmt.declareVariable(dataFieldElementsVarName,
           new TypeLiteral<Map<String, Element>>() {},
-          Stmt.invokeStatic(TemplateUtil.class, "getDataFieldElements", 
+          Stmt.invokeStatic(TemplateUtil.class, "getDataFieldElements",
                   rootTemplateElement))
       );
 
@@ -666,7 +666,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
 
     return resource;
   }
-  
+
   /**
    * Get the URL of the server-side {@link Template} HTML file of the given {@link MetaClass} component type
    */

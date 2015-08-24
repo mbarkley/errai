@@ -57,7 +57,7 @@ import com.google.gwt.core.ext.GeneratorContext;
  * Utility to retrieve a data binder reference. The reference is either to an
  * injected {@link AutoBound} data binder or to a generated data binder for an
  * injected {@link Model}.
- * 
+ *
  * @author Christian Sadilek <csadilek@redhat.com>
  * @author Mike Brock
  */
@@ -66,15 +66,15 @@ public class DataBindingUtil {
   public static final String TRANSIENT_BINDER_VALUE = "DataModelBinder";
   public static final String BINDER_MODEL_TYPE_VALUE = "DataBinderModelType";
 
-  public static final Annotation[] MODEL_QUALIFICATION = new Annotation[] { 
+  public static final Annotation[] MODEL_QUALIFICATION = new Annotation[] {
     new Model() {
       @Override
       public Class<? extends Annotation> annotationType() {
         return Model.class;
       }
-    } 
+    }
   };
-  
+
   private DataBindingUtil() {}
 
   /**
@@ -101,10 +101,10 @@ public class DataBindingUtil {
   /**
    * Tries to find a data binder reference for either an injected {@link Model}
    * or an injected {@link AutoBound} data binder.
-   * 
+   *
    * @param inst
    *          the injectable instance
-   * 
+   *
    * @return the data binder reference or null if not found.
    */
   public static DataBinderRef lookupDataBinderRef(final InjectableInstance<?> inst) {
@@ -117,10 +117,10 @@ public class DataBindingUtil {
 
   /**
    * Tries to find a data binder reference for an injected {@link Model}.
-   * 
+   *
    * @param inst
    *          the injectable instance
-   * 
+   *
    * @return the data binder reference or null if not found.
    */
   private static DataBinderRef lookupBinderForModel(final InjectableInstance<?> inst) {
@@ -153,7 +153,7 @@ public class DataBindingUtil {
           assertTypeIsBindable(dataModelType);
 
           dataBinderRef = inst.getTransientValue(TRANSIENT_BINDER_VALUE, DataBinder.class);
-          inst.getInjectionContext().addExposedField(field, PrivateAccessType.Both);
+          inst.addExposedField(field, PrivateAccessType.Both);
         }
         return new DataBinderRef(dataModelType, dataBinderRef);
       }
@@ -179,7 +179,7 @@ public class DataBindingUtil {
 
   /**
    * Tries to find a reference for an injected {@link AutoBound} data binder.
-   * 
+   *
    * @return the data binder reference or null if not found.
    */
   private static DataBinderRef lookupAutoBoundBinder(final InjectableInstance<?> inst) {
@@ -212,7 +212,7 @@ public class DataBindingUtil {
         dataBinderRef = Stmt.invokeStatic(inst.getInjectionContext().getProcessingContext().getBootstrapClass(),
                 PrivateAccessUtil.getPrivateFieldInjectorName(field),
                 Variable.get(inst.getInjector().getInstanceVarName()));
-        inst.getInjectionContext().addExposedField(field, PrivateAccessType.Both);
+        inst.addExposedField(field, PrivateAccessType.Both);
       }
     }
     else {
@@ -224,7 +224,7 @@ public class DataBindingUtil {
           dataBinderRef = Stmt.invokeStatic(inst.getInjectionContext().getProcessingContext().getBootstrapClass(),
                   PrivateAccessUtil.getPrivateFieldInjectorName(field),
                   Variable.get(inst.getInjector().getInstanceVarName()));
-          inst.getInjectionContext().addExposedField(field, PrivateAccessType.Both);
+          inst.addExposedField(field, PrivateAccessType.Both);
           break;
         }
       }
@@ -236,7 +236,7 @@ public class DataBindingUtil {
   /**
    * Ensures the provided type is a {@link DataBinder} and throws a
    * {@link GenerationException} in case it's not.
-   * 
+   *
    * @param type
    *          the type to check
    */
@@ -252,7 +252,7 @@ public class DataBindingUtil {
   /**
    * Ensured the provided type is bindable and throws a
    * {@link GenerationException} in case it's not.
-   * 
+   *
    * @param type
    *          the type to check
    */
@@ -264,10 +264,10 @@ public class DataBindingUtil {
 
   /**
    * Checks if the provided type is bindable.
-   * 
+   *
    * @param type
    *          the type to check
-   * 
+   *
    * @return true if the provide type is bindable, otherwise false.
    */
   public static boolean isBindableType(MetaClass type) {
@@ -276,10 +276,10 @@ public class DataBindingUtil {
 
   /**
    * Returns all bindable types on the classpath.
-   * 
+   *
    * @param context
    *          the current generator context
-   * 
+   *
    * @return a set of meta classes representing the all bindable types (both
    *         annotated and configured in ErraiApp.properties).
    */
@@ -292,11 +292,11 @@ public class DataBindingUtil {
     return bindableTypes;
   }
 
-  private static Set<MetaClass> configuredBindableTypes = null; 
+  private static Set<MetaClass> configuredBindableTypes = null;
 
   /**
    * Reads bindable types from all ErraiApp.properties files on the classpath.
-   * 
+   *
    * @return a set of meta classes representing the configured bindable types.
    */
   public static Set<MetaClass> getConfiguredBindableTypes() {
@@ -305,7 +305,7 @@ public class DataBindingUtil {
     } else {
         configuredBindableTypes = findConfiguredBindableTypes();
     }
-    
+
     return configuredBindableTypes;
   }
 

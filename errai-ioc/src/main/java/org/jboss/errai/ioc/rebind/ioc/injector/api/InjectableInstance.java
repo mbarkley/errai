@@ -29,6 +29,7 @@ import org.jboss.errai.codegen.meta.MetaConstructor;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
+import org.jboss.errai.codegen.util.PrivateAccessType;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.container.RefHolder;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
@@ -194,6 +195,10 @@ public abstract class InjectableInstance<T extends Annotation> extends Injection
       }
     }
   }
+
+  public abstract void addExposedField(final MetaField field, PrivateAccessType accessType);
+
+  public abstract void addExposedMethod(final MetaMethod method);
 
   public boolean hasUnsatisfiedTransientValue(final String name, final MetaClass type) {
     return getUnsatisfiedTransientValue(name, type) != null;

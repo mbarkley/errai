@@ -24,17 +24,13 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import javax.enterprise.context.Dependent;
-import javax.enterprise.context.NormalScope;
 import javax.enterprise.inject.Alternative;
 import javax.enterprise.inject.Stereotype;
 import javax.inject.Inject;
-import javax.inject.Scope;
 import javax.inject.Singleton;
 
 import org.jboss.errai.codegen.Context;
@@ -43,28 +39,21 @@ import org.jboss.errai.codegen.builder.BlockBuilder;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.impl.BlockBuilderImpl;
 import org.jboss.errai.codegen.meta.MetaClass;
-import org.jboss.errai.codegen.meta.MetaClassFactory;
-import org.jboss.errai.codegen.meta.MetaConstructor;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.codegen.util.Implementations;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.common.metadata.MetaDataScanner;
-import org.jboss.errai.common.metadata.RebindUtils;
 import org.jboss.errai.common.metadata.ScannerSingleton;
 import org.jboss.errai.common.server.api.ErraiBootstrapFailure;
 import org.jboss.errai.config.rebind.EnvUtil;
-import org.jboss.errai.config.rebind.ReachableTypes;
 import org.jboss.errai.config.util.ClassScanner;
-import org.jboss.errai.ioc.client.BootstrapInjectionContext;
 import org.jboss.errai.ioc.client.Bootstrapper;
 import org.jboss.errai.ioc.client.api.CodeDecorator;
-import org.jboss.errai.ioc.client.api.EnabledByProperty;
 import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.client.api.IOCBootstrapTask;
 import org.jboss.errai.ioc.client.api.IOCProvider;
 import org.jboss.errai.ioc.client.api.TaskOrder;
 import org.jboss.errai.ioc.client.container.ContextManager;
-import org.jboss.errai.ioc.client.container.CreationalContext;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
@@ -102,7 +91,6 @@ public class IOCBootstrapGenerator {
   private final TreeLogger logger;
   private static final Logger log = LoggerFactory.getLogger(IOCBootstrapGenerator.class);
 
-  private static Map<String, MetaClass> cachedPseudoDependentScoped;
   private static final Object generatorLock = new Object();
 
   public IOCBootstrapGenerator(final GeneratorContext context,
@@ -130,8 +118,7 @@ public class IOCBootstrapGenerator {
       log.debug("injection context setup in " + (System.currentTimeMillis() - injectionStart) + "ms");
 
       gen = generateBootstrappingClassSource(injectionContext);
-      log.info("generated IOC bootstrapping class in " + (System.currentTimeMillis() - st) + "ms "
-          + "(" + injectionContext.getAllKnownInjectionTypes().size() + " beans processed)");
+      log.info("generated IOC bootstrapping class in " + (System.currentTimeMillis() - st) + "ms ");
 
       return gen;
     }
@@ -143,11 +130,6 @@ public class IOCBootstrapGenerator {
 
     final String s = EnvUtil.getEnvironmentConfig().getFrameworkOrSystemProperty("errai.ioc.async_bean_manager");
     asyncBootstrap = s != null && Boolean.parseBoolean(s);
-
-    final Class<? extends BootstrapInjectionContext> contextClass;
-    final Class<? extends CreationalContext> creationContextClass;
-
-    final ReachableTypes allDeps = EnvUtil.getAllReachableClasses(context);
 
     final ClassStructureBuilder<?> classStructureBuilder =
         Implementations.implement(Bootstrapper.class, packageName, className);
@@ -231,7 +213,6 @@ public class IOCBootstrapGenerator {
     final IOCProcessingContext processingContext = iocProcContextBuilder.build();
 
     injectionContextBuilder.processingContext(processingContext);
-    injectionContextBuilder.reachableTypes(allDeps);
     injectionContextBuilder.asyncBootstrap(asyncBootstrap);
 
     final InjectionContext injectionContext = injectionContextBuilder.build();
@@ -305,7 +286,7 @@ public class IOCBootstrapGenerator {
     log.debug("Tasks run in " + (System.currentTimeMillis() - start) + "ms");
   }
 
-  private void doBeforeRunnables(final BlockBuilder builder) {
+  private void doBeforeRunnables(final BlockBuilder<?> builder) {
     long start;
     log.debug("Running before tasks...");
     start = System.currentTimeMillis();
@@ -372,6 +353,7 @@ public class IOCBootstrapGenerator {
     final Set<Class<?>> decorators = scanner.getTypesAnnotatedWith(CodeDecorator.class);
     try {
       for (final Class<?> clazz : decorators) {
+        @SuppressWarnings("rawtypes")
         final Class<? extends IOCDecoratorExtension> decoratorClass = clazz.asSubclass(IOCDecoratorExtension.class);
 
         Class<? extends Annotation> annoType = null;
@@ -383,12 +365,12 @@ public class IOCBootstrapGenerator {
         final ParameterizedType pType = (ParameterizedType) t;
         if (IOCDecoratorExtension.class.equals(pType.getRawType())) {
           if (pType.getActualTypeArguments().length == 0
-              || !Annotation.class.isAssignableFrom((Class) pType.getActualTypeArguments()[0])) {
+              || !Annotation.class.isAssignableFrom((Class<?>) pType.getActualTypeArguments()[0])) {
             throw new ErraiBootstrapFailure("code decorator must extend IOCDecoratorExtension<@AnnotationType>");
           }
 
           // noinspection unchecked
-          annoType = ((Class) pType.getActualTypeArguments()[0]).asSubclass(Annotation.class);
+          annoType = ((Class<?>) pType.getActualTypeArguments()[0]).asSubclass(Annotation.class);
         }
 
         injectionContext.registerDecorator(
