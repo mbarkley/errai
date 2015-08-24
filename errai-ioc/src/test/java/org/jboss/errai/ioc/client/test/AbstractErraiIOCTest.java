@@ -38,6 +38,7 @@ public abstract class AbstractErraiIOCTest extends GWTTestCase {
   @Override
   protected void gwtTearDown() throws Exception {
     ((SyncBeanManagerImpl) IOC.getBeanManager()).reset();
+    Container.reset();
   }
 
   protected void $(Runnable runnable) {

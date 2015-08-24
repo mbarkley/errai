@@ -13,6 +13,7 @@ import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.FactoryType;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 
 import com.google.gwt.core.ext.GeneratorContext;
 import com.google.gwt.core.ext.IncrementalGenerator;
@@ -25,9 +26,14 @@ public class FactoryGenerator extends IncrementalGenerator {
 
   private static final String GENERATED_PACKAGE = "org.jboss.errai.ioc.client";
   private static DependencyGraph graph;
+  private static InjectionContext injectionContext;
 
   public static void setDependencyGraph(final DependencyGraph graph) {
     FactoryGenerator.graph = graph;
+  }
+
+  public static void setInjectionContext(final InjectionContext injectionContext) {
+    FactoryGenerator.injectionContext = injectionContext;
   }
 
   private static DependencyGraph assertGraphSet() {
@@ -37,11 +43,19 @@ public class FactoryGenerator extends IncrementalGenerator {
 
     return graph;
   }
+  private static InjectionContext assertInjectionContextSet() {
+    if (injectionContext == null) {
+      throw new RuntimeException("Injection context must be set before " + FactoryGenerator.class.getSimpleName() + " runs.");
+    }
+
+    return injectionContext;
+  }
 
   @Override
-  public RebindResult generateIncrementally(final TreeLogger logger, final GeneratorContext context, final String typeName)
+  public RebindResult generateIncrementally(final TreeLogger logger, final GeneratorContext generatorContext, final String typeName)
           throws UnableToCompleteException {
     final DependencyGraph graph = assertGraphSet();
+    final InjectionContext injectionContext = assertInjectionContextSet();
     final Injectable injectable = graph.getConcreteInjectable(typeName.substring(typeName.lastIndexOf('.')+1));
     final FactoryType factoryType = injectable.getFactoryType();
 
@@ -49,15 +63,15 @@ public class FactoryGenerator extends IncrementalGenerator {
             .implementsInterface(parameterizedAs(Factory.class, typeParametersOf(injectable.getInjectedType()))).body();
     final FactoryBodyGenerator generator = selectBodyGenerator(factoryType);
 
-    generator.generate(factoryBuilder, injectable, graph, logger, context);
+    generator.generate(factoryBuilder, injectable, graph, injectionContext, logger, generatorContext);
 
     final String factorySimpleClassName = getFactorySubTypeSimpleName(typeName);
-    final PrintWriter pw = context.tryCreate(logger, GENERATED_PACKAGE, factorySimpleClassName);
+    final PrintWriter pw = generatorContext.tryCreate(logger, GENERATED_PACKAGE, factorySimpleClassName);
     final String factorySource = factoryBuilder.toJavaString();
     final File tmpFile = new File(RebindUtils.getErraiCacheDir().getAbsolutePath() + "/" + factorySimpleClassName + ".java");
     RebindUtils.writeStringToFile(tmpFile, factorySource);
     pw.write(factorySource);
-    context.commit(logger, pw);
+    generatorContext.commit(logger, pw);
 
     return new RebindResult(RebindMode.USE_ALL_NEW_WITH_NO_CACHING, factoryBuilder.getClassDefinition().getFullyQualifiedName());
   }

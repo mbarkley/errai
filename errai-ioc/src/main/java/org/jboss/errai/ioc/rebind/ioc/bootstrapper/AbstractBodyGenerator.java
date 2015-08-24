@@ -46,6 +46,7 @@ import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 import com.google.common.collect.HashMultimap;
@@ -243,11 +244,11 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     return getPrivateMethodName(postConstruct);
   }
 
-  protected abstract List<Statement> generateCreateInstanceStatements(ClassStructureBuilder<?> bodyBlockBuilder, Injectable injectable, DependencyGraph graph);
+  protected abstract List<Statement> generateCreateInstanceStatements(ClassStructureBuilder<?> bodyBlockBuilder, Injectable injectable, DependencyGraph graph, InjectionContext injectionContext);
 
   @Override
-  public void generate(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable, final DependencyGraph graph, final TreeLogger logger, final GeneratorContext context) {
-    final List<Statement> createInstanceStatements = generateCreateInstanceStatements(bodyBlockBuilder, injectable, graph);
+  public void generate(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable, final DependencyGraph graph, InjectionContext injectionContext, final TreeLogger logger, final GeneratorContext context) {
+    final List<Statement> createInstanceStatements = generateCreateInstanceStatements(bodyBlockBuilder, injectable, graph, injectionContext);
 
     implementCreateInstance(bodyBlockBuilder, injectable, createInstanceStatements);
     implementCreateProxy(bodyBlockBuilder, injectable);

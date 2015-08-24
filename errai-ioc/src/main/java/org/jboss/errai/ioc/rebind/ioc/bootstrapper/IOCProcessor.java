@@ -99,6 +99,7 @@ public class IOCProcessor {
     final DependencyGraphBuilder graphBuilder = new DependencyGraphBuilderImpl();
     final DependencyGraph dependencyGraph = processDependencies(allMetaClasses, graphBuilder);
     FactoryGenerator.setDependencyGraph(dependencyGraph);
+    FactoryGenerator.setInjectionContext(injectionContext);
 
     final Map<Class<? extends Annotation>, MetaClass> scopeContexts = findScopeContexts(processingContext);
     @SuppressWarnings("rawtypes")

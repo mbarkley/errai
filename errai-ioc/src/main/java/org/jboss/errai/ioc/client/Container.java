@@ -60,6 +60,11 @@ public class Container implements EntryPoint {
       final SyncBeanManager beanManager = IOC.getBeanManager();
 
       beanManager.setContextManager(contextManager);
+      init = true;
+      for (final Runnable run : afterInit) {
+        run.run();
+      }
+      afterInit.clear();
     }
     catch (Throwable t) {
       t.printStackTrace();
@@ -88,9 +93,9 @@ public class Container implements EntryPoint {
   public static void runAfterInit(final Runnable runnable) {
     if (init) {
       runnable.run();
+    } else {
+      afterInit.add(runnable);
     }
-
-    afterInit.add(runnable);
   }
 
   /**
@@ -100,6 +105,11 @@ public class Container implements EntryPoint {
    */
   public static void $(final Runnable runnable) {
     runAfterInit(runnable);
+  }
+
+  public static void reset() {
+    init = false;
+    afterInit.clear();
   }
 
 }

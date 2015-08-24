@@ -45,6 +45,7 @@ public class BasicIOCTest extends IOCClientTestCase {
 
   static {
     // Force classloading of SimpleBean so the package is discovered.
+    @SuppressWarnings("unused")
     Class<?> cls = SimpleBean.class;
   }
 

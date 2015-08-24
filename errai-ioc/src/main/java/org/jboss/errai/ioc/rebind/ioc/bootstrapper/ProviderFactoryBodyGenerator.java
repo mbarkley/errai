@@ -17,13 +17,14 @@ import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 
 import com.google.common.collect.Multimap;
 
 public class ProviderFactoryBodyGenerator extends AbstractBodyGenerator {
 
   @Override
-  protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable, final DependencyGraph graph) {
+  protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable, final DependencyGraph graph, InjectionContext injectionContext) {
     final Multimap<DependencyType, Dependency> dependenciesByType = separateByType(injectable.getDependencies());
     assert dependenciesByType.size() == 1 : "The factory " + injectable.getFactoryName() + " is a Provider and should have exactly one dependency";
     final Collection<Dependency> providerInstanceDeps = dependenciesByType.get(DependencyType.ProducerInstance);

@@ -36,13 +36,15 @@ import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.FieldDependen
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.ParamDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.SetterParameterDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 
 import com.google.common.collect.Multimap;
 
 class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
 
   @Override
-  protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable, final DependencyGraph graph) {
+  protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
+          final Injectable injectable, final DependencyGraph graph, final InjectionContext injectionContext) {
     final Multimap<DependencyType, Dependency> dependenciesByType = separateByType(injectable.getDependencies());
 
     final Collection<Dependency> constructorDependencies = dependenciesByType.get(DependencyType.Constructor);
@@ -56,6 +58,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
     injectSetterMethodDependencies(injectable, setterDependencies, createInstanceStatements, bodyBlockBuilder);
     maybeInvokePostConstructs(injectable, createInstanceStatements, bodyBlockBuilder);
     addReturnStatement(createInstanceStatements);
+
     return createInstanceStatements;
   }
 

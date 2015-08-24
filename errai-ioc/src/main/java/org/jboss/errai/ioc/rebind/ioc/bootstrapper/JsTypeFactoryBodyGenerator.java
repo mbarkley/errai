@@ -11,12 +11,13 @@ import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.WindowInjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 
-public class JsTypeFactoryBodyGenerator extends TypeFactoryBodyGenerator {
+public class JsTypeFactoryBodyGenerator extends AbstractBodyGenerator {
 
   @Override
   protected List<Statement> generateCreateInstanceStatements(ClassStructureBuilder<?> bodyBlockBuilder,
-          Injectable injectable, DependencyGraph graph) {
+          Injectable injectable, DependencyGraph graph, InjectionContext injectionContext) {
     return Collections.<Statement> singletonList(
             Stmt.castTo(injectable.getInjectedType(), invokeStatic(WindowInjectionContext.class, "createOrGet")
                     .invoke("getBean", injectable.getInjectedType().getFullyQualifiedName())).returnValue());

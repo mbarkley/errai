@@ -253,8 +253,7 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
 
     @Override
     public boolean isActivated() {
-      // TODO Auto-generated method stub
-      throw new RuntimeException("Not yet implemented.");
+      return true;
     }
   }
 }
