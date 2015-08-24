@@ -63,17 +63,22 @@ public class FactoryGenerator extends IncrementalGenerator {
             .implementsInterface(parameterizedAs(Factory.class, typeParametersOf(injectable.getInjectedType()))).body();
     final FactoryBodyGenerator generator = selectBodyGenerator(factoryType);
 
-    generator.generate(factoryBuilder, injectable, graph, injectionContext, logger, generatorContext);
 
     final String factorySimpleClassName = getFactorySubTypeSimpleName(typeName);
     final PrintWriter pw = generatorContext.tryCreate(logger, GENERATED_PACKAGE, factorySimpleClassName);
-    final String factorySource = factoryBuilder.toJavaString();
-    final File tmpFile = new File(RebindUtils.getErraiCacheDir().getAbsolutePath() + "/" + factorySimpleClassName + ".java");
-    RebindUtils.writeStringToFile(tmpFile, factorySource);
-    pw.write(factorySource);
-    generatorContext.commit(logger, pw);
+    if (pw != null) {
+      generator.generate(factoryBuilder, injectable, graph, injectionContext, logger, generatorContext);
 
-    return new RebindResult(RebindMode.USE_ALL_NEW_WITH_NO_CACHING, factoryBuilder.getClassDefinition().getFullyQualifiedName());
+      final String factorySource = factoryBuilder.toJavaString();
+      final File tmpFile = new File(RebindUtils.getErraiCacheDir().getAbsolutePath() + "/" + factorySimpleClassName + ".java");
+      RebindUtils.writeStringToFile(tmpFile, factorySource);
+      pw.write(factorySource);
+      generatorContext.commit(logger, pw);
+
+      return new RebindResult(RebindMode.USE_ALL_NEW, factoryBuilder.getClassDefinition().getFullyQualifiedName());
+    } else {
+      return new RebindResult(RebindMode.USE_EXISTING, getFactorySubTypeName(typeName));
+    }
   }
 
   private FactoryBodyGenerator selectBodyGenerator(final FactoryType factoryType) {
