@@ -32,6 +32,8 @@ import org.jboss.errai.ioc.client.container.DestructionCallback;
 import org.jboss.errai.ioc.client.container.InitializationCallback;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 
 import java.util.ArrayList;
@@ -42,13 +44,12 @@ import java.util.List;
 /**
  * @author Mike Brock
  */
-@CodeDecorator
+//@CodeDecorator
 public class TimedExtension extends IOCDecoratorExtension<Timed> {
   public TimedExtension(Class<Timed> decoratesWith) {
     super(decoratesWith);
   }
 
-  @Override
   public List<? extends Statement> generateDecorator(InjectableInstance<Timed> ctx) {
     // FIXME
     throw new RuntimeException("Not yet implemented!");
@@ -105,5 +106,11 @@ public class TimedExtension extends IOCDecoratorExtension<Timed> {
 //    catch (Exception e) {
 //      throw new RuntimeException(e);
 //    }
+  }
+
+  @Override
+  public List<?> generateDecorator(Decorable decorable, FactoryController controller) {
+    // TODO Auto-generated method stub
+    throw new RuntimeException("Not yet implemented.");
   }
 }

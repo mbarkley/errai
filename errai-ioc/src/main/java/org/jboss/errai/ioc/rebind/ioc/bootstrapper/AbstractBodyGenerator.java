@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Queue;
 
 import javax.inject.Qualifier;
@@ -46,6 +47,7 @@ import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
@@ -65,6 +67,8 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
 
     return separated;
   }
+
+  protected final FactoryController controller = new FactoryController();
 
   protected void implementCreateProxy(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable) {
     final MetaClass proxyImpl = maybeCreateProxyImplementation(injectable, bodyBlockBuilder);
@@ -115,6 +119,9 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
       }
     }
 
+    for (final Entry<String, Statement> prop : controller.getProxyProperties()) {
+      proxyImpl.privateField(prop.getKey(), prop.getValue().getType()).initializesWith(prop.getValue()).finish();
+    }
 
     implementProxyMethods(proxyImpl, injectable);
     implementAccessibleMethods(proxyImpl, injectable);
@@ -160,11 +167,15 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
                   }
                 })
                 .throws_(method.getCheckedExceptions()).body();
+        body.appendAll(controller.getInvokeBeforeStatements(method));
         final ContextualStatementBuilder invocation = loadVariable("proxyHelper").invoke("getInstance").invoke(method.getName(), getParametersForInvocation(method));
         if (method.getReturnType().isVoid()) {
           body._(invocation);
+          body.appendAll(controller.getInvokeAfterStatements(method));
         } else {
-          body._(invocation.returnValue());
+          body._(declareFinalVariable("retVal", method.getReturnType(), invocation));
+          body.appendAll(controller.getInvokeAfterStatements(method));
+          body._(loadVariable("retVal").returnValue());
         }
 
         body.finish();

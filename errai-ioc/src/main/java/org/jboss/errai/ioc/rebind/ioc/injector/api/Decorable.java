@@ -7,6 +7,7 @@ import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 import static org.jboss.errai.ioc.rebind.ioc.bootstrapper.FactoryGenerator.getLocalVariableName;
 
 import java.lang.annotation.Annotation;
+import java.lang.annotation.ElementType;
 
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.meta.HasAnnotations;
@@ -110,6 +111,21 @@ public class Decorable {
       return getAccessStatement(annotated);
     }
     abstract Statement getAccessStatement(HasAnnotations annotated);
+
+    public static DecorableType fromElementType(ElementType elemType) {
+      switch (elemType) {
+      case FIELD:
+        return DecorableType.FIELD;
+      case METHOD:
+        return DecorableType.METHOD;
+      case PARAMETER:
+        return DecorableType.PARAM;
+      case TYPE:
+        return DecorableType.TYPE;
+      default:
+        throw new RuntimeException("Unsupported element type " + elemType);
+      }
+    }
   }
 
   private final HasAnnotations annotated;
@@ -140,6 +156,10 @@ public class Decorable {
 
   public HasAnnotations get() {
     return annotated;
+  }
+
+  public MetaMethod getAsMethod() {
+    return (MetaMethod) annotated;
   }
 
   DecorableType decorableType() {
