@@ -20,15 +20,16 @@ package org.jboss.errai.ioc.rebind.ioc.injector.api;
 import java.lang.annotation.Annotation;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.jboss.errai.codegen.Statement;
+import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
-import org.jboss.errai.codegen.meta.MetaConstructor;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
-import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.util.PrivateAccessType;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.container.RefHolder;
@@ -58,25 +59,18 @@ public abstract class InjectableInstance<T extends Annotation> extends Injection
     }
   }
 
-  public InjectableInstance(final T annotation,
-                            final TaskType taskType,
-                            final MetaConstructor constructor,
-                            final MetaMethod method,
-                            final MetaField field,
-                            final MetaClass type,
-                            final MetaParameter parm,
-                            final Injector injector,
-                            final InjectionContext injectionContext) {
+  private final Set<MetaMethod> exposedMethods = new HashSet<MetaMethod>();
+  private final Map<MetaField, PrivateAccessType> exposedFields = new HashMap<MetaField, PrivateAccessType>();
+  protected final ClassStructureBuilder<?> injectorClassBuilder;
 
-    super(annotation, taskType, constructor, method, field, type, parm, injector, injectionContext);
-  }
+  protected InjectableInstance(final T annotation,
+                               final TaskType taskType,
+                               final Injector injector,
+                               final InjectionContext injectionContext,
+                               final ClassStructureBuilder<?> injectorClassBuilder) {
 
-  public static <T extends Annotation> InjectableInstance<T> getInjectedInstance(final T annotation,
-                                                                                 final MetaClass type,
-                                                                                 final Injector injector,
-                                                                                 final InjectionContext context) {
-    throw new RuntimeException("Not yet implemented!");
-
+    super(annotation, taskType, injector, injectionContext);
+    this.injectorClassBuilder = injectorClassBuilder;
   }
 
   private TransientDataHolder getTransientDataHolder() {
@@ -196,9 +190,21 @@ public abstract class InjectableInstance<T extends Annotation> extends Injection
     }
   }
 
-  public abstract void addExposedField(final MetaField field, PrivateAccessType accessType);
+  public void addExposedField(final MetaField field, final PrivateAccessType accessType) {
+    if (exposedFields.containsKey(field)) {
+      if (PrivateAccessType.Both.equals(accessType)) {
+        exposedFields.put(field, accessType);
+      } else if (!exposedFields.get(field).equals(accessType)) {
+        exposedFields.put(field, PrivateAccessType.Both);
+      }
+    } else {
+      exposedFields.put(field, accessType);
+    }
+  }
 
-  public abstract void addExposedMethod(final MetaMethod method);
+  public void addExposedMethod(final MetaMethod method) {
+    exposedMethods.add(method);
+  }
 
   public boolean hasUnsatisfiedTransientValue(final String name, final MetaClass type) {
     return getUnsatisfiedTransientValue(name, type) != null;

@@ -26,6 +26,8 @@ public interface Injectable {
 
   boolean requiresProxy();
 
+  void setRequiresProxyTrue();
+
   boolean isContextual();
 
 }

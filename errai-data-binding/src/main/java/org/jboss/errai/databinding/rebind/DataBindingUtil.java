@@ -210,7 +210,7 @@ public class DataBindingUtil {
         assertTypeIsDataBinder(field.getType());
         dataModelType = (MetaClass) field.getType().getParameterizedType().getTypeParameters()[0];
         dataBinderRef = Stmt.invokeStatic(inst.getInjectionContext().getProcessingContext().getBootstrapClass(),
-                PrivateAccessUtil.getPrivateFieldInjectorName(field),
+                PrivateAccessUtil.getPrivateFieldAccessorName(field),
                 Variable.get(inst.getInjector().getInstanceVarName()));
         inst.addExposedField(field, PrivateAccessType.Both);
       }
@@ -222,7 +222,7 @@ public class DataBindingUtil {
           assertTypeIsDataBinder(field.getType());
           dataModelType = (MetaClass) field.getType().getParameterizedType().getTypeParameters()[0];
           dataBinderRef = Stmt.invokeStatic(inst.getInjectionContext().getProcessingContext().getBootstrapClass(),
-                  PrivateAccessUtil.getPrivateFieldInjectorName(field),
+                  PrivateAccessUtil.getPrivateFieldAccessorName(field),
                   Variable.get(inst.getInjector().getInstanceVarName()));
           inst.addExposedField(field, PrivateAccessType.Both);
           break;

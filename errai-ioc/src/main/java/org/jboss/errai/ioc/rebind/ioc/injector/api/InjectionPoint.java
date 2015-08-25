@@ -32,34 +32,19 @@ import org.jboss.errai.ioc.rebind.ioc.metadata.QualifyingMetadata;
  * @author Mike Brock
  */
 public abstract class InjectionPoint<T> {
-  protected T annotation;
-  protected TaskType taskType;
+  protected final T annotation;
+  protected final TaskType taskType;
 
-  protected MetaConstructor constructor;
-  protected MetaMethod method;
-  protected MetaField field;
-  protected MetaClass type;
-  protected MetaParameter parm;
-  protected Injector injector;
-  protected InjectionContext injectionContext;
+  protected final Injector injector;
+  protected final InjectionContext injectionContext;
 
-  public InjectionPoint(final T annotation,
+  protected InjectionPoint(final T annotation,
                         final TaskType taskType,
-                        final MetaConstructor constructor,
-                        final MetaMethod method,
-                        final MetaField field,
-                        final MetaClass type,
-                        final MetaParameter parm,
                         final Injector injector,
                         final InjectionContext injectionContext) {
 
     this.annotation = annotation;
     this.taskType = taskType;
-    this.constructor = constructor;
-    this.method = method;
-    this.field = field;
-    this.type = type;
-    this.parm = parm;
     this.injector = injector;
     this.injectionContext = injectionContext;
   }

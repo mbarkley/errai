@@ -105,7 +105,7 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
         if (!ctx.isAnnotationPresent(Inject.class) && ctx.getField() != null && widgetType.isDefaultInstantiable()) {
           Statement widgetInit = Stmt.invokeStatic(
               ctx.getInjectionContext().getProcessingContext().getBootstrapClass(),
-              PrivateAccessUtil.getPrivateFieldInjectorName(ctx.getField()),
+              PrivateAccessUtil.getPrivateFieldAccessorName(ctx.getField()),
               Refs.get(ctx.getInjector().getInstanceVarName()),
               ObjectBuilder.newInstanceOf(widgetType));
 

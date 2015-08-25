@@ -8,6 +8,8 @@ import java.io.File;
 import java.io.PrintWriter;
 
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
+import org.jboss.errai.codegen.meta.MetaClassMember;
+import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.common.metadata.RebindUtils;
 import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
@@ -34,6 +36,12 @@ public class FactoryGenerator extends IncrementalGenerator {
 
   public static void setInjectionContext(final InjectionContext injectionContext) {
     FactoryGenerator.injectionContext = injectionContext;
+  }
+
+  public static String getLocalVariableName(final MetaParameter param) {
+    final MetaClassMember member = param.getDeclaringMember();
+
+    return member.getName() + "_" + param.getName() + "_" + param.getIndex();
   }
 
   private static DependencyGraph assertGraphSet() {

@@ -401,6 +401,9 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
  }
 
   static class AbstractInjectable extends BaseInjectable {
+    // TODO review getDependencies and similar to see if they should throw errors.
+    // They should probably only be called on ConcreteInjectables
+
     final Collection<BaseInjectable> linked = new HashSet<BaseInjectable>();
     ConcreteInjectable resolution;
 
@@ -434,7 +437,16 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     @Override
     public boolean requiresProxy() {
-      return false;
+      if (resolution == null) {
+        return false;
+      } else {
+        return resolution.requiresProxy();
+      }
+    }
+
+    @Override
+    public void setRequiresProxyTrue() {
+      throw new RuntimeException("Should not be callled on " + AbstractInjectable.class.getSimpleName());
     }
 
     @Override
@@ -453,6 +465,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     final Collection<WiringElementType> wiringTypes;
     final List<BaseDependency> dependencies = new ArrayList<BaseDependency>();
     final Class<? extends Annotation> literalScope;
+    boolean requiresProxy = false;
 
     ConcreteInjectable(final MetaClass type, final Qualifier qualifier, final Class<? extends Annotation> literalScope,
             final FactoryType injectorType, final Collection<WiringElementType> wiringTypes) {
@@ -491,7 +504,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
         return false;
       case Producer:
       case Type:
-        return !(literalScope.equals(Dependent.class) || literalScope.equals(EntryPoint.class));
+        return requiresProxy || !(literalScope.equals(Dependent.class) || literalScope.equals(EntryPoint.class));
       default:
         throw new RuntimeException("Not yet implemented!");
       }
@@ -505,6 +518,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     @Override
     public boolean isContextual() {
       return FactoryType.ContextualProvider.equals(injectorType);
+    }
+
+    @Override
+    public void setRequiresProxyTrue() {
+      requiresProxy = true;
     }
   }
 

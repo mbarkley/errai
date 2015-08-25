@@ -181,26 +181,26 @@ public class PrivateAccessUtil {
     privateMemberAccessor.makeMethodAccessible(classBuilder, m, modifiers);
   }
 
-  public static String condensify(final String packagePrefix) {
-    return "_" + String.valueOf(packagePrefix.hashCode()).replaceFirst("\\-", "\\$");
-  }
-
-  public static String getPrivateFieldInjectorName(final MetaField field) {
-    return condensify(field.getDeclaringClass().getFullyQualifiedName())
-        + "_" + condensify(field.getType().getFullyQualifiedName())
+  public static String getPrivateFieldAccessorName(final MetaField field) {
+    return field.getDeclaringClass().getFullyQualifiedName().replace('.', '_')
+        + "_" + field.getType().getFullyQualifiedName().replace('.', '_')
         + "_" + field.getName();
   }
 
   public static String getPrivateMethodName(final MetaMethod method) {
     final MetaClass declaringClass = method.getDeclaringClass();
-    String name =  condensify(declaringClass.getFullyQualifiedName()) + "_" + method.getName();
-    
+    String name =  declaringClass.getFullyQualifiedName().replace('.', '_') + "_" + method.getName();
+
     if (method.getParameters() != null) {
       for (MetaParameter p : method.getParameters()) {
-       name += "_" + p.getType().getName(); 
+       name += "_" + p.getType().getName();
       }
     }
-    
+
     return name;
+  }
+
+  public static String condensify(String name) {
+    return name.replace('.', '_').replace('$', '_');
   }
 }

@@ -61,11 +61,13 @@ public class InjectorImpl implements Injector {
 
   @Override
   public void addInvokeBefore(final MetaMethod method, final Statement statement) {
+    injectable.setRequiresProxyTrue();
     invokeBefore.put(method, statement);
   }
 
   @Override
   public void addInvokeAfter(final MetaMethod method, final Statement statement) {
+    injectable.setRequiresProxyTrue();
     invokeAfter.put(method, statement);
   }
 
@@ -76,6 +78,7 @@ public class InjectorImpl implements Injector {
 
   @Override
   public ProxyProperty addProxyProperty(final String propertyName, final MetaClass type, final Statement statement) {
+    injectable.setRequiresProxyTrue();
     final ProxyProperty proxyProp = new ProxyProperty(propertyName, type, statement);
     proxyProperties.put(propertyName, proxyProp);
 

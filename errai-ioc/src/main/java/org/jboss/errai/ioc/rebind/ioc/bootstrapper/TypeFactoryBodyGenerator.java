@@ -1,15 +1,17 @@
 package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
 
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.addPrivateAccessStubs;
-import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateFieldInjectorName;
+import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateFieldAccessorName;
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateMethodName;
 import static org.jboss.errai.codegen.util.Stmt.castTo;
 import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
 import static org.jboss.errai.codegen.util.Stmt.loadLiteral;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 import static org.jboss.errai.codegen.util.Stmt.newObject;
+import static org.jboss.errai.ioc.rebind.ioc.bootstrapper.FactoryGenerator.getLocalVariableName;
 
 import java.lang.annotation.Annotation;
+import java.lang.annotation.ElementType;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,13 +24,16 @@ import javax.annotation.PostConstruct;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
+import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
+import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.MetaParameterizedType;
 import org.jboss.errai.codegen.meta.MetaType;
 import org.jboss.errai.codegen.util.PrivateAccessType;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
+import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.DependencyType;
@@ -36,6 +41,8 @@ import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.FieldDependen
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.ParamDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.SetterParameterDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.injector.Injector;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 
 import com.google.common.collect.Multimap;
@@ -56,10 +63,61 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
     constructInstance(injectable, constructorDependencies, createInstanceStatements);
     injectFieldDependencies(injectable, fieldDependencies, createInstanceStatements, bodyBlockBuilder);
     injectSetterMethodDependencies(injectable, setterDependencies, createInstanceStatements, bodyBlockBuilder);
+//    runDecorators(injectable, injectionContext, createInstanceStatements, bodyBlockBuilder);
     maybeInvokePostConstructs(injectable, createInstanceStatements, bodyBlockBuilder);
     addReturnStatement(createInstanceStatements);
 
     return createInstanceStatements;
+  }
+
+  private void runDecorators(final Injectable injectable, final InjectionContext injectionContext,
+          final List<Statement> createInstanceStatements, final ClassStructureBuilder<?> bodyBlockBuilder) {
+    final MetaClass type = injectable.getInjectedType();
+    runDecoratorsForElementType(injectable, injectionContext, createInstanceStatements, type.getFields(), ElementType.FIELD);
+    runDecoratorsForElementType(injectable, injectionContext, createInstanceStatements, type.getMethods(), ElementType.METHOD);
+  }
+
+  @SuppressWarnings({ "unchecked", "rawtypes" })
+  private void runDecoratorsForElementType(final Injectable injectable, final InjectionContext injectionContext,
+          final List<Statement> createInstanceStatements,
+          final HasAnnotations[] annotateds,
+          final ElementType elemType) {
+    final Injector injector = injectionContext.getInjector(injectable);
+    for (final HasAnnotations annotated : annotateds) {
+      final Collection<Class<? extends Annotation>> decoratorFieldAnnos = injectionContext.getDecoratorAnnotationsBy(elemType);
+      final Collection<? extends Annotation> annos = getAnnotationsOfType(annotated, decoratorFieldAnnos);
+      for (final Annotation anno : annos) {
+        final IOCDecoratorExtension[] decorators = injectionContext.getDecorators(anno.annotationType());
+        for (final IOCDecoratorExtension decorator : decorators) {
+          final InjectableInstance<? extends Annotation> injectableInstance = createInjectableInstance(annotated, anno, injector, injectionContext, elemType);
+          createInstanceStatements.addAll(decorator.generateDecorator(injectableInstance));
+        }
+      }
+    }
+  }
+
+  private <A extends Annotation> InjectableInstance<A> createInjectableInstance(final HasAnnotations annotated,
+          final A anno, final Injector injector, final InjectionContext injectionContext, final ElementType elemType) {
+    switch (elemType) {
+    case FIELD:
+      final MetaField field = MetaField.class.cast(annotated);
+    case METHOD:
+      final MetaMethod method = MetaMethod.class.cast(annotated);
+    default:
+      throw new RuntimeException("The element type " + elemType + " is not supported.");
+    }
+  }
+
+  private Collection<? extends Annotation> getAnnotationsOfType(final HasAnnotations annotated,
+          final Collection<Class<? extends Annotation>> decoratorFieldAnnos) {
+    final Collection<Annotation> annos = new ArrayList<Annotation>();
+    for (final Annotation anno : annotated.getAnnotations()) {
+      if (decoratorFieldAnnos.contains(anno)) {
+        annos.add(anno);
+      }
+    }
+
+    return annos;
   }
 
   private void maybeInvokePostConstructs(final Injectable injectable, final List<Statement> createInstanceStatements,
@@ -132,7 +190,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
 
       if (!field.isPublic()) {
         addPrivateAccessStubs(PrivateAccessType.Write, "jsni", bodyBlockBuilder, field);
-        final String privateFieldInjectorName = getPrivateFieldInjectorName(field);
+        final String privateFieldInjectorName = getPrivateFieldAccessorName(field);
         createInstanceStatements.add(loadVariable("this").invoke(privateFieldInjectorName, loadVariable("instance"), injectedValue));
       } else {
         createInstanceStatements.add(loadVariable("instance").loadField(field).assignValue(injectedValue));
@@ -181,8 +239,11 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
                   + " for dependency in " + setter.getDeclaringClassName());
         }
       } else {
-        injectedValue = castTo(depInjectable.getInjectedType(), loadVariable("contextManager")
-                .invoke("getInstance", loadLiteral(depInjectable.getFactoryName())));
+        final MetaParameter param = setter.getParameters()[0];
+        final String paramLocalVarName = getLocalVariableName(param);
+        createInstanceStatements.add(declareFinalVariable(paramLocalVarName, param.getType(),
+                loadVariable("contextManager").invoke("getInstance", loadLiteral(depInjectable.getFactoryName()))));
+        injectedValue = castTo(depInjectable.getInjectedType(), loadVariable(paramLocalVarName));
       }
 
       if (!setter.isPublic()) {
@@ -222,7 +283,9 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
                   loadVariable("contextManager").invoke("getInstance", loadLiteral(depInjectable.getFactoryName())));
         }
 
-        constructorParameterStatements[paramDep.getParamIndex()] = injectedValue;
+        final String paramLocalVarName = getLocalVariableName(paramDep.getParameter());
+        createInstanceStatements.add(declareFinalVariable(paramLocalVarName, paramDep.getParameter().getType(), injectedValue));
+        constructorParameterStatements[paramDep.getParamIndex()] = loadVariable(paramLocalVarName);
       }
 
       createInstanceStatements.add(declareFinalVariable("instance", injectable.getInjectedType(),
