@@ -182,14 +182,14 @@ public class PrivateAccessUtil {
   }
 
   public static String getPrivateFieldAccessorName(final MetaField field) {
-    return field.getDeclaringClass().getFullyQualifiedName().replace('.', '_')
-        + "_" + field.getType().getFullyQualifiedName().replace('.', '_')
+    return field.getDeclaringClass().getName()
+        + "_" + field.getType().getName()
         + "_" + field.getName();
   }
 
   public static String getPrivateMethodName(final MetaMethod method) {
     final MetaClass declaringClass = method.getDeclaringClass();
-    String name =  declaringClass.getFullyQualifiedName().replace('.', '_') + "_" + method.getName();
+    String name =  declaringClass.getName() + "_" + method.getName();
 
     if (method.getParameters() != null) {
       for (MetaParameter p : method.getParameters()) {
