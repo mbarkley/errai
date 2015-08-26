@@ -16,25 +16,16 @@
 
 package org.jboss.errai.ioc.rebind.ioc.builtin;
 
-import org.jboss.errai.codegen.Context;
-import org.jboss.errai.codegen.Statement;
-import org.jboss.errai.codegen.meta.MetaMethod;
-import org.jboss.errai.codegen.util.Stmt;
-import org.jboss.errai.common.client.api.extension.InitVotes;
+import java.util.List;
+
 import org.jboss.errai.ioc.client.api.AfterInitialization;
-import org.jboss.errai.ioc.client.api.CodeDecorator;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
-
-import java.util.Collections;
-import java.util.List;
 
 /**
  * @author Mike Brock
  */
-@SuppressWarnings("UnusedDeclaration")
 //@CodeDecorator
 public class AfterInitializationExtension extends IOCDecoratorExtension<AfterInitialization> {
   public AfterInitializationExtension(Class<AfterInitialization> decoratesWith) {

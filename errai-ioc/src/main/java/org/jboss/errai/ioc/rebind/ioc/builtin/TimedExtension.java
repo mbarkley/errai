@@ -16,30 +16,12 @@
 
 package org.jboss.errai.ioc.rebind.ioc.builtin;
 
-import com.google.gwt.user.client.Timer;
-import org.jboss.errai.codegen.ArithmeticOperator;
-import org.jboss.errai.codegen.Parameter;
-import org.jboss.errai.codegen.Statement;
-import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
-import org.jboss.errai.codegen.meta.MetaClass;
-import org.jboss.errai.codegen.meta.MetaClassFactory;
-import org.jboss.errai.codegen.util.Arith;
-import org.jboss.errai.codegen.util.Refs;
-import org.jboss.errai.codegen.util.Stmt;
-import org.jboss.errai.ioc.client.api.CodeDecorator;
+import java.util.List;
+
 import org.jboss.errai.ioc.client.api.Timed;
-import org.jboss.errai.ioc.client.container.DestructionCallback;
-import org.jboss.errai.ioc.client.container.InitializationCallback;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
-import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * @author Mike Brock
@@ -50,9 +32,10 @@ public class TimedExtension extends IOCDecoratorExtension<Timed> {
     super(decoratesWith);
   }
 
-  public List<? extends Statement> generateDecorator(InjectableInstance<Timed> ctx) {
-    // FIXME
-    throw new RuntimeException("Not yet implemented!");
+  @Override
+  public List<?> generateDecorator(Decorable decorable, FactoryController controller) {
+    // TODO Auto-generated method stub
+    throw new RuntimeException("Not yet implemented.");
 //    try {
 //      final MetaClass beanClass = ctx.getEnclosingType();
 //      final Timed timed = ctx.getAnnotation();
@@ -106,11 +89,5 @@ public class TimedExtension extends IOCDecoratorExtension<Timed> {
 //    catch (Exception e) {
 //      throw new RuntimeException(e);
 //    }
-  }
-
-  @Override
-  public List<?> generateDecorator(Decorable decorable, FactoryController controller) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
   }
 }

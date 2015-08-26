@@ -29,8 +29,6 @@ import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.common.client.api.Assert;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionPoint;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.TypeDiscoveryListener;
 import org.jboss.errai.ioc.rebind.ioc.metadata.JSR330QualifyingMetadataFactory;
 import org.jboss.errai.ioc.rebind.ioc.metadata.QualifyingMetadataFactory;
 
@@ -50,7 +48,6 @@ public class IOCProcessingContext {
   protected final Stack<BlockBuilder<?>> blockBuilder;
 
   protected final List<Statement> appendToEnd;
-  protected final List<TypeDiscoveryListener> typeDiscoveryListeners;
   protected final Set<MetaClass> discovered = new HashSet<MetaClass>();
 
   protected final TreeLogger treeLogger;
@@ -71,7 +68,6 @@ public class IOCProcessingContext {
     this.blockBuilder.push(builder.blockBuilder);
 
     this.appendToEnd = new ArrayList<Statement>();
-    this.typeDiscoveryListeners = new ArrayList<TypeDiscoveryListener>();
     this.packages = builder.packages;
     this.qualifyingMetadataFactory = builder.qualifyingMetadataFactory;
     this.gwtTarget = builder.gwtTarget;
@@ -218,19 +214,5 @@ public class IOCProcessingContext {
 
   public QualifyingMetadataFactory getQualifyingMetadataFactory() {
     return qualifyingMetadataFactory;
-  }
-
-  public void registerTypeDiscoveryListener(final TypeDiscoveryListener discoveryListener) {
-    this.typeDiscoveryListeners.add(discoveryListener);
-  }
-
-  public void handleDiscoveryOfType(final InjectionPoint injectionPoint, final MetaClass discoveredType) {
-    if (discovered.contains(injectionPoint.getElementTypeOrMethodReturnType())) {
-      return;
-    }
-    for (final TypeDiscoveryListener listener : typeDiscoveryListeners) {
-      listener.onDiscovery(this, injectionPoint, discoveredType);
-    }
-    discovered.add(injectionPoint.getElementTypeOrMethodReturnType());
   }
 }

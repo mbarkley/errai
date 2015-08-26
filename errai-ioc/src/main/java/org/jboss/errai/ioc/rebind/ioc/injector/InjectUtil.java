@@ -4,8 +4,6 @@ import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.List;
 
-import javax.enterprise.event.Observes;
-
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.VariableReference;
 import org.jboss.errai.codegen.builder.VariableReferenceContextualStatementBuilder;
@@ -13,7 +11,6 @@ import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 
 public class InjectUtil {
@@ -45,11 +42,6 @@ public class InjectUtil {
 
   public static BeanMetric getFilteredBeanMetric(InjectionContext injectionContext, MetaClass injectedType,
           Class<? extends Annotation> class1) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
-  }
-
-  public static List<Annotation> extractQualifiers(InjectableInstance<Observes> instance) {
     // TODO Auto-generated method stub
     throw new RuntimeException("Not yet implemented.");
   }
