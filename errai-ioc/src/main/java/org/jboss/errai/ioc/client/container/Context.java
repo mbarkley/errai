@@ -13,6 +13,8 @@ public interface Context {
 
   <T> T getInstance(String factoryName);
 
+  void destroyInstance(Object instance);
+
   <T> T getActiveNonProxiedInstance(String factoryName);
 
   Class<? extends Annotation> getScope();

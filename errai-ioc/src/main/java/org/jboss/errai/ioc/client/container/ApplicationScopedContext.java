@@ -18,6 +18,7 @@ public class ApplicationScopedContext extends AbstractContext {
   @Override
   public <T> T getInstance(final String factoryName) {
     final Proxy<T> proxy = getOrCreateProxy(factoryName);
+    registerInstance(proxy, getFactory(factoryName));
 
     return proxy.asBeanType();
   }

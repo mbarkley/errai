@@ -3,12 +3,14 @@ package org.jboss.errai.ioc.client.container;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
 
 public abstract class AbstractContext implements Context {
 
   private final Map<String, Factory<?>> factories = new HashMap<String, Factory<?>>();
   private final Map<String, Proxy<?>> proxies = new HashMap<String, Proxy<?>>();
+  private final Map<Object, Factory<?>> factoriesByCreatedInstances = new IdentityHashMap<Object, Factory<?>>();
 
   private ContextManager contextManager;
 
@@ -64,6 +66,19 @@ public abstract class AbstractContext implements Context {
     final Proxy<T> proxy = factory.createProxy(this);
 
     return proxy.asBeanType();
+  }
+
+  protected void registerInstance(Object instance, Factory<?> factory) {
+    factoriesByCreatedInstances.put(instance, factory);
+  }
+
+  @Override
+  public void destroyInstance(Object instance) {
+    final Factory<?> factory = factoriesByCreatedInstances.get(instance);
+    if (factory != null) {
+      factory.destroyInstance(instance, contextManager);
+      factoriesByCreatedInstances.remove(instance);
+    }
   }
 
 }

@@ -14,4 +14,6 @@ public interface ContextManager {
 
   Collection<FactoryHandle> getAllFactoryHandles();
 
+  void destroy(Object instance);
+
 }

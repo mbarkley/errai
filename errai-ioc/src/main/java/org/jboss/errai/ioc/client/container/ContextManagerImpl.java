@@ -58,4 +58,11 @@ public class ContextManagerImpl implements ContextManager {
     return allHandles;
   }
 
+  @Override
+  public void destroy(Object instance) {
+    for (final Context context : contexts) {
+      context.destroyInstance(instance);
+    }
+  }
+
 }

@@ -11,7 +11,10 @@ public class DependentScopeContext extends AbstractContext {
 
   @Override
   public <T> T getInstance(final String factoryName) {
-    return this.<T>getFactory(factoryName).createInstance(getContextManager());
+    final Factory<T> factory = this.<T>getFactory(factoryName);
+    final T instance = factory.createInstance(getContextManager());
+    registerInstance(instance, factory);
+    return instance;
   }
 
   @Override

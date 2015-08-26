@@ -67,10 +67,15 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
     injectFieldDependencies(injectable, fieldDependencies, createInstanceStatements, bodyBlockBuilder);
     injectSetterMethodDependencies(injectable, setterDependencies, createInstanceStatements, bodyBlockBuilder);
     runDecorators(injectable, injectionContext, createInstanceStatements, bodyBlockBuilder);
+    addInitializationStatements(createInstanceStatements);
     maybeInvokePostConstructs(injectable, createInstanceStatements, bodyBlockBuilder);
     addReturnStatement(createInstanceStatements);
 
     return createInstanceStatements;
+  }
+
+  private void addInitializationStatements(final List<Statement> createInstanceStatements) {
+    createInstanceStatements.addAll(controller.getInitializationStatements());
   }
 
   private void runDecorators(final Injectable injectable, final InjectionContext injectionContext,

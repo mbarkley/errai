@@ -34,6 +34,7 @@ import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
+import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.client.container.Context;
 import org.jboss.errai.ioc.client.container.ContextManager;
@@ -260,10 +261,31 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
   @Override
   public void generate(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable, final DependencyGraph graph, InjectionContext injectionContext, final TreeLogger logger, final GeneratorContext context) {
     final List<Statement> createInstanceStatements = generateCreateInstanceStatements(bodyBlockBuilder, injectable, graph, injectionContext);
+    final List<Statement> destroyInstanceStatements = generateDestroyInstanceStatements(bodyBlockBuilder, injectable, graph, injectionContext);
 
     implementCreateInstance(bodyBlockBuilder, injectable, createInstanceStatements);
+    implementDestroyInstance(bodyBlockBuilder, injectable, destroyInstanceStatements);
     implementCreateProxy(bodyBlockBuilder, injectable);
     implementGetHandle(bodyBlockBuilder, injectable);
+  }
+
+  private void implementDestroyInstance(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable,
+          final List<Statement> destroyInstanceStatements) {
+    bodyBlockBuilder
+            .publicMethod(void.class, "destroyInstance", finalOf(Object.class, "instance"),
+                    finalOf(ContextManager.class, "contextManager"))
+            .append(loadVariable("this").invoke("destroyInstanceHelper",
+                    Stmt.castTo(injectable.getInjectedType(), loadVariable("instance")),
+                    loadVariable("contextManager")))
+            .finish();
+    bodyBlockBuilder.publicMethod(void.class, "destroyInstanceHelper",
+            finalOf(injectable.getInjectedType(), "instance"), finalOf(ContextManager.class, "contextManager"))
+            .appendAll(destroyInstanceStatements).finish();
+  }
+
+  private List<Statement> generateDestroyInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
+          final Injectable injectable, final DependencyGraph graph, final InjectionContext injectionContext) {
+    return controller.getDestructionStatements();
   }
 
   private void implementGetHandle(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable) {

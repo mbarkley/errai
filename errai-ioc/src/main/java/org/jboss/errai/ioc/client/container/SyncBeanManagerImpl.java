@@ -49,8 +49,7 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
 
   @Override
   public void destroyBean(Object ref) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+    contextManager.destroy(ref);
   }
 
   @Override

@@ -8,4 +8,6 @@ public interface Factory<T> {
 
   FactoryHandle getHandle();
 
+  void destroyInstance(Object instance, ContextManager contextManager);
+
 }
