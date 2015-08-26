@@ -29,7 +29,8 @@ import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.common.client.ui.ElementWrapperWidget;
 import org.jboss.errai.ioc.client.api.CodeDecorator;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 import org.jboss.errai.ui.shared.Template;
 import org.jboss.errai.ui.shared.api.annotations.DataField;
 
@@ -51,27 +52,26 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(InjectableInstance<DataField> ctx) {
-    ctx.ensureMemberExposed();
-    Statement instance = ctx.getValueStatement();
-    String name = getTemplateDataFieldName(ctx.getAnnotation(), ctx.getMemberName());
-    if (ctx.getElementTypeOrMethodReturnType().isAssignableTo(Element.class)) {
-      if (ctx.isAnnotationPresent(Inject.class)) {
+  public List<? extends Statement> generateDecorator(final Decorable decorable, final FactoryController controller) {
+    Statement instance = decorable.getAccessStatement();
+    String name = getTemplateDataFieldName((DataField) decorable.getAnnotation(), decorable.getMemberName());
+    if (decorable.getType().isAssignableTo(Element.class)) {
+      if (decorable.get().isAnnotationPresent(Inject.class)) {
         throw new GenerationException("@DataField [" + name + "] in class ["
-            + ctx.getEnclosingType().getFullyQualifiedName() + "] is of type ["
-            + ctx.getElementTypeOrMethodReturnType().getFullyQualifiedName()
+            + decorable.getEnclosingType().getFullyQualifiedName() + "] is of type ["
+            + decorable.getType().getFullyQualifiedName()
             + "] which does not support @Inject; this instance must be created manually.");
       }
       instance = Stmt.invokeStatic(ElementWrapperWidget.class, "getWidget", instance);
     }
-    saveDataField(ctx, ctx.getElementTypeOrMethodReturnType(), name, ctx.getMemberName(), instance);
+    saveDataField(decorable, decorable.getType(), name, decorable.getMemberName(), instance);
 
     return Collections.emptyList();
   }
 
-  private void saveDataField(InjectableInstance<DataField> ctx, MetaClass type, String name, String fieldName, Statement instance) {
-    dataFieldMap(ctx, ctx.getEnclosingType()).put(name, instance);
-    dataFieldTypeMap(ctx, ctx.getEnclosingType()).put(name, type);
+  private void saveDataField(Decorable decorable, MetaClass type, String name, String fieldName, Statement instance) {
+    dataFieldMap(decorable, decorable.getEnclosingType()).put(name, instance);
+    dataFieldTypeMap(decorable, decorable.getEnclosingType()).put(name, type);
   }
 
   private String getTemplateDataFieldName(DataField annotation, String deflt) {
@@ -83,14 +83,14 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
    * Get the map of {@link DataField} names and {@link Statement} instances.
    */
   @SuppressWarnings("unchecked")
-  private static Map<String, Statement> dataFieldMap(InjectableInstance<?> ctx, MetaClass templateType) {
+  private static Map<String, Statement> dataFieldMap(Decorable decorable, MetaClass templateType) {
     String dataFieldMapName = dataFieldMapName(templateType);
 
-    Map<String, Statement> dataFields = (Map<String, Statement>) ctx.getInjectionContext().getAttribute(
+    Map<String, Statement> dataFields = (Map<String, Statement>) decorable.getInjectionContext().getAttribute(
         dataFieldMapName);
     if (dataFields == null) {
       dataFields = new LinkedHashMap<String, Statement>();
-      ctx.getInjectionContext().setAttribute(dataFieldMapName, dataFields);
+      decorable.getInjectionContext().setAttribute(dataFieldMapName, dataFields);
     }
 
     return dataFields;
@@ -100,14 +100,14 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
    * Get the map of {@link DataField} names and {@link MetaClass} types.
    */
   @SuppressWarnings("unchecked")
-  private static Map<String, MetaClass> dataFieldTypeMap(InjectableInstance<?> ctx, MetaClass templateType) {
+  private static Map<String, MetaClass> dataFieldTypeMap(Decorable decorable, MetaClass templateType) {
     String dataFieldTypeMapName = dataFieldTypeMapName(templateType);
 
-    Map<String, MetaClass> dataFieldTypes = (Map<String, MetaClass>) ctx.getInjectionContext().getAttribute(
+    Map<String, MetaClass> dataFieldTypes = (Map<String, MetaClass>) decorable.getInjectionContext().getAttribute(
         dataFieldTypeMapName);
     if (dataFieldTypes == null) {
       dataFieldTypes = new LinkedHashMap<String, MetaClass>();
-      ctx.getInjectionContext().setAttribute(dataFieldTypeMapName, dataFieldTypes);
+      decorable.getInjectionContext().setAttribute(dataFieldTypeMapName, dataFieldTypes);
     }
 
     return dataFieldTypes;
@@ -119,15 +119,15 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
    * by {@link MetaClass#getSuperClass()}.
    */
   @SuppressWarnings("unchecked")
-  public static Map<String, Statement> aggregateDataFieldMap(InjectableInstance<?> ctx, MetaClass componentType) {
+  public static Map<String, Statement> aggregateDataFieldMap(Decorable decorable, MetaClass componentType) {
 
     Map<String, Statement> result = new LinkedHashMap<String, Statement>();
 
     if (componentType.getSuperClass() != null) {
-      result.putAll(aggregateDataFieldMap(ctx, componentType.getSuperClass()));
+      result.putAll(aggregateDataFieldMap(decorable, componentType.getSuperClass()));
     }
 
-    Map<String, Statement> dataFields = (Map<String, Statement>) ctx.getInjectionContext().getAttribute(
+    Map<String, Statement> dataFields = (Map<String, Statement>) decorable.getInjectionContext().getAttribute(
         dataFieldMapName(componentType));
     if (dataFields != null) {
       result.putAll(dataFields);
@@ -142,15 +142,15 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
    * returned by {@link MetaClass#getSuperClass()}.
    */
   @SuppressWarnings("unchecked")
-  public static Map<String, MetaClass> aggregateDataFieldTypeMap(InjectableInstance<?> ctx, MetaClass componentType) {
+  public static Map<String, MetaClass> aggregateDataFieldTypeMap(Decorable decorable, MetaClass componentType) {
 
     Map<String, MetaClass> result = new LinkedHashMap<String, MetaClass>();
 
     if (componentType.getSuperClass() != null) {
-      result.putAll(aggregateDataFieldTypeMap(ctx, componentType.getSuperClass()));
+      result.putAll(aggregateDataFieldTypeMap(decorable, componentType.getSuperClass()));
     }
 
-    Map<String, MetaClass> dataFields = (Map<String, MetaClass>) ctx.getInjectionContext().getAttribute(
+    Map<String, MetaClass> dataFields = (Map<String, MetaClass>) decorable.getInjectionContext().getAttribute(
         dataFieldTypeMapName(componentType));
 
     if (dataFields != null) {

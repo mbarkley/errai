@@ -42,13 +42,11 @@ import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
 import org.jboss.errai.codegen.exception.GenerationException;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
-import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameterizedType;
 import org.jboss.errai.codegen.meta.MetaType;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.codegen.meta.impl.java.JavaReflectionClass;
-import org.jboss.errai.codegen.util.PrivateAccessType;
 import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.common.client.ui.ElementWrapperWidget;
@@ -57,11 +55,11 @@ import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.client.container.DestructionCallback;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 import org.jboss.errai.ui.client.local.spi.TemplateRenderingCallback;
 import org.jboss.errai.ui.shared.Template;
 import org.jboss.errai.ui.shared.TemplateUtil;
-import org.jboss.errai.ui.shared.api.annotations.DataField;
 import org.jboss.errai.ui.shared.api.annotations.EventHandler;
 import org.jboss.errai.ui.shared.api.annotations.SinkNative;
 import org.jboss.errai.ui.shared.api.annotations.Templated;
@@ -89,7 +87,9 @@ import com.google.gwt.user.client.ui.Widget;
  * @author <a href="mailto:lincolnbaxter@gmail.com">Lincoln Baxter, III</a>
  * @author Christian Sadilek <csadilek@redhat.com>
  */
-@CodeDecorator
+
+//This decorator has to run after the decorator for @DataField
+@CodeDecorator(order=1)
 public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
   private static final String CONSTRUCTED_TEMPLATE_SET_KEY = "constructedTemplate";
 
@@ -100,11 +100,10 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(final InjectableInstance<Templated> ctx) {
-    final MetaClass declaringClass = ctx.getEnclosingType();
+  public List<? extends Statement> generateDecorator(final Decorable decorable, final FactoryController controller) {
+    final MetaClass declaringClass = decorable.getEnclosingType();
 
-    Class<?> templateProvider =
-            ctx.getEnclosingType().getAnnotation(Templated.class).provider();
+    Class<?> templateProvider = declaringClass.getAnnotation(Templated.class).provider();
     boolean customProvider = templateProvider != Templated.DEFAULT_PROVIDER.class;
 
     if (!declaringClass.isAssignableTo(Composite.class)) {
@@ -112,26 +111,19 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
           + "] must extend base class [" + Composite.class.getName() + "].");
     }
 
-    for (final MetaField field : declaringClass.getFields()) {
-      if (field.isAnnotationPresent(DataField.class)) {
-        ctx.addExposedField(field, PrivateAccessType.Both);
-      }
-    }
-
     final List<Statement> initStmts = new ArrayList<Statement>();
 
-    generateTemplatedInitialization(ctx, initStmts, customProvider);
+    generateTemplatedInitialization(decorable, initStmts, customProvider);
 
     if (declaringClass.isAnnotationPresent(EntryPoint.class)) {
       initStmts.add(Stmt.invokeStatic(RootPanel.class, "get").invoke("add", Refs.get("obj")));
     }
 
-    final Statement initCallback;
     if (customProvider) {
       Statement init =
         Stmt.invokeStatic(TemplateUtil.class, "provideTemplate",
           templateProvider,
-          getTemplateUrl(ctx.getEnclosingType()),
+          getTemplateUrl(declaringClass),
           Stmt.newObject(TemplateRenderingCallback.class)
             .extend()
             .publicOverridesMethod("renderTemplate", Parameter.of(String.class, "template", true))
@@ -139,33 +131,28 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
             .finish()
             .finish());
 
-      initCallback = InjectUtil.createInitializationCallback(declaringClass, "obj", Collections.singletonList(init));
+      controller.addInitializationStatements(Collections.singletonList(init));
     }
     else {
-      initCallback = InjectUtil.createInitializationCallback(declaringClass, "obj", initStmts);
-    }
-    Statement addInitCallback
-      = Stmt.loadVariable("context").invoke("addInitializationCallback",
-          Refs.get(ctx.getInjector().getInstanceVarName()), initCallback);
-
-    List<Statement> stmts = new ArrayList<Statement>();
-    if (ctx.getInjectionContext().isAsync()) {
-      final Statement runnable = Stmt.newObject(Runnable.class).extend()
-        .publicOverridesMethod("run")
-        .append(addInitCallback)
-        .finish()
-        .finish();
-      stmts.add(Stmt.loadVariable("async").invoke("runOnFinish", runnable));
-    }
-    else {
-      stmts.add(addInitCallback);
+      controller.addInitializationStatements(initStmts);
     }
 
-    Statement destructionCallback = generateTemplateDestruction(ctx);
-    if (destructionCallback != null) {
-      stmts.add(destructionCallback);
-    }
-    return stmts;
+    // TODO AAAAAAAAAHHHHHHRRRRRRRGGGGGGG
+//    if (ctx.getInjectionContext().isAsync()) {
+//      final Statement runnable = Stmt.newObject(Runnable.class).extend()
+//        .publicOverridesMethod("run")
+//        .append(addInitCallback)
+//        .finish()
+//        .finish();
+//      stmts.add(Stmt.loadVariable("async").invoke("runOnFinish", runnable));
+//    }
+//    else {
+//      stmts.add(addInitCallback);
+//    }
+
+    controller.addDestructionStatements(generateTemplateDestruction(decorable));
+
+    return Collections.emptyList();
   }
 
   /**
@@ -173,11 +160,11 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
    *
    * @return statement representing the template destruction logic.
    */
-  private Statement generateTemplateDestruction(final InjectableInstance<Templated> ctx) {
+  private List<Statement> generateTemplateDestruction(final Decorable decorable) {
     List<Statement> destructionStatements = new ArrayList<Statement>();
-    final Map<String, Statement> dataFields = DataFieldCodeDecorator.aggregateDataFieldMap(ctx, ctx.getEnclosingType());
+    final Map<String, Statement> dataFields = DataFieldCodeDecorator.aggregateDataFieldMap(decorable, decorable.getEnclosingType());
     final Map<String, MetaClass> dataFieldTypes =
-      DataFieldCodeDecorator.aggregateDataFieldTypeMap(ctx, ctx.getEnclosingType());
+      DataFieldCodeDecorator.aggregateDataFieldTypeMap(decorable, decorable.getEnclosingType());
 
     for (final String fieldName : dataFields.keySet()) {
       Statement field = dataFields.get(fieldName);
@@ -188,27 +175,19 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
       }
     }
 
-    if (destructionStatements.isEmpty())
-      return null;
-
-    Statement destructionLogic =
-      Stmt.loadVariable("context").invoke("addDestructionCallback",
-        Refs.get(ctx.getInjector().getInstanceVarName()),
-        InjectUtil.createDestructionCallback(ctx.getEnclosingType(), "obj", destructionStatements));
-
-    return destructionLogic;
+    return destructionStatements;
   }
 
   /**
    * Generate the actual construction logic for our {@link Templated} component
    */
   @SuppressWarnings("serial")
-  private void generateTemplatedInitialization(final InjectableInstance<Templated> ctx,
+  private void generateTemplatedInitialization(final Decorable decorable,
                                                final List<Statement> initStmts,
                                                boolean customProvider) {
 
-    final Map<MetaClass, BuildMetaClass> constructed = getConstructedTemplateTypes(ctx);
-    final MetaClass declaringClass = ctx.getEnclosingType();
+    final Map<MetaClass, BuildMetaClass> constructed = getConstructedTemplateTypes(decorable);
+    final MetaClass declaringClass = decorable.getEnclosingType();
 
     if (!constructed.containsKey(declaringClass)) {
       final String templateVarName = InjectUtil.getUniqueVarName();
@@ -217,16 +196,16 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
        * Generate this component's ClientBundle resource if necessary
        */
       if (!customProvider) {
-        generateTemplateResourceInterface(ctx, declaringClass);
+        generateTemplateResourceInterface(decorable, declaringClass);
 
       /*
        * Instantiate the ClientBundle Template resource
        */
       initStmts.add(Stmt
-          .declareVariable(getConstructedTemplateTypes(ctx).get(declaringClass))
+          .declareVariable(getConstructedTemplateTypes(decorable).get(declaringClass))
           .named(templateVarName)
           .initializeWith(
-              Stmt.invokeStatic(GWT.class, "create", getConstructedTemplateTypes(ctx).get(declaringClass))));
+              Stmt.invokeStatic(GWT.class, "create", getConstructedTemplateTypes(decorable).get(declaringClass))));
       }
 
       /*
@@ -240,7 +219,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
               Stmt.invokeStatic(TemplateUtil.class, "getRootTemplateElement",
                   (customProvider) ? Variable.get("template") :
                     Stmt.loadVariable(templateVarName).invoke("getContents").invoke("getText"),
-                  getTemplateFileName(ctx.getEnclosingType()),
+                  getTemplateFileName(declaringClass),
                   getTemplateFragmentName(declaringClass))));
 
       final Statement rootTemplateElement = Stmt.loadVariable(rootTemplateElementVarName);
@@ -249,13 +228,13 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
        * If i18n is enabled for this module, translate the root template element here
        */
       if (!customProvider) {
-        translateTemplate(ctx, initStmts, rootTemplateElement);
+        translateTemplate(decorable, initStmts, rootTemplateElement);
       }
 
       /*
        * Get a reference to the actual Composite component being created
        */
-      final Statement component = Refs.get(ctx.getInjector().getInstanceVarName());
+      final Statement component = Refs.get("instance");
 
       /*
        * Get all of the data-field Elements from the Template
@@ -280,21 +259,21 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
       );
       final Statement fieldsMap = Stmt.loadVariable(fieldsMapVarName);
 
-      generateComponentCompositions(ctx, initStmts, component, rootTemplateElement,
+      generateComponentCompositions(decorable, initStmts, component, rootTemplateElement,
           Stmt.loadVariable(dataFieldElementsVarName), fieldsMap);
 
-      generateEventHandlerMethodClasses(ctx, initStmts, component, dataFieldElementsVarName, fieldsMap);
+      generateEventHandlerMethodClasses(decorable, initStmts, component, dataFieldElementsVarName, fieldsMap);
     }
   }
 
-  private void generateEventHandlerMethodClasses(final InjectableInstance<Templated> ctx,
+  private void generateEventHandlerMethodClasses(final Decorable decorable,
                                                  final List<Statement> initStmts, final Statement component,
                                                  final String dataFieldElementsVarName, final Statement fieldsMap) {
 
-    final Map<String, MetaClass> dataFieldTypes = DataFieldCodeDecorator.aggregateDataFieldTypeMap(ctx, ctx.getEnclosingType());
-    dataFieldTypes.put("this", ctx.getEnclosingType());
+    final Map<String, MetaClass> dataFieldTypes = DataFieldCodeDecorator.aggregateDataFieldTypeMap(decorable, decorable.getEnclosingType());
+    dataFieldTypes.put("this", decorable.getEnclosingType());
 
-    final MetaClass declaringClass = ctx.getEnclosingType();
+    final MetaClass declaringClass = decorable.getEnclosingType();
 
     /* Ensure that no @DataFields are handled more than once when used in combination with @SyncNative */
     final Set<String> processedNativeHandlers = new HashSet<String>();
@@ -326,7 +305,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
         final BlockBuilder<AnonymousClassStructureBuilder> listenerBuiler = ObjectBuilder.newInstanceOf(handlerType)
             .extend()
             .publicOverridesMethod(handlerType.getMethods()[0].getName(), Parameter.of(eventType, "event"));
-        listenerBuiler.append(InjectUtil.invokePublicOrPrivateMethod(ctx.getInjectionContext(), component,
+        listenerBuiler.append(InjectUtil.invokePublicOrPrivateMethod(decorable.getInjectionContext(), component,
             method, Stmt.loadVariable("event")));
 
         final ObjectBuilder listenerInstance = listenerBuiler.finish().finish();
@@ -412,7 +391,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
             .publicOverridesMethod(handlerType.getMethods()[0].getName(), Parameter.of(eventType, "event"));
 
 
-        listenerBuiler.append(InjectUtil.invokePublicOrPrivateMethod(ctx.getInjectionContext(),
+        listenerBuiler.append(InjectUtil.invokePublicOrPrivateMethod(decorable.getInjectionContext(),
             component, method, Stmt.loadVariable("event")));
 
         final ObjectBuilder listenerInstance = listenerBuiler.finish().finish();
@@ -538,22 +517,22 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
   /**
    * Translates the template using the module's i18n message bundle (only if
    * i18n is enabled for the module).
-   * @param ctx
+   * @param decorable
    * @param initStmts
    * @param rootTemplateElement
    */
-  private void translateTemplate(InjectableInstance<Templated> ctx, List<Statement> initStmts,
+  private void translateTemplate(Decorable decorable, List<Statement> initStmts,
           Statement rootTemplateElement) {
     initStmts.add(
             Stmt.invokeStatic(
                     TemplateUtil.class,
                     "translateTemplate",
-                    getTemplateFileName(ctx.getEnclosingType()),
+                    getTemplateFileName(decorable.getEnclosingType()),
                     rootTemplateElement
                     ));
   }
 
-  private void generateComponentCompositions(final InjectableInstance<Templated> ctx,
+  private void generateComponentCompositions(final Decorable decorable,
                                              final List<Statement> initStmts,
                                              final Statement component,
                                              final Statement rootTemplateElement,
@@ -564,10 +543,10 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
      * Merge each field's Widget Element into the DOM in place of the
      * corresponding data-field
      */
-    final Map<String, Statement> dataFields = DataFieldCodeDecorator.aggregateDataFieldMap(ctx, ctx.getEnclosingType());
+    final Map<String, Statement> dataFields = DataFieldCodeDecorator.aggregateDataFieldMap(decorable, decorable.getEnclosingType());
     for (final Entry<String, Statement> field : dataFields.entrySet()) {
-      initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "compositeComponentReplace", ctx.getEnclosingType()
-          .getFullyQualifiedName(), getTemplateFileName(ctx.getEnclosingType()), Cast.to(Widget.class, field.getValue()),
+      initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "compositeComponentReplace", decorable.getEnclosingType()
+          .getFullyQualifiedName(), getTemplateFileName(decorable.getEnclosingType()), Cast.to(Widget.class, field.getValue()),
           dataFieldElements, field.getKey()));
     }
 
@@ -591,7 +570,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
   /**
    * Create an inner interface for the given {@link Template} class and its HTML corresponding resource
    */
-  private void generateTemplateResourceInterface(final InjectableInstance<Templated> ctx, final MetaClass type) {
+  private void generateTemplateResourceInterface(final Decorable decorable, final MetaClass type) {
     final ClassStructureBuilder<?> componentTemplateResource = ClassBuilder.define(getTemplateTypeName(type)).publicScope()
         .interfaceDefinition().implementsInterface(Template.class).implementsInterface(ClientBundle.class)
         .body()
@@ -609,23 +588,23 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
 
         }).finish();
 
-    ctx.getInjectionContext().getProcessingContext().getBootstrapClass()
+    decorable.getInjectionContext().getProcessingContext().getBootstrapClass()
         .addInnerClass(new InnerClass(componentTemplateResource.getClassDefinition()));
 
-    getConstructedTemplateTypes(ctx).put(type, componentTemplateResource.getClassDefinition());
+    getConstructedTemplateTypes(decorable).put(type, componentTemplateResource.getClassDefinition());
   }
 
   /**
    * Get a map of all previously constructed {@link Template} object types
    */
   @SuppressWarnings("unchecked")
-  private Map<MetaClass, BuildMetaClass> getConstructedTemplateTypes(final InjectableInstance<Templated> ctx) {
-    Map<MetaClass, BuildMetaClass> result = (Map<MetaClass, BuildMetaClass>) ctx.getInjectionContext().getAttribute(
+  private Map<MetaClass, BuildMetaClass> getConstructedTemplateTypes(final Decorable decorable) {
+    Map<MetaClass, BuildMetaClass> result = (Map<MetaClass, BuildMetaClass>) decorable.getInjectionContext().getAttribute(
         CONSTRUCTED_TEMPLATE_SET_KEY);
 
     if (result == null) {
       result = new LinkedHashMap<MetaClass, BuildMetaClass>();
-      ctx.getInjectionContext().setAttribute(CONSTRUCTED_TEMPLATE_SET_KEY, result);
+      decorable.getInjectionContext().setAttribute(CONSTRUCTED_TEMPLATE_SET_KEY, result);
     }
 
     return result;

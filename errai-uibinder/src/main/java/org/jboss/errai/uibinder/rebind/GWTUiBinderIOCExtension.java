@@ -16,34 +16,11 @@
 
 package org.jboss.errai.uibinder.rebind;
 
-import java.lang.annotation.Annotation;
-
-import org.jboss.errai.codegen.BlockStatement;
-import org.jboss.errai.codegen.InnerClass;
-import org.jboss.errai.codegen.Parameter;
-import org.jboss.errai.codegen.builder.impl.ClassBuilder;
-import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
-import org.jboss.errai.codegen.literal.LiteralFactory;
-import org.jboss.errai.codegen.meta.MetaClass;
-import org.jboss.errai.codegen.meta.MetaClassFactory;
-import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
-import org.jboss.errai.codegen.util.Refs;
-import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.api.IOCExtension;
-import org.jboss.errai.ioc.client.api.PackageTarget;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessor;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionPoint;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.TypeDiscoveryListener;
-import org.jboss.errai.uibinder.client.UiBinderProvider;
-
-import com.google.gwt.core.client.GWT;
-import com.google.gwt.safehtml.client.SafeHtmlTemplates;
-import com.google.gwt.safehtml.shared.SafeUri;
-import com.google.gwt.uibinder.client.UiBinder;
-import com.google.gwt.uibinder.client.UiTemplate;
 
 /**
  * @author Mike Brock
@@ -52,100 +29,100 @@ import com.google.gwt.uibinder.client.UiTemplate;
 public class GWTUiBinderIOCExtension implements IOCExtensionConfigurator {
   @Override
   public void configure(final IOCProcessingContext context, final InjectionContext injectionContext, final IOCProcessor procFactory) {
-
-    context.registerTypeDiscoveryListener(new TypeDiscoveryListener() {
-      @Override
-      public void onDiscovery(final IOCProcessingContext context,
-                              final InjectionPoint injectionPoint,
-                              final MetaClass type) {
-       // final MetaClass type = injectionPoint.getElementTypeOrMethodReturnType();
-        final MetaClass enclosingType = injectionPoint.getEnclosingType();
-
-        if (type.isAssignableFrom(UiBinder.class)) {
-          MetaClass uiBinderParameterized = MetaClassFactory.parameterizedAs(UiBinder.class,
-                  MetaClassFactory
-                          .typeParametersOf(type.getParameterizedType().getTypeParameters()[0],
-                              enclosingType));
-
-          BuildMetaClass uiBinderBoilerPlaterIface = ClassBuilder.define(enclosingType.getFullyQualifiedName().replaceAll("\\.", "_")
-                  + "_UiBinder", uiBinderParameterized)
-                  .publicScope().staticClass().interfaceDefinition()
-                  .body().getClassDefinition();
-
-          UiTemplate handler = new UiTemplate() {
-            @Override
-            public String value() {
-              return enclosingType.getFullyQualifiedName() + ".ui.xml";
-            }
-
-            @Override
-            public Class<? extends Annotation> annotationType() {
-              return UiTemplate.class;
-            }
-          };
-
-          PackageTarget packageTarget = new PackageTarget() {
-            @Override
-            public String value() {
-              return enclosingType.getPackageName();
-            }
-
-            @Override
-            public Class<? extends Annotation> annotationType() {
-              return PackageTarget.class;
-            }
-          };
-
-          uiBinderBoilerPlaterIface.addAnnotation(handler);
-          uiBinderBoilerPlaterIface.addAnnotation(packageTarget);
-
-          context.getBootstrapClass().addInnerClass(new InnerClass(uiBinderBoilerPlaterIface));
-
-          final BlockStatement staticInit = context.getBootstrapClass().getStaticInitializer();
-
-          String varName = "uiBinderInst_" + enclosingType.getFullyQualifiedName()
-                  .replaceAll("\\.", "_");
-
-          if (Boolean.getBoolean("errai.simulatedClient")) {
-            staticInit.addStatement(Stmt.declareVariable(UiBinder.class).named(varName).initializeWith(
-                    ObjectBuilder.newInstanceOf(uiBinderBoilerPlaterIface)
-                            .extend()
-                            .publicOverridesMethod("createAndBindUi", Parameter.of(type, "w"))
-                            .append(Stmt.loadLiteral(null).returnValue())
-                            .finish().finish()
-            )
-            );
-          }
-          else {
-            staticInit.addStatement(Stmt.declareVariable(UiBinder.class).named(varName).initializeWith(
-                    Stmt.invokeStatic(GWT.class, "create", LiteralFactory.getLiteral(uiBinderBoilerPlaterIface))
-            ));
-          }
-
-          staticInit.addStatement(Stmt.invokeStatic(UiBinderProvider.class, "registerBinder",
-              enclosingType, Refs.get(varName)));
-        }
-        else if (type.isAssignableTo(SafeHtmlTemplates.class)) {
-          final String varName = "safeTemplateInst_" + type.getFullyQualifiedName()
-                  .replaceAll("\\.", "_");
-
-          if (Boolean.getBoolean("errai.simulatedClient")) {
-            context.append(Stmt.declareVariable(SafeHtmlTemplates.class).named(varName).initializeWith(
-                ObjectBuilder.newInstanceOf(type)
-                    .extend()
-                    .publicOverridesMethod("link", Parameter.of(SafeUri.class, "safe"),
-                        Parameter.of(String.class, "str"))
-                    .append(Stmt.loadLiteral(null).returnValue())
-                    .finish().finish()
-            )
-            );
-
-          }
-          else {
-            context.append(Stmt.declareVariable(type).named(varName).initializeWith(
-                Stmt.invokeStatic(GWT.class, "create", LiteralFactory.getLiteral(type))
-            ));
-          }
+//
+//    context.registerTypeDiscoveryListener(new TypeDiscoveryListener() {
+//      @Override
+//      public void onDiscovery(final IOCProcessingContext context,
+//                              final InjectionPoint injectionPoint,
+//                              final MetaClass type) {
+//       // final MetaClass type = injectionPoint.getElementTypeOrMethodReturnType();
+//        final MetaClass enclosingType = injectionPoint.getEnclosingType();
+//
+//        if (type.isAssignableFrom(UiBinder.class)) {
+//          MetaClass uiBinderParameterized = MetaClassFactory.parameterizedAs(UiBinder.class,
+//                  MetaClassFactory
+//                          .typeParametersOf(type.getParameterizedType().getTypeParameters()[0],
+//                              enclosingType));
+//
+//          BuildMetaClass uiBinderBoilerPlaterIface = ClassBuilder.define(enclosingType.getFullyQualifiedName().replaceAll("\\.", "_")
+//                  + "_UiBinder", uiBinderParameterized)
+//                  .publicScope().staticClass().interfaceDefinition()
+//                  .body().getClassDefinition();
+//
+//          UiTemplate handler = new UiTemplate() {
+//            @Override
+//            public String value() {
+//              return enclosingType.getFullyQualifiedName() + ".ui.xml";
+//            }
+//
+//            @Override
+//            public Class<? extends Annotation> annotationType() {
+//              return UiTemplate.class;
+//            }
+//          };
+//
+//          PackageTarget packageTarget = new PackageTarget() {
+//            @Override
+//            public String value() {
+//              return enclosingType.getPackageName();
+//            }
+//
+//            @Override
+//            public Class<? extends Annotation> annotationType() {
+//              return PackageTarget.class;
+//            }
+//          };
+//
+//          uiBinderBoilerPlaterIface.addAnnotation(handler);
+//          uiBinderBoilerPlaterIface.addAnnotation(packageTarget);
+//
+//          context.getBootstrapClass().addInnerClass(new InnerClass(uiBinderBoilerPlaterIface));
+//
+//          final BlockStatement staticInit = context.getBootstrapClass().getStaticInitializer();
+//
+//          String varName = "uiBinderInst_" + enclosingType.getFullyQualifiedName()
+//                  .replaceAll("\\.", "_");
+//
+//          if (Boolean.getBoolean("errai.simulatedClient")) {
+//            staticInit.addStatement(Stmt.declareVariable(UiBinder.class).named(varName).initializeWith(
+//                    ObjectBuilder.newInstanceOf(uiBinderBoilerPlaterIface)
+//                            .extend()
+//                            .publicOverridesMethod("createAndBindUi", Parameter.of(type, "w"))
+//                            .append(Stmt.loadLiteral(null).returnValue())
+//                            .finish().finish()
+//            )
+//            );
+//          }
+//          else {
+//            staticInit.addStatement(Stmt.declareVariable(UiBinder.class).named(varName).initializeWith(
+//                    Stmt.invokeStatic(GWT.class, "create", LiteralFactory.getLiteral(uiBinderBoilerPlaterIface))
+//            ));
+//          }
+//
+//          staticInit.addStatement(Stmt.invokeStatic(UiBinderProvider.class, "registerBinder",
+//              enclosingType, Refs.get(varName)));
+//        }
+//        else if (type.isAssignableTo(SafeHtmlTemplates.class)) {
+//          final String varName = "safeTemplateInst_" + type.getFullyQualifiedName()
+//                  .replaceAll("\\.", "_");
+//
+//          if (Boolean.getBoolean("errai.simulatedClient")) {
+//            context.append(Stmt.declareVariable(SafeHtmlTemplates.class).named(varName).initializeWith(
+//                ObjectBuilder.newInstanceOf(type)
+//                    .extend()
+//                    .publicOverridesMethod("link", Parameter.of(SafeUri.class, "safe"),
+//                        Parameter.of(String.class, "str"))
+//                    .append(Stmt.loadLiteral(null).returnValue())
+//                    .finish().finish()
+//            )
+//            );
+//
+//          }
+//          else {
+//            context.append(Stmt.declareVariable(type).named(varName).initializeWith(
+//                Stmt.invokeStatic(GWT.class, "create", LiteralFactory.getLiteral(type))
+//            ));
+//          }
 
 
           // FIXME
@@ -185,9 +162,9 @@ public class GWTUiBinderIOCExtension implements IOCExtensionConfigurator {
 //              return type;
 //            }
 //          });
-        }
-      }
-    });
+//        }
+//      }
+//    });
   }
 
   @Override
