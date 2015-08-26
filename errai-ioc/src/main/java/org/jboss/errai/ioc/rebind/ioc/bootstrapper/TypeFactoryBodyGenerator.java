@@ -14,10 +14,13 @@ import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 
 import javax.annotation.PostConstruct;
 
@@ -26,6 +29,7 @@ import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaConstructor;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
@@ -72,17 +76,29 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
   private void runDecorators(final Injectable injectable, final InjectionContext injectionContext,
           final List<Statement> createInstanceStatements, final ClassStructureBuilder<?> bodyBlockBuilder) {
     final MetaClass type = injectable.getInjectedType();
-    runDecoratorsForElementType(injectable, injectionContext, createInstanceStatements, type.getFields(), ElementType.TYPE, bodyBlockBuilder);
-    runDecoratorsForElementType(injectable, injectionContext, createInstanceStatements, type.getFields(), ElementType.PARAMETER, bodyBlockBuilder);
-    runDecoratorsForElementType(injectable, injectionContext, createInstanceStatements, type.getFields(), ElementType.FIELD, bodyBlockBuilder);
-    runDecoratorsForElementType(injectable, injectionContext, createInstanceStatements, type.getMethods(), ElementType.METHOD, bodyBlockBuilder);
+    final Set<HasAnnotations> createdAccessors = new HashSet<HasAnnotations>();
+    runDecoratorsForElementType(injectionContext, createInstanceStatements, new MetaClass[] { type }, ElementType.TYPE, bodyBlockBuilder, createdAccessors);
+    runDecoratorsForElementType(injectionContext, createInstanceStatements, type.getFields(), ElementType.FIELD, bodyBlockBuilder, createdAccessors);
+    runDecoratorsForElementType(injectionContext, createInstanceStatements, type.getMethods(), ElementType.METHOD, bodyBlockBuilder, createdAccessors);
+    runDecoratorsForElementType(injectionContext, createInstanceStatements, getAllParams(type), ElementType.PARAMETER, bodyBlockBuilder, createdAccessors);
+  }
+
+  private MetaParameter[] getAllParams(final MetaClass type) {
+    final List<MetaParameter> params = new ArrayList<MetaParameter>();
+    for (final MetaMethod method : type.getMethods()) {
+      params.addAll(Arrays.asList(method.getParameters()));
+    }
+    for (final MetaConstructor constructor : type.getConstructors()) {
+      params.addAll(Arrays.asList(constructor.getParameters()));
+    }
+
+    return params.toArray(new MetaParameter[0]);
   }
 
   @SuppressWarnings({ "unchecked", "rawtypes" })
-  private void runDecoratorsForElementType(final Injectable injectable, final InjectionContext injectionContext,
-          final List<Statement> createInstanceStatements,
-          final HasAnnotations[] annotateds,
-          final ElementType elemType, ClassStructureBuilder<?> builder) {
+  private void runDecoratorsForElementType(final InjectionContext injectionContext,
+          final List<Statement> createInstanceStatements, final HasAnnotations[] annotateds, final ElementType elemType,
+          final ClassStructureBuilder<?> builder, final Set<HasAnnotations> createdAccessors) {
     for (final HasAnnotations annotated : annotateds) {
       final Collection<Class<? extends Annotation>> decoratorFieldAnnos = injectionContext.getDecoratorAnnotationsBy(elemType);
       final Collection<? extends Annotation> annos = getAnnotationsOfType(annotated, decoratorFieldAnnos);
@@ -90,16 +106,25 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
         final IOCDecoratorExtension[] decorators = injectionContext.getDecorators(anno.annotationType());
         for (final IOCDecoratorExtension decorator : decorators) {
           final Decorable decorable = new Decorable(annotated, anno, Decorable.DecorableType.fromElementType(elemType));
-          // TODO avoid duplicate calls to add accessors
-          if (annotated instanceof MetaField) {
+          if (isNonPublicField(annotated) && !createdAccessors.contains(annotated)) {
             addPrivateAccessStubs(PrivateAccessType.Both, "jsni", builder, (MetaField) annotated);
-          } else if (annotated instanceof MetaMethod) {
+            createdAccessors.add(annotated);
+          } else if (isNonPublicMethod(annotated) && !createdAccessors.contains(annotated)) {
             addPrivateAccessStubs("jsni", builder, (MetaMethod) annotated);
+            createdAccessors.add(annotated);
           }
           createInstanceStatements.addAll(decorator.generateDecorator(decorable, controller));
         }
       }
     }
+  }
+
+  private boolean isNonPublicMethod(final HasAnnotations annotated) {
+    return annotated instanceof MetaMethod && !((MetaMethod) annotated).isPublic();
+  }
+
+  private boolean isNonPublicField(final HasAnnotations annotated) {
+    return annotated instanceof MetaField && !((MetaField) annotated).isPublic();
   }
 
   private Collection<? extends Annotation> getAnnotationsOfType(final HasAnnotations annotated,
