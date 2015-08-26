@@ -236,12 +236,10 @@ public class IOCProcessor {
 
   private MetaClass addFactoryDeclaration(final Injectable injectable, final IOCProcessingContext processingContext) {
     final ClassStructureBuilder<?> builder = processingContext.getBootstrapBuilder();
-    final BuildMetaClass factory = ClassBuilder.define(injectable.getFactoryName())
-                                                       .publicScope()
-                                                       .abstractClass()
-                                                       .implementsInterface(parameterizedAs(Factory.class, typeParametersOf(injectable.getInjectedType())))
-                                                       .body()
-                                                       .getClassDefinition();
+    final BuildMetaClass factory = ClassBuilder
+            .define(injectable.getFactoryName(),
+                    parameterizedAs(Factory.class, typeParametersOf(injectable.getInjectedType())))
+            .publicScope().abstractClass().body().getClassDefinition();
     builder.declaresInnerClass(new InnerClass(factory));
 
     return factory;

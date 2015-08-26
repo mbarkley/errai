@@ -41,11 +41,11 @@ import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.common.client.ui.ElementWrapperWidget;
 import org.jboss.errai.databinding.client.api.DataBinder;
 import org.jboss.errai.ioc.client.api.CodeDecorator;
-import org.jboss.errai.ioc.client.container.DestructionCallback;
 import org.jboss.errai.ioc.client.container.InitializationCallback;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
-import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable.DecorableType;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 import org.jboss.errai.ui.shared.api.annotations.Bound;
 
 import com.google.gwt.dom.client.Element;
@@ -53,7 +53,7 @@ import com.google.gwt.user.client.ui.Widget;
 
 /**
  * Generates an {@link InitializationCallback} that contains automatic binding logic.
- * 
+ *
  * @author Christian Sadilek <csadilek@redhat.com>
  */
 @CodeDecorator
@@ -67,46 +67,42 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(InjectableInstance<Bound> ctx) {
-    final MetaClass targetClass = ctx.getTargetInjector().getInjectedType();
+  public List<? extends Statement> generateDecorator(final Decorable decorable, final FactoryController controller) {
+    final MetaClass targetClass = decorable.getEnclosingType();
     final List<Statement> statements = new ArrayList<Statement>();
     BlockBuilder<AnonymousClassStructureBuilder> initBlock = initBlockCache.get(targetClass);
 
-    // Ensure private accessors are generated for bound widget fields
-    ctx.ensureMemberExposed();
-
-    final DataBindingUtil.DataBinderRef binderLookup = DataBindingUtil.lookupDataBinderRef(ctx);
+    final DataBindingUtil.DataBinderRef binderLookup = DataBindingUtil.lookupDataBinderRef(decorable, controller);
     if (binderLookup != null) {
       // Generate a reference to the bean's @AutoBound data binder
       if (initBlock == null) {
         statements.add(Stmt.declareVariable("binder", DataBinder.class, binderLookup.getValueAccessor()));
         statements.add(If.isNull(Refs.get("binder")).append(
                 Stmt.throw_(RuntimeException.class, "@AutoBound data binder for class "
-                    + ctx.getInjector().getInjectedType()
+                    + targetClass
                     + " has not been initialized. Either initialize or add @Inject!")).finish());
       }
 
       // Check if the bound property exists in data model type
-      Bound bound = ctx.getAnnotation();
-      String property = bound.property().equals("") ? ctx.getMemberName() : bound.property();
+      Bound bound = (Bound) decorable.getAnnotation();
+      String property = bound.property().equals("") ? decorable.getMemberName() : bound.property();
       if (!DataBindingValidator.isValidPropertyChain(binderLookup.getDataModelType(), property)) {
-        throw new GenerationException("Invalid binding of field " + ctx.getMemberName()
-            + " in class " + ctx.getInjector().getInjectedType() + "! Property " + property
+        throw new GenerationException("Invalid binding of field " + decorable.getMemberName()
+            + " in class " + targetClass + "! Property " + property
             + " not resolvable from class " + binderLookup.getDataModelType()
             + "! Hint: Is " + binderLookup.getDataModelType() + " marked as @Bindable? When binding to a "
             + "property chain, all properties but the last in a chain must be of a @Bindable type!");
       }
 
-      Statement widget = ctx.getValueStatement();
+      Statement widget = decorable.getAccessStatement();
       // Ensure the @Bound field or method provides a widget or DOM element
-      MetaClass widgetType = ctx.getElementTypeOrMethodReturnType();
+      MetaClass widgetType = decorable.getType();
       if (widgetType.isAssignableTo(Widget.class)) {
         // Ensure @Bound widget field is initialized
-        if (!ctx.isAnnotationPresent(Inject.class) && ctx.getField() != null && widgetType.isDefaultInstantiable()) {
-          Statement widgetInit = Stmt.invokeStatic(
-              ctx.getInjectionContext().getProcessingContext().getBootstrapClass(),
-              PrivateAccessUtil.getPrivateFieldAccessorName(ctx.getField()),
-              Refs.get(ctx.getInjector().getInstanceVarName()),
+        if (!decorable.get().isAnnotationPresent(Inject.class) && decorable.decorableType().equals(DecorableType.FIELD) && widgetType.isDefaultInstantiable()) {
+          Statement widgetInit = Stmt.loadVariable("this").invoke(
+              PrivateAccessUtil.getPrivateFieldAccessorName(decorable.getAsField()),
+              Refs.get("instance"),
               ObjectBuilder.newInstanceOf(widgetType));
 
           statements.add(If.isNull(widget).append(widgetInit).finish());
@@ -116,8 +112,8 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
         widget = Stmt.invokeStatic(ElementWrapperWidget.class, "getWidget", widget);
       }
       else {
-        throw new GenerationException("@Bound field or method " + ctx.getMemberName()
-            + " in class " + ctx.getInjector().getInjectedType()
+        throw new GenerationException("@Bound field or method " + decorable.getMemberName()
+            + " in class " + targetClass
             + " must provide a widget or DOM element type but provides: "
             + widgetType.getFullyQualifiedName());
       }
@@ -130,25 +126,19 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
     }
     else {
       throw new GenerationException("No @Model or @AutoBound data binder found for @Bound field or method "
-          + ctx.getMemberName() + " in class " + ctx.getInjector().getInjectedType());
+          + decorable.getMemberName() + " in class " + targetClass);
     }
 
     // The first decorator to run will generate the initialization callback, the subsequent
     // decorators (for other bound widgets of the same class) will just amend the block.
     if (initBlock == null) {
-      initBlock = createInitCallback(ctx.getEnclosingType(), "obj");
+      initBlock = createInitCallback(decorable.getEnclosingType(), "obj");
       initBlockCache.put(targetClass, initBlock);
 
-      ctx.getTargetInjector().setAttribute(DataBindingUtil.BINDER_MODEL_TYPE_VALUE, binderLookup.getDataModelType());
-      ctx.getTargetInjector().addStatementToEndOfInjector(
-          Stmt.loadVariable("context").invoke("addInitializationCallback",
-                    Refs.get(ctx.getInjector().getInstanceVarName()),
-                    initBlock.appendAll(statements).finish().finish()));
+      controller.setAttribute(DataBindingUtil.BINDER_MODEL_TYPE_VALUE, binderLookup.getDataModelType());
+      controller.addInitializationStatements(statements);
 
-      ctx.getTargetInjector().addStatementToEndOfInjector(
-          Stmt.loadVariable("context").invoke("addDestructionCallback",
-                    Refs.get(ctx.getInjector().getInstanceVarName()),
-                    createDestructionCallback(ctx.getEnclosingType(), "obj", binderLookup.getValueAccessor())));
+      controller.addDestructionStatements(Collections.<Statement>singletonList(Stmt.nestedCall(binderLookup.getValueAccessor()).invoke("unbind")));
     }
     else {
       initBlock.appendAll(statements);
@@ -169,14 +159,4 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
     return block;
   }
 
-  /**
-   * Generates an anonymous {@link DestructionCallback} that will unbind all widgets.
-   */
-  private Statement createDestructionCallback(final MetaClass type, final String initVar, final Statement binder) {
-    List<Statement> destructionStatements = 
-      Collections.singletonList((Statement) Stmt.nestedCall(binder).invoke("unbind"));
-
-    return InjectUtil.createDestructionCallback(type, initVar, destructionStatements);
-  }
-  
 }

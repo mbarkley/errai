@@ -18,6 +18,16 @@ package org.jboss.errai.enterprise.rebind;
 import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
 import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
 
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import javax.enterprise.event.Observes;
+import javax.enterprise.inject.Any;
+
 import org.jboss.errai.bus.client.ErraiBus;
 import org.jboss.errai.bus.client.api.Subscription;
 import org.jboss.errai.codegen.Context;
@@ -29,7 +39,6 @@ import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
-import org.jboss.errai.codegen.util.PrivateAccessType;
 import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.config.rebind.EnvUtil;
@@ -39,16 +48,8 @@ import org.jboss.errai.ioc.client.api.CodeDecorator;
 import org.jboss.errai.ioc.client.container.DestructionCallback;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
-
-import javax.enterprise.event.Observes;
-import javax.enterprise.inject.Any;
-import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 
 /**
  * Generates the boiler plate for @Observes annotations use in GWT clients.<br/>
@@ -65,17 +66,13 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(final InjectableInstance<Observes> instance) {
-    final Context ctx = instance.getInjectionContext().getProcessingContext().getContext();
-    final MetaMethod method = instance.getMethod();
-    final MetaParameter parm = instance.getParm();
-
-    if (!method.isPublic()) {
-      instance.ensureMemberExposed(PrivateAccessType.Write);
-    }
+  public List<? extends Statement> generateDecorator(final Decorable decorable, final FactoryController controller) {
+    final Context ctx = decorable.getInjectionContext().getProcessingContext().getContext();
+    final MetaParameter parm = decorable.getAsParameter();
+    final MetaMethod method = (MetaMethod) parm.getDeclaringMember();
 
     final String parmClassName = parm.getType().getFullyQualifiedName();
-    final List<Annotation> annotations = InjectUtil.extractQualifiers(instance);
+    final List<Annotation> annotations = InjectUtil.extractQualifiers(parm);
     final Annotation[] qualifiers = annotations.toArray(new Annotation[annotations.size()]);
     final Set<String> qualifierNames = new HashSet<String>(CDI.getQualifiersPart(qualifiers));
 
@@ -98,7 +95,7 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
     }
 
     callBackBlock = callBack.publicOverridesMethod("fireEvent", Parameter.finalOf(parm, "event"))
-        ._(instance.callOrBind(Refs.get("event")))
+        ._(decorable.callOrBind(Refs.get("event")))
         .finish()
         .publicOverridesMethod("toString")
         ._(Stmt.load("Observer: " + parmClassName + " " + Arrays.toString(qualifiers)).returnValue());
@@ -126,11 +123,11 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
     // create the destruction callback to deregister the service when the bean is destroyed.
 
     final MetaClass destructionCallbackType =
-        parameterizedAs(DestructionCallback.class, typeParametersOf(instance.getEnclosingType()));
+        parameterizedAs(DestructionCallback.class, typeParametersOf(decorable.getEnclosingType()));
 
     final BlockBuilder<AnonymousClassStructureBuilder> destroyMeth
         = ObjectBuilder.newInstanceOf(destructionCallbackType).extend()
-        .publicOverridesMethod("destroy", Parameter.finalOf(instance.getEnclosingType(), "obj"))
+        .publicOverridesMethod("destroy", Parameter.finalOf(decorable.getEnclosingType(), "obj"))
         .append(Stmt.loadVariable(subscrVar).invoke("remove")).append(Stmt.codeComment("WEEEEE!"));
 
     for (final Class<?> cls : EnvUtil.getAllPortableConcreteSubtypes(parm.getType().asClass())) {
@@ -145,7 +142,7 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
     }
 
     final Statement destructionCallback = Stmt.create().loadVariable("context").invoke("addDestructionCallback",
-        Refs.get(instance.getInjector().getInstanceVarName()), destroyMeth.finish().finish());
+        Refs.get("instance"), destroyMeth.finish().finish());
 
     statements.add(destructionCallback);
 

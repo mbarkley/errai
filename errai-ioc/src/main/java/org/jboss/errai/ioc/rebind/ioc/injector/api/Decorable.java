@@ -162,8 +162,37 @@ public class Decorable {
     return (MetaMethod) annotated;
   }
 
-  DecorableType decorableType() {
+  public DecorableType decorableType() {
     return decorableType;
+  }
+
+  public InjectionContext getInjectionContext() {
+    // TODO Auto-generated method stub
+    throw new RuntimeException("Not yet implemented.");
+  }
+
+  public MetaParameter getAsParameter() {
+    // TODO Auto-generated method stub
+    throw new RuntimeException("Not yet implemented.");
+  }
+
+  /*
+   * Behaves differently for than getAccessStatement for parameters,
+   * where the method is called.
+   */
+  public Statement callOrBind(final Statement... values) {
+    // TODO Auto-generated method stub
+    throw new RuntimeException("Not yet implemented.");
+  }
+
+  public String getMemberName() {
+    // TODO Auto-generated method stub
+    throw new RuntimeException("Not yet implemented.");
+  }
+
+  public MetaField getAsField() {
+    // TODO Auto-generated method stub
+    throw new RuntimeException("Not yet implemented.");
   }
 
 }

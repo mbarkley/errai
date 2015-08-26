@@ -272,7 +272,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
   private void implementDestroyInstance(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable,
           final List<Statement> destroyInstanceStatements) {
     bodyBlockBuilder
-            .publicMethod(void.class, "destroyInstance", finalOf(Object.class, "instance"),
+            .publicMethod(void.class, "generatedDestroyInstance", finalOf(Object.class, "instance"),
                     finalOf(ContextManager.class, "contextManager"))
             .append(loadVariable("this").invoke("destroyInstanceHelper",
                     Stmt.castTo(injectable.getInjectedType(), loadVariable("instance")),

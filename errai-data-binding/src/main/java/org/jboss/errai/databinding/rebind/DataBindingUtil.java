@@ -45,7 +45,8 @@ import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.databinding.client.api.Bindable;
 import org.jboss.errai.databinding.client.api.DataBinder;
 import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 import org.jboss.errai.ui.shared.api.annotations.AutoBound;
 import org.jboss.errai.ui.shared.api.annotations.Model;
 import org.slf4j.Logger;
@@ -63,7 +64,7 @@ import com.google.gwt.core.ext.GeneratorContext;
  */
 public class DataBindingUtil {
   private static final Logger log = LoggerFactory.getLogger(DataBindingUtil.class);
-  public static final String TRANSIENT_BINDER_VALUE = "DataModelBinder";
+  public static final String BINDER_VAR_NAME = "DataModelBinder";
   public static final String BINDER_MODEL_TYPE_VALUE = "DataBinderModelType";
 
   public static final Annotation[] MODEL_QUALIFICATION = new Annotation[] {
@@ -107,10 +108,10 @@ public class DataBindingUtil {
    *
    * @return the data binder reference or null if not found.
    */
-  public static DataBinderRef lookupDataBinderRef(final InjectableInstance<?> inst) {
-    DataBinderRef ref = lookupBinderForModel(inst);
+  public static DataBinderRef lookupDataBinderRef(final Decorable decorable, final FactoryController controller) {
+    DataBinderRef ref = lookupBinderForModel(decorable, controller);
     if (ref == null) {
-      ref = lookupAutoBoundBinder(inst);
+      ref = lookupAutoBoundBinder(decorable, controller);
     }
     return ref;
   }
@@ -123,17 +124,16 @@ public class DataBindingUtil {
    *
    * @return the data binder reference or null if not found.
    */
-  private static DataBinderRef lookupBinderForModel(final InjectableInstance<?> inst) {
+  private static DataBinderRef lookupBinderForModel(final Decorable decorable, final FactoryController controller) {
     Statement dataBinderRef;
     MetaClass dataModelType;
 
-    InjectUtil.BeanMetric beanMetric = InjectUtil.getFilteredBeanMetric(inst.getInjectionContext(), inst.getInjector()
-            .getInjectedType(), Model.class);
+    InjectUtil.BeanMetric beanMetric = InjectUtil.getFilteredBeanMetric(decorable.getInjectionContext(), decorable.getEnclosingType(), Model.class);
 
     if (!beanMetric.getAllInjectors().isEmpty()) {
       final Collection<Object> allInjectors = beanMetric.getAllInjectors();
       if (allInjectors.size() > 1) {
-        throw new GenerationException("Multiple @Models injected in " + inst.getEnclosingType());
+        throw new GenerationException("Multiple @Models injected in " + decorable.getEnclosingType());
       }
       else if (allInjectors.size() == 1) {
         final Object injectorElement = allInjectors.iterator().next();
@@ -143,8 +143,7 @@ public class DataBindingUtil {
 
           dataModelType = mp.getType();
           assertTypeIsBindable(dataModelType);
-          dataBinderRef = inst.getTransientValue(TRANSIENT_BINDER_VALUE, DataBinder.class);
-          inst.ensureMemberExposed();
+          dataBinderRef = controller.constructGetReference(BINDER_VAR_NAME, DataBinder.class);
         }
         else {
           final MetaField field = (MetaField) allInjectors.iterator().next();
@@ -152,21 +151,20 @@ public class DataBindingUtil {
           dataModelType = field.getType();
           assertTypeIsBindable(dataModelType);
 
-          dataBinderRef = inst.getTransientValue(TRANSIENT_BINDER_VALUE, DataBinder.class);
-          inst.addExposedField(field, PrivateAccessType.Both);
+          dataBinderRef = controller.constructGetReference(BINDER_VAR_NAME, DataBinder.class);
+          controller.addExposedField(field, PrivateAccessType.Both);
         }
         return new DataBinderRef(dataModelType, dataBinderRef);
       }
     }
     else {
-      List<MetaField> modelFields = inst.getInjector().getInjectedType().getFieldsAnnotatedWith(Model.class);
+      List<MetaField> modelFields = decorable.getEnclosingType().getFieldsAnnotatedWith(Model.class);
       if (!modelFields.isEmpty()) {
         throw new GenerationException("Found one or more fields annotated with @Model but missing @Inject "
                 + modelFields.toString());
       }
 
-      List<MetaParameter> modelParameters = inst.getInjector().getInjectedType()
-              .getParametersAnnotatedWith(Model.class);
+      List<MetaParameter> modelParameters = decorable.getEnclosingType().getParametersAnnotatedWith(Model.class);
       if (!modelParameters.isEmpty()) {
         throw new GenerationException(
                 "Found one or more constructor or method parameters annotated with @Model but missing @Inject "
@@ -182,16 +180,15 @@ public class DataBindingUtil {
    *
    * @return the data binder reference or null if not found.
    */
-  private static DataBinderRef lookupAutoBoundBinder(final InjectableInstance<?> inst) {
+  private static DataBinderRef lookupAutoBoundBinder(final Decorable decorable, final FactoryController controller) {
     Statement dataBinderRef = null;
     MetaClass dataModelType = null;
 
-    InjectUtil.BeanMetric beanMetric = InjectUtil.getFilteredBeanMetric(inst.getInjectionContext(), inst.getInjector()
-            .getInjectedType(), AutoBound.class);
+    InjectUtil.BeanMetric beanMetric = InjectUtil.getFilteredBeanMetric(decorable.getInjectionContext(), decorable.getEnclosingType(), AutoBound.class);
 
     final Collection<Object> allInjectors = beanMetric.getAllInjectors();
     if (allInjectors.size() > 1) {
-      throw new GenerationException("Multiple @AutoBound data binders injected in " + inst.getEnclosingType());
+      throw new GenerationException("Multiple @AutoBound data binders injected in " + decorable.getEnclosingType());
     }
     else if (allInjectors.size() == 1) {
       final Object injectorElement = allInjectors.iterator().next();
@@ -201,30 +198,29 @@ public class DataBindingUtil {
 
         assertTypeIsDataBinder(mp.getType());
         dataModelType = (MetaClass) mp.getType().getParameterizedType().getTypeParameters()[0];
-        dataBinderRef = inst.getInjectionContext().getInlineBeanReference(mp);
-        inst.ensureMemberExposed();
+        dataBinderRef = decorable.getInjectionContext().getInlineBeanReference(mp);
       }
       else {
         final MetaField field = (MetaField) allInjectors.iterator().next();
 
         assertTypeIsDataBinder(field.getType());
         dataModelType = (MetaClass) field.getType().getParameterizedType().getTypeParameters()[0];
-        dataBinderRef = Stmt.invokeStatic(inst.getInjectionContext().getProcessingContext().getBootstrapClass(),
+        dataBinderRef = Stmt.invokeStatic(decorable.getInjectionContext().getProcessingContext().getBootstrapClass(),
                 PrivateAccessUtil.getPrivateFieldAccessorName(field),
-                Variable.get(inst.getInjector().getInstanceVarName()));
-        inst.addExposedField(field, PrivateAccessType.Both);
+                Variable.get("instance"));
+        controller.addExposedField(field, PrivateAccessType.Both);
       }
     }
     else {
-      final MetaClass declaringClass = inst.getInjector().getInjectedType();
+      final MetaClass declaringClass = decorable.getEnclosingType();
       for (final MetaField field : declaringClass.getFields()) {
         if (field.isAnnotationPresent(AutoBound.class)) {
           assertTypeIsDataBinder(field.getType());
           dataModelType = (MetaClass) field.getType().getParameterizedType().getTypeParameters()[0];
-          dataBinderRef = Stmt.invokeStatic(inst.getInjectionContext().getProcessingContext().getBootstrapClass(),
+          dataBinderRef = Stmt.invokeStatic(decorable.getInjectionContext().getProcessingContext().getBootstrapClass(),
                   PrivateAccessUtil.getPrivateFieldAccessorName(field),
-                  Variable.get(inst.getInjector().getInstanceVarName()));
-          inst.addExposedField(field, PrivateAccessType.Both);
+                  Variable.get("instance"));
+          controller.addExposedField(field, PrivateAccessType.Both);
           break;
         }
       }

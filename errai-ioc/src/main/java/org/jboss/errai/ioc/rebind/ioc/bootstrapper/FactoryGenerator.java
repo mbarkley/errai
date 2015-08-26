@@ -67,8 +67,8 @@ public class FactoryGenerator extends IncrementalGenerator {
     final Injectable injectable = graph.getConcreteInjectable(typeName.substring(typeName.lastIndexOf('.')+1));
     final FactoryType factoryType = injectable.getFactoryType();
 
-    final ClassStructureBuilder<?> factoryBuilder = define(getFactorySubTypeName(typeName)).publicScope()
-            .implementsInterface(parameterizedAs(Factory.class, typeParametersOf(injectable.getInjectedType()))).body();
+    final ClassStructureBuilder<?> factoryBuilder = define(getFactorySubTypeName(typeName),
+            parameterizedAs(Factory.class, typeParametersOf(injectable.getInjectedType()))).publicScope().body();
     final FactoryBodyGenerator generator = selectBodyGenerator(factoryType);
 
 

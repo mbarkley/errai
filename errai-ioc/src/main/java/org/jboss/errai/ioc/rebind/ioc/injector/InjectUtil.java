@@ -7,6 +7,7 @@ import java.util.List;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.VariableReference;
 import org.jboss.errai.codegen.builder.VariableReferenceContextualStatementBuilder;
+import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
@@ -78,6 +79,11 @@ public class InjectUtil {
 
   public static Statement invokePublicOrPrivateMethod(InjectionContext injectionContext, Statement component,
           MetaMethod method, VariableReferenceContextualStatementBuilder loadVariable) {
+    // TODO Auto-generated method stub
+    throw new RuntimeException("Not yet implemented.");
+  }
+
+  public static List<Annotation> extractQualifiers(HasAnnotations annotated) {
     // TODO Auto-generated method stub
     throw new RuntimeException("Not yet implemented.");
   }

@@ -13,7 +13,10 @@ import org.jboss.errai.codegen.Context;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
+import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
+import org.jboss.errai.codegen.util.PrivateAccessType;
+import org.jboss.errai.codegen.util.Stmt;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
@@ -76,6 +79,39 @@ public class FactoryController {
 
   public List<Statement> getDestructionStatements() {
     return destructionStatements;
+  }
+
+  public boolean hasAttribute(String dataBindingConfigAttr) {
+    // TODO Auto-generated method stub
+    throw new RuntimeException("Not yet implemented.");
+  }
+
+  public void setAttribute(String dataBindingConfigAttr, Boolean true1) {
+    // TODO Auto-generated method stub
+    throw new RuntimeException("Not yet implemented.");
+  }
+
+  public Statement constructGetReference(final String name, final Class<?> refType) {
+    return Stmt.loadVariable("this").invoke("getReferenceAs", Stmt.loadVariable("instance"), name, refType);
+  }
+
+  public Statement constructSetReference(final String name, final Statement value) {
+    return Stmt.loadVariable("this").invoke("setReference", Stmt.loadVariable("instance"), name, value);
+  }
+
+  public void addExposedField(MetaField field, PrivateAccessType both) {
+    // TODO Auto-generated method stub
+    throw new RuntimeException("Not yet implemented.");
+  }
+
+  public Object getAttribute(String binderModelTypeValue) {
+    // TODO Auto-generated method stub
+    throw new RuntimeException("Not yet implemented.");
+  }
+
+  public void setAttribute(String binderModelTypeValue, MetaClass dataModelType) {
+    // TODO Auto-generated method stub
+    throw new RuntimeException("Not yet implemented.");
   }
 
 }
