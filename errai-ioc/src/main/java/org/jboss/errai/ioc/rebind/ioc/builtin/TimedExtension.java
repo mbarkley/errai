@@ -16,17 +16,28 @@
 
 package org.jboss.errai.ioc.rebind.ioc.builtin;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
+import org.jboss.errai.codegen.Statement;
+import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.util.Refs;
+import org.jboss.errai.codegen.util.Stmt;
+import org.jboss.errai.ioc.client.api.CodeDecorator;
 import org.jboss.errai.ioc.client.api.Timed;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
+import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
+
+import com.google.gwt.user.client.Timer;
 
 /**
  * @author Mike Brock
  */
-//@CodeDecorator
+@CodeDecorator
 public class TimedExtension extends IOCDecoratorExtension<Timed> {
   public TimedExtension(Class<Timed> decoratesWith) {
     super(decoratesWith);
@@ -34,60 +45,57 @@ public class TimedExtension extends IOCDecoratorExtension<Timed> {
 
   @Override
   public List<?> generateDecorator(Decorable decorable, FactoryController controller) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
-//    try {
-//      final MetaClass beanClass = ctx.getEnclosingType();
-//      final Timed timed = ctx.getAnnotation();
-//
-//
-//      final Statement methodInvokation
-//          = InjectUtil.invokePublicOrPrivateMethod(ctx.getInjectionContext(), Refs.get("beanInstance"),
-//          ctx.getMethod());
-//
-//      final org.jboss.errai.common.client.util.TimeUnit timeUnit = timed.timeUnit();
-//      final int interval = timed.interval();
-//
-//      final Statement timerDecl
-//          = Stmt.nestedCall(Stmt.newObject(Timer.class).extend()
-//          .publicOverridesMethod("run")
-//          .append(methodInvokation)
-//          .finish().finish());
-//
-//      final String timerVarName = InjectUtil.getUniqueVarName();
-//      final Statement timerVar = Stmt.declareFinalVariable(timerVarName, Timer.class, timerDecl);
-//
-//      final List<Statement> statements = new ArrayList<Statement>();
-//
-//      final Statement timerExec;
-//      switch (timed.type()) {
-//        case REPEATING:
-//          timerExec = Stmt.loadVariable(timerVarName).invoke("scheduleRepeating", timeUnit.toMillis(interval));
-//          break;
-//        default:
-//        case DELAYED:
-//          timerExec = Stmt.loadVariable(timerVarName).invoke("schedule", timeUnit.toMillis(interval));
-//          break;
-//      }
-//
-//      final Statement destructionCallbackStmt
-//          = InjectUtil.createDestructionCallback(beanClass, "beanInstance",
-//              Collections.<Statement>singletonList(Stmt.loadVariable(timerVarName).invoke("cancel")));
-//
-//      final Statement initCallbackStmt = InjectUtil.createInitializationCallback(beanClass, "beanInstance",
-//          Arrays.asList(timerVar,
-//              Stmt.loadVariable("context").invoke("addDestructionCallback",
-//                  Refs.get(ctx.getInjector().getInstanceVarName()), destructionCallbackStmt),
-//              timerExec));
-//
-//      statements.add(Stmt.loadVariable("context").invoke("addInitializationCallback",
-//          Refs.get(ctx.getInjector().getInstanceVarName()), initCallbackStmt));
-//
-//      return statements;
-//    }
-//
-//    catch (Exception e) {
-//      throw new RuntimeException(e);
-//    }
+    try {
+      final MetaClass beanClass = decorable.getEnclosingType();
+      final Timed timed = (Timed) decorable.getAnnotation();
+
+
+      final Statement methodInvokation
+          = decorable.getAccessStatement();
+
+      final org.jboss.errai.common.client.util.TimeUnit timeUnit = timed.timeUnit();
+      final int interval = timed.interval();
+
+      final Statement timerDecl
+          = Stmt.nestedCall(Stmt.newObject(Timer.class).extend()
+          .publicOverridesMethod("run")
+          .append(methodInvokation)
+          .finish().finish());
+
+      final String timerVarName = InjectUtil.getUniqueVarName();
+      final Statement timerVar = Stmt.declareFinalVariable(timerVarName, Timer.class, timerDecl);
+
+      final List<Statement> statements = new ArrayList<Statement>();
+
+      final Statement timerExec;
+      switch (timed.type()) {
+        case REPEATING:
+          timerExec = Stmt.loadVariable(timerVarName).invoke("scheduleRepeating", timeUnit.toMillis(interval));
+          break;
+        default:
+        case DELAYED:
+          timerExec = Stmt.loadVariable(timerVarName).invoke("schedule", timeUnit.toMillis(interval));
+          break;
+      }
+
+      final Statement destructionCallbackStmt
+          = InjectUtil.createDestructionCallback(beanClass, "beanInstance",
+              Collections.<Statement>singletonList(Stmt.loadVariable(timerVarName).invoke("cancel")));
+
+      final Statement initCallbackStmt = InjectUtil.createInitializationCallback(beanClass, "beanInstance",
+          Arrays.asList(timerVar,
+              Stmt.loadVariable("context").invoke("addDestructionCallback",
+                  Refs.get("instance"), destructionCallbackStmt),
+              timerExec));
+
+      statements.add(Stmt.loadVariable("context").invoke("addInitializationCallback",
+          Refs.get("instance"), initCallbackStmt));
+
+      return statements;
+    }
+
+    catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 }

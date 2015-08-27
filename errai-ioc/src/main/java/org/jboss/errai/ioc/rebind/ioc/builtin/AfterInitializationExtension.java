@@ -16,9 +16,14 @@
 
 package org.jboss.errai.ioc.rebind.ioc.builtin;
 
+import java.util.Collections;
 import java.util.List;
 
+import org.jboss.errai.codegen.Statement;
+import org.jboss.errai.codegen.util.Stmt;
+import org.jboss.errai.common.client.api.extension.InitVotes;
 import org.jboss.errai.ioc.client.api.AfterInitialization;
+import org.jboss.errai.ioc.client.api.CodeDecorator;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
@@ -26,34 +31,20 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 /**
  * @author Mike Brock
  */
-//@CodeDecorator
+@CodeDecorator
 public class AfterInitializationExtension extends IOCDecoratorExtension<AfterInitialization> {
   public AfterInitializationExtension(Class<AfterInitialization> decoratesWith) {
     super(decoratesWith);
   }
 
-//  @Override
-//  public List<? extends Statement> generateDecorator(InjectableInstance<AfterInitialization> instance) {
-//    final Context ctx = instance.getInjectionContext().getProcessingContext().getContext();
-//    final MetaMethod method = instance.getMethod();
-//
-//    if (!method.isPublic()) {
-//      instance.ensureMemberExposed();
-//    }
-//
-//    final Statement callbackStmt = Stmt.newObject(Runnable.class).extend()
-//            .publicOverridesMethod("run")
-//            .append(instance.callOrBind())
-//            .finish()
-//            .finish();
-//
-//    return Collections.singletonList(Stmt.create(ctx)
-//            .invokeStatic(InitVotes.class, "registerOneTimeInitCallback", callbackStmt));
-//  }
-
   @Override
-  public List<?> generateDecorator(Decorable decorable, FactoryController controller) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+  public List<?> generateDecorator(final Decorable decorable, final FactoryController controller) {
+    final Statement callbackStmt = Stmt.newObject(Runnable.class).extend()
+            .publicOverridesMethod("run")
+            .append(decorable.getAccessStatement())
+            .finish()
+            .finish();
+
+    return Collections.singletonList(Stmt.invokeStatic(InitVotes.class, "registerOneTimeInitCallback", callbackStmt));
   }
 }
