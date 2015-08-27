@@ -73,12 +73,17 @@ public abstract class AbstractContext implements Context {
   }
 
   @Override
-  public void destroyInstance(Object instance) {
+  public void destroyInstance(final Object instance) {
     final Factory<?> factory = factoriesByCreatedInstances.get(instance);
     if (factory != null) {
       factory.destroyInstance(instance, contextManager);
       factoriesByCreatedInstances.remove(instance);
     }
+  }
+
+  @Override
+  public boolean isManaged(final Object ref) {
+    return factoriesByCreatedInstances.containsKey(ref);
   }
 
 }

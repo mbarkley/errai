@@ -16,4 +16,6 @@ public interface ContextManager {
 
   void destroy(Object instance);
 
+  boolean isManaged(Object ref);
+
 }

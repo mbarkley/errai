@@ -59,10 +59,21 @@ public class ContextManagerImpl implements ContextManager {
   }
 
   @Override
-  public void destroy(Object instance) {
+  public void destroy(final Object instance) {
     for (final Context context : contexts) {
       context.destroyInstance(instance);
     }
+  }
+
+  @Override
+  public boolean isManaged(final Object ref) {
+    for (final Context context : contexts) {
+      if (context.isManaged(ref)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
 }

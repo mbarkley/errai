@@ -18,11 +18,13 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
@@ -72,6 +74,18 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
     addReturnStatement(createInstanceStatements);
 
     return createInstanceStatements;
+  }
+
+  @Override
+  protected List<Statement> generateDestroyInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
+          final Injectable injectable, final DependencyGraph graph, final InjectionContext injectionContext) {
+    final List<Statement> destructionStmts = new ArrayList<Statement>();
+
+    maybeInvokePreDestroys(injectable, destructionStmts, bodyBlockBuilder);
+    destructionStmts
+            .addAll(super.generateDestroyInstanceStatements(bodyBlockBuilder, injectable, graph, injectionContext));
+
+    return destructionStmts;
   }
 
   private void addInitializationStatements(final List<Statement> createInstanceStatements) {
@@ -148,17 +162,52 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
           final ClassStructureBuilder<?> bodyBlockBuilder) {
     final Queue<MetaMethod> postConstructMethods = gatherPostConstructs(injectable);
     for (final MetaMethod postConstruct : postConstructMethods) {
-      String methodName = postConstruct.getName();
-      if (!postConstruct.isPublic()) {
-        methodName = addPrivateMethodAccessor(postConstruct, bodyBlockBuilder);
+      if (postConstruct.isPublic()) {
+        createInstanceStatements.add(loadVariable("instance").invoke(postConstruct));
+      } else {
+        final String accessorName = addPrivateMethodAccessor(postConstruct, bodyBlockBuilder);
+        createInstanceStatements.add(invokePrivateAccessorWithNoParams(accessorName));
       }
-
-      addPostConstructInvocation(methodName, createInstanceStatements);
     }
   }
 
-  private void addPostConstructInvocation(final String methodName, final List<Statement> createInstanceStatements) {
-    createInstanceStatements.add(loadVariable("this").invoke(methodName, loadVariable("instance")));
+  private void maybeInvokePreDestroys(final Injectable injectable, final List<Statement> destructionStmts,
+          final ClassStructureBuilder<?> bodyBlockBuilder) {
+    final Queue<MetaMethod> preDestroyMethods = gatherPreDestroys(injectable);
+    for (final MetaMethod preDestroy : preDestroyMethods) {
+      if (preDestroy.isPublic()) {
+        destructionStmts.add(loadVariable("instance").invoke(preDestroy));
+      } else {
+        final String accessorName = addPrivateMethodAccessor(preDestroy, bodyBlockBuilder);
+        destructionStmts.add(invokePrivateAccessorWithNoParams(accessorName));
+      }
+    }
+  }
+
+  private Statement invokePrivateAccessorWithNoParams(final String accessorName) {
+    return loadVariable("this").invoke(accessorName, loadVariable("instance"));
+  }
+
+  private Queue<MetaMethod> gatherPreDestroys(final Injectable injectable) {
+    final Queue<MetaMethod> preDestroyQueue = new LinkedList<MetaMethod>();
+    MetaClass type = injectable.getInjectedType();
+    do {
+      final List<MetaMethod> curPreDestroys = type.getMethodsAnnotatedWith(PreDestroy.class);
+      if (curPreDestroys.size() > 1) {
+        throw new RuntimeException(type.getFullyQualifiedName() + " has multiple @PreDestroy methods.");
+      } else if (curPreDestroys.size() == 1) {
+        final MetaMethod preDestroy = curPreDestroys.get(0);
+        if (preDestroy.getParameters().length > 0) {
+          throw new RuntimeException(type.getFullyQualifiedName() + " has a @PreDestroy method with parameters.");
+        }
+
+        preDestroyQueue.add(preDestroy);
+      }
+
+      type = type.getSuperClass();
+    } while (!type.getFullyQualifiedName().equals("java.lang.Object"));
+
+    return preDestroyQueue;
   }
 
   private Queue<MetaMethod> gatherPostConstructs(final Injectable injectable) {
@@ -169,7 +218,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
       final List<MetaMethod> currentPostConstructs = type.getMethodsAnnotatedWith(PostConstruct.class);
       if (currentPostConstructs.size() > 0) {
         if (currentPostConstructs.size() > 1) {
-          throw new RuntimeException(type.getFullyQualifiedName() + " has two @PostConstruct methods.");
+          throw new RuntimeException(type.getFullyQualifiedName() + " has multiple @PostConstruct methods.");
         }
 
         final MetaMethod postConstruct = currentPostConstructs.get(0);

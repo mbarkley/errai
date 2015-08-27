@@ -25,4 +25,6 @@ public interface Context {
 
   <T> T getNewInstance(String factoryName);
 
+  boolean isManaged(Object ref);
+
 }

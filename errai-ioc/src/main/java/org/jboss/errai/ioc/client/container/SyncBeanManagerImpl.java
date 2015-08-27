@@ -54,8 +54,7 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
 
   @Override
   public boolean isManaged(Object ref) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+    return contextManager.isManaged(ref);
   }
 
   @Override

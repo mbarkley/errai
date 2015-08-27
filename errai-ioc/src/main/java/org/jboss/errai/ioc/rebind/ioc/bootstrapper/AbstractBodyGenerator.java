@@ -283,7 +283,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
             .appendAll(destroyInstanceStatements).finish();
   }
 
-  private List<Statement> generateDestroyInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
+  protected List<Statement> generateDestroyInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
           final Injectable injectable, final DependencyGraph graph, final InjectionContext injectionContext) {
     return controller.getDestructionStatements();
   }
