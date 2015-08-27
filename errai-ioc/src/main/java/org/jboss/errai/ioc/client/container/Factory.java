@@ -1,11 +1,26 @@
 package org.jboss.errai.ioc.client.container;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Set;
+
+import com.google.common.base.Supplier;
+import com.google.common.collect.Multimaps;
+import com.google.common.collect.SetMultimap;
 
 public abstract class Factory<T> {
 
   private final Map<T, Map<String, Object>> referenceMaps = new HashMap<T, Map<String,Object>>();
+  private final SetMultimap<T, Object> dependentScopedDependencies = Multimaps
+          .newSetMultimap(new IdentityHashMap<T, Collection<Object>>(), new Supplier<Set<Object>>() {
+            @Override
+            public Set<Object> get() {
+              return Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
+            }
+          });
 
   public abstract T createInstance(ContextManager contextManager);
 
@@ -33,9 +48,18 @@ public abstract class Factory<T> {
 
   public abstract FactoryHandle getHandle();
 
-  public void destroyInstance(Object instance, ContextManager contextManager) {
+  protected void registerDependentScopedReference(final T instance, final Object dependentScopedBeanRef) {
+    dependentScopedDependencies.put(instance, dependentScopedBeanRef);
+  }
+
+  @SuppressWarnings("unchecked")
+  public void destroyInstance(final Object instance, final ContextManager contextManager) {
     generatedDestroyInstance(instance, contextManager);
     referenceMaps.remove(instance);
+    for (final Object depRef : dependentScopedDependencies.get((T) instance)) {
+      contextManager.destroy(depRef);
+    }
+    dependentScopedDependencies.removeAll(instance);
   }
 
   protected abstract void generatedDestroyInstance(Object instance, ContextManager contextManager);

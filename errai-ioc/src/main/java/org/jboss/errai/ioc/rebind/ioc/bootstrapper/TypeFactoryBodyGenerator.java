@@ -25,6 +25,7 @@ import java.util.Set;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import javax.enterprise.context.Dependent;
 
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
@@ -261,12 +262,20 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
                 loadVariable("contextManager").invoke("getInstance", loadLiteral(depInjectable.getFactoryName())));
       }
 
+      final String fieldDepVarName = injectable.getInjectedType().getName() + "_" + field.getName();
+
+      createInstanceStatements.add(declareFinalVariable(fieldDepVarName, depInjectable.getInjectedType(), injectedValue));
+      if (depInjectable.getScope().equals(Dependent.class)) {
+        createInstanceStatements
+                .add(loadVariable("this").invoke("registerDependentScopedReference", loadVariable("instance"), loadVariable(fieldDepVarName)));
+      }
+
       if (!field.isPublic()) {
         addPrivateAccessStubs(PrivateAccessType.Write, "jsni", bodyBlockBuilder, field);
         final String privateFieldInjectorName = getPrivateFieldAccessorName(field);
-        createInstanceStatements.add(loadVariable("this").invoke(privateFieldInjectorName, loadVariable("instance"), injectedValue));
+        createInstanceStatements.add(loadVariable("this").invoke(privateFieldInjectorName, loadVariable("instance"), loadVariable(fieldDepVarName)));
       } else {
-        createInstanceStatements.add(loadVariable("instance").loadField(field).assignValue(injectedValue));
+        createInstanceStatements.add(loadVariable("instance").loadField(field).assignValue(loadVariable(fieldDepVarName)));
       }
     }
   }
@@ -312,19 +321,23 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
                   + " for dependency in " + setter.getDeclaringClassName());
         }
       } else {
-        final MetaParameter param = setter.getParameters()[0];
-        final String paramLocalVarName = getLocalVariableName(param);
-        createInstanceStatements.add(declareFinalVariable(paramLocalVarName, param.getType(),
-                loadVariable("contextManager").invoke("getInstance", loadLiteral(depInjectable.getFactoryName()))));
-        injectedValue = castTo(depInjectable.getInjectedType(), loadVariable(paramLocalVarName));
+        injectedValue = castTo(depInjectable.getInjectedType(), loadVariable("contextManager").invoke("getInstance", loadLiteral(depInjectable.getFactoryName())));
+      }
+      final MetaParameter param = setter.getParameters()[0];
+      final String paramLocalVarName = getLocalVariableName(param);
+
+      createInstanceStatements.add(declareFinalVariable(paramLocalVarName, param.getType(), injectedValue));
+      if (depInjectable.getScope().equals(Dependent.class)) {
+        createInstanceStatements
+                .add(loadVariable("this").invoke("registerDependentScopedReference", loadVariable("instance"), loadVariable(paramLocalVarName)));
       }
 
       if (!setter.isPublic()) {
         addPrivateAccessStubs("jsni", bodyBlockBuilder, setter);
         final String privateFieldInjectorName = getPrivateMethodName(setter);
-        createInstanceStatements.add(loadVariable("this").invoke(privateFieldInjectorName, loadVariable("instance"), injectedValue));
+        createInstanceStatements.add(loadVariable("this").invoke(privateFieldInjectorName, loadVariable("instance"), loadVariable(paramLocalVarName)));
       } else {
-        createInstanceStatements.add(loadVariable("instance").invoke(setter, injectedValue));
+        createInstanceStatements.add(loadVariable("instance").invoke(setter, loadVariable(paramLocalVarName)));
       }
     }
   }
@@ -333,6 +346,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
           final List<Statement> createInstanceStatements) {
     if (constructorDependencies.size() > 0) {
       final Object[] constructorParameterStatements = new Object[constructorDependencies.size()];
+      final List<Statement> dependentScopedRegistrationStatements = new ArrayList<Statement>(constructorDependencies.size());
       for (final Dependency dep : constructorDependencies) {
         final Injectable depInjectable = dep.getInjectable();
         final ParamDependency paramDep = ParamDependency.class.cast(dep);
@@ -358,11 +372,16 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
 
         final String paramLocalVarName = getLocalVariableName(paramDep.getParameter());
         createInstanceStatements.add(declareFinalVariable(paramLocalVarName, paramDep.getParameter().getType(), injectedValue));
+        if (dep.getInjectable().getScope().equals(Dependent.class)) {
+          dependentScopedRegistrationStatements.add(loadVariable("this").invoke("registerDependentScopedReference",
+                  loadVariable("instance"), loadVariable(paramLocalVarName)));
+        }
         constructorParameterStatements[paramDep.getParamIndex()] = loadVariable(paramLocalVarName);
       }
 
       createInstanceStatements.add(declareFinalVariable("instance", injectable.getInjectedType(),
               newObject(injectable.getInjectedType(), constructorParameterStatements)));
+      createInstanceStatements.addAll(dependentScopedRegistrationStatements);
     } else {
       createInstanceStatements.add(declareFinalVariable("instance", injectable.getInjectedType(),
               newObject(injectable.getInjectedType())));
