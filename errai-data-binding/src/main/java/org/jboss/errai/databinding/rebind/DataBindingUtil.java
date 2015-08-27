@@ -19,7 +19,11 @@ package org.jboss.errai.databinding.rebind;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Target;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -30,6 +34,7 @@ import java.util.Set;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.Variable;
 import org.jboss.errai.codegen.exception.GenerationException;
+import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaConstructor;
@@ -44,7 +49,6 @@ import org.jboss.errai.config.rebind.EnvUtil;
 import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.databinding.client.api.Bindable;
 import org.jboss.errai.databinding.client.api.DataBinder;
-import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 import org.jboss.errai.ui.shared.api.annotations.AutoBound;
@@ -128,25 +132,24 @@ public class DataBindingUtil {
     Statement dataBinderRef;
     MetaClass dataModelType;
 
-    InjectUtil.BeanMetric beanMetric = InjectUtil.getFilteredBeanMetric(decorable.getInjectionContext(), decorable.getEnclosingType(), Model.class);
+    final Collection<HasAnnotations> allAnnotated = getMembersAndParamsAnnotatedWith(decorable.getEnclosingType(), Model.class);
 
-    if (!beanMetric.getAllInjectors().isEmpty()) {
-      final Collection<Object> allInjectors = beanMetric.getAllInjectors();
-      if (allInjectors.size() > 1) {
+    if (!allAnnotated.isEmpty()) {
+      if (allAnnotated.size() > 1) {
         throw new GenerationException("Multiple @Models injected in " + decorable.getEnclosingType());
       }
-      else if (allInjectors.size() == 1) {
-        final Object injectorElement = allInjectors.iterator().next();
+      else if (allAnnotated.size() == 1) {
+        final HasAnnotations annotated = allAnnotated.iterator().next();
 
-        if (injectorElement instanceof MetaConstructor || injectorElement instanceof MetaMethod) {
-          final MetaParameter mp = beanMetric.getConsolidatedMetaParameters().iterator().next();
+        if (annotated instanceof MetaParameter) {
+          final MetaParameter mp = (MetaParameter) annotated;
 
           dataModelType = mp.getType();
           assertTypeIsBindable(dataModelType);
           dataBinderRef = controller.constructGetReference(BINDER_VAR_NAME, DataBinder.class);
         }
         else {
-          final MetaField field = (MetaField) allInjectors.iterator().next();
+          final MetaField field = (MetaField) allAnnotated.iterator().next();
 
           dataModelType = field.getType();
           assertTypeIsBindable(dataModelType);
@@ -175,6 +178,48 @@ public class DataBindingUtil {
     return null;
   }
 
+  private static Collection<HasAnnotations> getMembersAndParamsAnnotatedWith(final MetaClass enclosingType, final Class<? extends Annotation> annoType) {
+    final Collection<HasAnnotations> annotated = new ArrayList<HasAnnotations>();
+
+    final Target target = annoType.getAnnotation(Target.class);
+    final Collection<ElementType> allowedTypes = (target == null) ? null : Arrays.asList(target.value());
+
+    if (allowedTypes == null || allowedTypes.contains(ElementType.FIELD)) {
+      annotated.addAll(enclosingType.getFieldsAnnotatedWith(annoType));
+    }
+
+    if (allowedTypes == null || allowedTypes.contains(ElementType.METHOD)) {
+      annotated.addAll(enclosingType.getMethodsAnnotatedWith(annoType));
+    }
+
+    if (allowedTypes == null || allowedTypes.contains(ElementType.CONSTRUCTOR)) {
+      for (final MetaConstructor ctor : enclosingType.getConstructors()) {
+        if (ctor.isAnnotationPresent(annoType)) {
+          annotated.add(ctor);
+        }
+      }
+    }
+
+    if (allowedTypes == null || allowedTypes.contains(ElementType.PARAMETER)) {
+      for (final MetaMethod method : enclosingType.getMethods()) {
+        for (final MetaParameter param : method.getParameters()) {
+          if (param.isAnnotationPresent(annoType)) {
+            annotated.add(param);
+          }
+        }
+      }
+      for (final MetaConstructor ctor : enclosingType.getConstructors()) {
+        for (final MetaParameter param : ctor.getParameters()) {
+          if (param.isAnnotationPresent(annoType)) {
+            annotated.add(param);
+          }
+        }
+      }
+    }
+
+    return annotated;
+  }
+
   /**
    * Tries to find a reference for an injected {@link AutoBound} data binder.
    *
@@ -184,24 +229,23 @@ public class DataBindingUtil {
     Statement dataBinderRef = null;
     MetaClass dataModelType = null;
 
-    InjectUtil.BeanMetric beanMetric = InjectUtil.getFilteredBeanMetric(decorable.getInjectionContext(), decorable.getEnclosingType(), AutoBound.class);
+    final Collection<HasAnnotations> allAnnotated = getMembersAndParamsAnnotatedWith(decorable.getEnclosingType(), AutoBound.class);
 
-    final Collection<Object> allInjectors = beanMetric.getAllInjectors();
-    if (allInjectors.size() > 1) {
+    if (allAnnotated.size() > 1) {
       throw new GenerationException("Multiple @AutoBound data binders injected in " + decorable.getEnclosingType());
     }
-    else if (allInjectors.size() == 1) {
-      final Object injectorElement = allInjectors.iterator().next();
+    else if (allAnnotated.size() == 1) {
+      final HasAnnotations annotated = allAnnotated.iterator().next();
 
-      if (injectorElement instanceof MetaConstructor || injectorElement instanceof MetaMethod) {
-        final MetaParameter mp = beanMetric.getConsolidatedMetaParameters().iterator().next();
+      if (annotated instanceof MetaParameter) {
+        final MetaParameter mp = (MetaParameter) annotated;
 
         assertTypeIsDataBinder(mp.getType());
         dataModelType = (MetaClass) mp.getType().getParameterizedType().getTypeParameters()[0];
         dataBinderRef = decorable.getInjectionContext().getInlineBeanReference(mp);
       }
       else {
-        final MetaField field = (MetaField) allInjectors.iterator().next();
+        final MetaField field = (MetaField) allAnnotated.iterator().next();
 
         assertTypeIsDataBinder(field.getType());
         dataModelType = (MetaClass) field.getType().getParameterizedType().getTypeParameters()[0];
