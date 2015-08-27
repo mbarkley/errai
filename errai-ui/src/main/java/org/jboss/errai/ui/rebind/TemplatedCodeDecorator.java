@@ -211,7 +211,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
       /*
        * Get root Template Element
        */
-      final String rootTemplateElementVarName = InjectUtil.getUniqueVarName();
+      final String rootTemplateElementVarName = "templateFor" + decorable.getEnclosingType().getName();
       initStmts.add(Stmt
           .declareVariable(Element.class)
           .named(rootTemplateElementVarName)
@@ -239,7 +239,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
       /*
        * Get all of the data-field Elements from the Template
        */
-      final String dataFieldElementsVarName = InjectUtil.getUniqueVarName();
+      final String dataFieldElementsVarName = "dataFieldElements";
       initStmts.add(Stmt.declareVariable(dataFieldElementsVarName,
           new TypeLiteral<Map<String, Element>>() {},
           Stmt.invokeStatic(TemplateUtil.class, "getDataFieldElements",
@@ -249,7 +249,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
       /*
        * Attach Widget field children Elements to the Template DOM
        */
-      final String fieldsMapVarName = InjectUtil.getUniqueVarName();
+      final String fieldsMapVarName = "templateFieldsMap";
 
       /*
        * The Map<String, Widget> to store actual component field references.

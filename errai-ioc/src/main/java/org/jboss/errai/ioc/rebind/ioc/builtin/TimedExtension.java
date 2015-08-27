@@ -17,18 +17,14 @@
 package org.jboss.errai.ioc.rebind.ioc.builtin;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import org.jboss.errai.codegen.Statement;
-import org.jboss.errai.codegen.meta.MetaClass;
-import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.api.CodeDecorator;
 import org.jboss.errai.ioc.client.api.Timed;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
-import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 
@@ -46,7 +42,6 @@ public class TimedExtension extends IOCDecoratorExtension<Timed> {
   @Override
   public List<?> generateDecorator(Decorable decorable, FactoryController controller) {
     try {
-      final MetaClass beanClass = decorable.getEnclosingType();
       final Timed timed = (Timed) decorable.getAnnotation();
 
 
@@ -63,35 +58,31 @@ public class TimedExtension extends IOCDecoratorExtension<Timed> {
           .finish().finish());
 
       final String timerVarName = decorable.getAsMethod().getName() + "Timer";
-      final Statement timerVar = Stmt.declareFinalVariable(timerVarName, Timer.class, timerDecl);
+      final Statement timerVar = controller.constructGetReference(timerVarName, Timer.class);
 
-      final List<Statement> statements = new ArrayList<Statement>();
+      final List<Statement> initStmts = new ArrayList<Statement>();
+      final List<Statement> destructionStmts = new ArrayList<Statement>();
+
+      initStmts.add(controller.constructSetReference(timerVarName, timerDecl));
 
       final Statement timerExec;
       switch (timed.type()) {
         case REPEATING:
-          timerExec = Stmt.loadVariable(timerVarName).invoke("scheduleRepeating", timeUnit.toMillis(interval));
+          timerExec = Stmt.nestedCall(timerVar).invoke("scheduleRepeating", timeUnit.toMillis(interval));
           break;
         default:
         case DELAYED:
-          timerExec = Stmt.loadVariable(timerVarName).invoke("schedule", timeUnit.toMillis(interval));
+          timerExec = Stmt.nestedCall(timerVar).invoke("schedule", timeUnit.toMillis(interval));
           break;
       }
 
-      final Statement destructionCallbackStmt
-          = InjectUtil.createDestructionCallback(beanClass, "beanInstance",
-              Collections.<Statement>singletonList(Stmt.loadVariable(timerVarName).invoke("cancel")));
+      initStmts.add(timerExec);
+      destructionStmts.add(Stmt.nestedCall(timerVar).invoke("cancel"));
 
-      final Statement initCallbackStmt = InjectUtil.createInitializationCallback(beanClass, "beanInstance",
-          Arrays.asList(timerVar,
-              Stmt.loadVariable("context").invoke("addDestructionCallback",
-                  Refs.get("instance"), destructionCallbackStmt),
-              timerExec));
+      controller.addInitializationStatements(initStmts);
+      controller.addDestructionStatements(destructionStmts);
 
-      statements.add(Stmt.loadVariable("context").invoke("addInitializationCallback",
-          Refs.get("instance"), initCallbackStmt));
-
-      return statements;
+      return Collections.emptyList();
     }
 
     catch (Exception e) {

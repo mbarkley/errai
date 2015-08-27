@@ -30,12 +30,6 @@ public class InjectUtil {
 
   }
 
-  public static Statement createDestructionCallback(MetaClass type, String initVar,
-          List<Statement> destructionStatements) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
-  }
-
   public static BeanMetric getFilteredBeanMetric(InjectionContext injectionContext, MetaClass injectedType,
           Class<? extends Annotation> class1) {
     // TODO Auto-generated method stub
@@ -56,12 +50,6 @@ public class InjectUtil {
 
   public static Statement getPublicOrPrivateFieldValue(InjectionContext injectionContext,
           VariableReference variableReference, MetaField field) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
-  }
-
-  public static Statement createInitializationCallback(MetaClass injectedType, String string,
-          List<Statement> initStmts) {
     // TODO Auto-generated method stub
     throw new RuntimeException("Not yet implemented.");
   }
