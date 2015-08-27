@@ -101,7 +101,7 @@ public class SyncDecorator extends IOCDecoratorExtension<Sync> {
         String fieldName = val.substring(1, val.length() - 1);
         MetaField field = decorable.getEnclosingType().getInheritedField(fieldName);
         fieldValueStmt =
-            InjectUtil.getPublicOrPrivateFieldValue(decorable.getInjectionContext(), Stmt.loadVariable("instance"), field);
+            InjectUtil.getPublicOrPrivateFieldValue(controller, field);
       }
       else {
         fieldValueStmt = Stmt.loadLiteral(val);

@@ -113,7 +113,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
 
     final List<Statement> initStmts = new ArrayList<Statement>();
 
-    generateTemplatedInitialization(decorable, initStmts, customProvider);
+    generateTemplatedInitialization(decorable, controller, initStmts, customProvider);
 
     if (declaringClass.isAnnotationPresent(EntryPoint.class)) {
       initStmts.add(Stmt.invokeStatic(RootPanel.class, "get").invoke("add", Refs.get("obj")));
@@ -183,6 +183,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
    */
   @SuppressWarnings("serial")
   private void generateTemplatedInitialization(final Decorable decorable,
+                                               final FactoryController controller,
                                                final List<Statement> initStmts,
                                                boolean customProvider) {
 
@@ -262,14 +263,14 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
       generateComponentCompositions(decorable, initStmts, component, rootTemplateElement,
           Stmt.loadVariable(dataFieldElementsVarName), fieldsMap);
 
-      generateEventHandlerMethodClasses(decorable, initStmts, component, dataFieldElementsVarName, fieldsMap);
+      generateEventHandlerMethodClasses(decorable, controller, initStmts, dataFieldElementsVarName, fieldsMap);
     }
   }
 
-  private void generateEventHandlerMethodClasses(final Decorable decorable,
-                                                 final List<Statement> initStmts, final Statement component,
-                                                 final String dataFieldElementsVarName, final Statement fieldsMap) {
+  private void generateEventHandlerMethodClasses(final Decorable decorable, final FactoryController controller,
+          final List<Statement> initStmts, final String dataFieldElementsVarName, final Statement fieldsMap) {
 
+    final Statement instance = Refs.get("instance");
     final Map<String, MetaClass> dataFieldTypes = DataFieldCodeDecorator.aggregateDataFieldTypeMap(decorable, decorable.getEnclosingType());
     dataFieldTypes.put("this", decorable.getEnclosingType());
 
@@ -305,8 +306,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
         final BlockBuilder<AnonymousClassStructureBuilder> listenerBuiler = ObjectBuilder.newInstanceOf(handlerType)
             .extend()
             .publicOverridesMethod(handlerType.getMethods()[0].getName(), Parameter.of(eventType, "event"));
-        listenerBuiler.append(InjectUtil.invokePublicOrPrivateMethod(decorable.getInjectionContext(), component,
-            method, Stmt.loadVariable("event")));
+        listenerBuiler.append(InjectUtil.invokePublicOrPrivateMethod(controller, method, Stmt.loadVariable("event")));
 
         final ObjectBuilder listenerInstance = listenerBuiler.finish().finish();
 
@@ -357,7 +357,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
              * We are completely native and have no reference to this data-field
              * Element in Java
              */
-            initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "setupNativeEventListener", component,
+            initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "setupNativeEventListener", instance,
                 Stmt.loadVariable(dataFieldElementsVarName).invoke("get", name), listenerInstance,
                 eventsToSink));
           }
@@ -391,8 +391,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
             .publicOverridesMethod(handlerType.getMethods()[0].getName(), Parameter.of(eventType, "event"));
 
 
-        listenerBuiler.append(InjectUtil.invokePublicOrPrivateMethod(decorable.getInjectionContext(),
-            component, method, Stmt.loadVariable("event")));
+        listenerBuiler.append(InjectUtil.invokePublicOrPrivateMethod(controller, method, Stmt.loadVariable("event")));
 
         final ObjectBuilder listenerInstance = listenerBuiler.finish().finish();
 
@@ -428,7 +427,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
           }
 
           if (dataFieldType.isAssignableTo(Element.class)) {
-            initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "setupWrappedElementEventHandler", component,
+            initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "setupWrappedElementEventHandler", instance,
                 eventSource, listenerInstance,
                 Stmt.invokeStatic(eventType, "getType")));
           }

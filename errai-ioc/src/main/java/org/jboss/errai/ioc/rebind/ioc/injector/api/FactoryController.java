@@ -99,7 +99,7 @@ public class FactoryController {
     return Stmt.loadVariable("this").invoke("setReference", Stmt.loadVariable("instance"), name, value);
   }
 
-  public void addExposedField(MetaField field, PrivateAccessType both) {
+  public Statement addExposedField(MetaField field, PrivateAccessType both) {
     // TODO Auto-generated method stub
     throw new RuntimeException("Not yet implemented.");
   }
@@ -110,6 +110,11 @@ public class FactoryController {
   }
 
   public void setAttribute(String binderModelTypeValue, MetaClass dataModelType) {
+    // TODO Auto-generated method stub
+    throw new RuntimeException("Not yet implemented.");
+  }
+
+  public Statement addExpsoedMethod(MetaMethod method) {
     // TODO Auto-generated method stub
     throw new RuntimeException("Not yet implemented.");
   }
