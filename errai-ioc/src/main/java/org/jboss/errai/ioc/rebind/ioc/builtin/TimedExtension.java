@@ -62,7 +62,7 @@ public class TimedExtension extends IOCDecoratorExtension<Timed> {
           .append(methodInvokation)
           .finish().finish());
 
-      final String timerVarName = InjectUtil.getUniqueVarName();
+      final String timerVarName = decorable.getAsMethod().getName() + "Timer";
       final Statement timerVar = Stmt.declareFinalVariable(timerVarName, Timer.class, timerDecl);
 
       final List<Statement> statements = new ArrayList<Statement>();

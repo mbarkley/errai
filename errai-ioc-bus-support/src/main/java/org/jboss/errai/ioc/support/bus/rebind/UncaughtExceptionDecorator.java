@@ -35,7 +35,6 @@ import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.api.CodeDecorator;
 import org.jboss.errai.ioc.client.container.InitializationCallback;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
-import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 
@@ -66,7 +65,7 @@ public class UncaughtExceptionDecorator extends IOCDecoratorExtension<UncaughtEx
           + GenUtil.getMethodString(method) + " of type " + method.getDeclaringClass() + ".");
     }
 
-    final String handlerVar = InjectUtil.getUniqueVarName();
+    final String handlerVar = method.getName() + "Handler";
     final Statement setRefStmt = controller.constructSetReference(handlerVar, Refs.get("handler"));
 
     final List<Statement> initStatements = Arrays.asList(

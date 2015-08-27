@@ -53,7 +53,7 @@ public class ServiceCodeDecorator extends IOCDecoratorExtension<Service> {
       }
     }
 
-    final String varName = InjectUtil.getUniqueVarName();
+    final String varName = decorable.getAsMethod().getName() + "ServiceSub";
 
     final Statement subscribeStatement;
 
@@ -66,9 +66,9 @@ public class ServiceCodeDecorator extends IOCDecoratorExtension<Service> {
               .invoke("subscribe", svcName, decorable.getAccessStatement());
     }
 
-    final Statement declareVar = Stmt.declareFinalVariable(varName, Subscription.class, subscribeStatement);
-    controller.addInitializationStatements(Collections.singletonList(declareVar));
-    controller.addDestructionStatements(Collections.<Statement>singletonList(Stmt.loadVariable(varName).invoke("remove")));
+    controller.addInitializationStatements(Collections.singletonList(controller.constructSetReference(varName, subscribeStatement)));
+    controller.addDestructionStatements(Collections.<Statement> singletonList(
+            Stmt.nestedCall(controller.constructGetReference(varName, Subscription.class)).invoke("remove")));
 
     return Collections.emptyList();
   }

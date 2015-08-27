@@ -30,11 +30,6 @@ public class InjectUtil {
 
   }
 
-  public static String getUniqueVarName() {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
-  }
-
   public static Statement createDestructionCallback(MetaClass type, String initVar,
           List<Statement> destructionStatements) {
     // TODO Auto-generated method stub

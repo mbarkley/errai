@@ -190,7 +190,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
     final MetaClass declaringClass = decorable.getEnclosingType();
 
     if (!constructed.containsKey(declaringClass)) {
-      final String templateVarName = InjectUtil.getUniqueVarName();
+      final String templateVarName = "templateFor" + decorable.getEnclosingType().getName();
 
       /*
        * Generate this component's ClientBundle resource if necessary
