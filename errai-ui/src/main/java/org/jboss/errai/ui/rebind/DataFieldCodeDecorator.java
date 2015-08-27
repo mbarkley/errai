@@ -54,7 +54,7 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
   @Override
   public List<? extends Statement> generateDecorator(final Decorable decorable, final FactoryController controller) {
     Statement instance = decorable.getAccessStatement();
-    String name = getTemplateDataFieldName((DataField) decorable.getAnnotation(), decorable.getMemberName());
+    String name = getTemplateDataFieldName((DataField) decorable.getAnnotation(), decorable.getName());
     if (decorable.getType().isAssignableTo(Element.class)) {
       if (decorable.get().isAnnotationPresent(Inject.class)) {
         throw new GenerationException("@DataField [" + name + "] in class ["
@@ -64,7 +64,7 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
       }
       instance = Stmt.invokeStatic(ElementWrapperWidget.class, "getWidget", instance);
     }
-    saveDataField(decorable, decorable.getType(), name, decorable.getMemberName(), instance);
+    saveDataField(decorable, decorable.getType(), name, decorable.getName(), instance);
 
     return Collections.emptyList();
   }

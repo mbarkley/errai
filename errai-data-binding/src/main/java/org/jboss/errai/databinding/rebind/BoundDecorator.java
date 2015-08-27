@@ -85,9 +85,9 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
 
       // Check if the bound property exists in data model type
       Bound bound = (Bound) decorable.getAnnotation();
-      String property = bound.property().equals("") ? decorable.getMemberName() : bound.property();
+      String property = bound.property().equals("") ? decorable.getName() : bound.property();
       if (!DataBindingValidator.isValidPropertyChain(binderLookup.getDataModelType(), property)) {
-        throw new GenerationException("Invalid binding of field " + decorable.getMemberName()
+        throw new GenerationException("Invalid binding of field " + decorable.getName()
             + " in class " + targetClass + "! Property " + property
             + " not resolvable from class " + binderLookup.getDataModelType()
             + "! Hint: Is " + binderLookup.getDataModelType() + " marked as @Bindable? When binding to a "
@@ -112,7 +112,7 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
         widget = Stmt.invokeStatic(ElementWrapperWidget.class, "getWidget", widget);
       }
       else {
-        throw new GenerationException("@Bound field or method " + decorable.getMemberName()
+        throw new GenerationException("@Bound field or method " + decorable.getName()
             + " in class " + targetClass
             + " must provide a widget or DOM element type but provides: "
             + widgetType.getFullyQualifiedName());
@@ -126,7 +126,7 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
     }
     else {
       throw new GenerationException("No @Model or @AutoBound data binder found for @Bound field or method "
-          + decorable.getMemberName() + " in class " + targetClass);
+          + decorable.getName() + " in class " + targetClass);
     }
 
     // The first decorator to run will generate the initialization callback, the subsequent

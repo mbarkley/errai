@@ -1,13 +1,17 @@
 package org.jboss.errai.ioc.rebind.ioc.injector.api;
 
+import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateFieldAccessorName;
+import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateMethodName;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.jboss.errai.codegen.Context;
 import org.jboss.errai.codegen.Statement;
@@ -15,7 +19,6 @@ import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
-import org.jboss.errai.codegen.util.PrivateAccessType;
 import org.jboss.errai.codegen.util.Stmt;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -28,6 +31,9 @@ public class FactoryController {
   private final Map<String, Statement> proxyProperties = new HashMap<String, Statement>();
   private final List<Statement> initializationStatements = new ArrayList<Statement>();
   private final List<Statement> destructionStatements = new ArrayList<Statement>();
+  private final Map<String, Object> attributes = new HashMap<String, Object>();
+  private final Set<MetaField> exposedFields = new HashSet<MetaField>();
+  private final Set<MetaMethod> exposedMethods = new HashSet<MetaMethod>();
 
   public void addInvokeBefore(final MetaMethod method, Statement statement) {
     invokeBefore.put(method, statement);
@@ -81,14 +87,16 @@ public class FactoryController {
     return destructionStatements;
   }
 
-  public boolean hasAttribute(String dataBindingConfigAttr) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+  public boolean hasAttribute(final String name) {
+    return attributes.containsKey(name);
   }
 
-  public void setAttribute(String dataBindingConfigAttr, Boolean true1) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+  public void setAttribute(final String name, final Object value) {
+    attributes.put(name, value);
+  }
+
+  public Object getAttribute(final String name) {
+    return attributes.get(name);
   }
 
   public Statement constructGetReference(final String name, final Class<?> refType) {
@@ -99,24 +107,16 @@ public class FactoryController {
     return Stmt.loadVariable("this").invoke("setReference", Stmt.loadVariable("instance"), name, value);
   }
 
-  public Statement addExposedField(MetaField field, PrivateAccessType both) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+  public Statement getExposedFieldStmt(final MetaField field) {
+    exposedFields.add(field);
+
+    return loadVariable("this").invoke(getPrivateFieldAccessorName(field), loadVariable("instance"));
   }
 
-  public Object getAttribute(String binderModelTypeValue) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
-  }
+  public Statement getExpsoedMethodStmt(final MetaMethod method, final Statement... params) {
+    exposedMethods.add(method);
 
-  public void setAttribute(String binderModelTypeValue, MetaClass dataModelType) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
-  }
-
-  public Statement addExpsoedMethod(MetaMethod method) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+    return loadVariable("this").invoke(getPrivateMethodName(method), loadVariable("instance"));
   }
 
 }

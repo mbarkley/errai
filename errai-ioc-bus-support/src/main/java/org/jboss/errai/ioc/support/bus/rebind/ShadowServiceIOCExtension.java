@@ -70,7 +70,7 @@ public class ShadowServiceIOCExtension extends IOCDecoratorExtension<ShadowServi
     }
     if (serviceName == null) {
       if (shadowService.value().equals("")) {
-        serviceName = decorable.getMemberName();
+        serviceName = decorable.getName();
       } else {
         serviceName = shadowService.value();
       }

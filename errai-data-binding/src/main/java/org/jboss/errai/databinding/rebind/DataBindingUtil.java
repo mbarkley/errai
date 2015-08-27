@@ -41,7 +41,6 @@ import org.jboss.errai.codegen.meta.MetaConstructor;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
-import org.jboss.errai.codegen.util.PrivateAccessType;
 import org.jboss.errai.codegen.util.PrivateAccessUtil;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.common.metadata.RebindUtils;
@@ -155,7 +154,7 @@ public class DataBindingUtil {
           assertTypeIsBindable(dataModelType);
 
           dataBinderRef = controller.constructGetReference(BINDER_VAR_NAME, DataBinder.class);
-          controller.addExposedField(field, PrivateAccessType.Both);
+          controller.getExposedFieldStmt(field);
         }
         return new DataBinderRef(dataModelType, dataBinderRef);
       }
@@ -252,7 +251,7 @@ public class DataBindingUtil {
         dataBinderRef = Stmt.invokeStatic(decorable.getInjectionContext().getProcessingContext().getBootstrapClass(),
                 PrivateAccessUtil.getPrivateFieldAccessorName(field),
                 Variable.get("instance"));
-        controller.addExposedField(field, PrivateAccessType.Both);
+        controller.getExposedFieldStmt(field);
       }
     }
     else {
@@ -264,7 +263,7 @@ public class DataBindingUtil {
           dataBinderRef = Stmt.invokeStatic(decorable.getInjectionContext().getProcessingContext().getBootstrapClass(),
                   PrivateAccessUtil.getPrivateFieldAccessorName(field),
                   Variable.get("instance"));
-          controller.addExposedField(field, PrivateAccessType.Both);
+          controller.getExposedFieldStmt(field);
           break;
         }
       }

@@ -44,7 +44,7 @@ public class ServiceCodeDecorator extends IOCDecoratorExtension<Service> {
     /**
      * Figure out the service name;
      */
-    final String svcName = serviceAnno.value().equals("") ? decorable.getMemberName() : serviceAnno.value();
+    final String svcName = serviceAnno.value().equals("") ? decorable.getName() : serviceAnno.value();
 
     boolean local = false;
     for (final Annotation a : InjectUtil.extractQualifiers(decorable.get())) {

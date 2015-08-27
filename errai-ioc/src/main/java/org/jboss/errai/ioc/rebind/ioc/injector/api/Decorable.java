@@ -12,6 +12,7 @@ import java.lang.annotation.ElementType;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
@@ -87,6 +88,16 @@ public class Decorable {
         final MetaParameter param = (MetaParameter) annotated;
         return loadVariable(getLocalVariableName(param));
       }
+
+      @Override
+      Statement callOrBind(final HasAnnotations annotated, final Statement... params) {
+        return METHOD.getAccessStatement(((MetaParameter) annotated).getDeclaringMember(), params);
+      }
+
+      @Override
+      String getName(HasAnnotations annotated) {
+        return ((MetaParameter) annotated).getName();
+      }
     },
     TYPE {
       @Override
@@ -103,6 +114,11 @@ public class Decorable {
       Statement getAccessStatement(HasAnnotations annotated) {
         return loadVariable("instance");
       }
+
+      @Override
+      String getName(HasAnnotations annotated) {
+        return ((MetaClass) annotated).getName();
+      }
     };
 
     abstract MetaClass getType(HasAnnotations annotated);
@@ -111,6 +127,12 @@ public class Decorable {
       return getAccessStatement(annotated);
     }
     abstract Statement getAccessStatement(HasAnnotations annotated);
+    Statement callOrBind(HasAnnotations annotated, Statement... params) {
+      return getAccessStatement(annotated, params);
+    }
+    String getName(HasAnnotations annotated) {
+      return ((MetaClassMember) annotated).getName();
+    }
 
     public static DecorableType fromElementType(ElementType elemType) {
       switch (elemType) {
@@ -131,11 +153,13 @@ public class Decorable {
   private final HasAnnotations annotated;
   private final Annotation annotation;
   private final DecorableType decorableType;
+  private final InjectionContext injectionContext;
 
-  public Decorable(final HasAnnotations annotated, final Annotation annotation, final DecorableType decorableType) {
+  public Decorable(final HasAnnotations annotated, final Annotation annotation, final DecorableType decorableType, final InjectionContext injectionContext) {
     this.annotated = annotated;
     this.annotation = annotation;
     this.decorableType = decorableType;
+    this.injectionContext = injectionContext;
   }
 
   public Annotation getAnnotation() {
@@ -167,13 +191,15 @@ public class Decorable {
   }
 
   public InjectionContext getInjectionContext() {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+    return injectionContext;
   }
 
   public MetaParameter getAsParameter() {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+    return (MetaParameter) annotated;
+  }
+
+  public MetaField getAsField() {
+    return (MetaField) annotated;
   }
 
   /*
@@ -181,18 +207,11 @@ public class Decorable {
    * where the method is called.
    */
   public Statement callOrBind(final Statement... values) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+    return decorableType().callOrBind(annotated, values);
   }
 
-  public String getMemberName() {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
-  }
-
-  public MetaField getAsField() {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+  public String getName() {
+    return decorableType().getName(annotated);
   }
 
 }
