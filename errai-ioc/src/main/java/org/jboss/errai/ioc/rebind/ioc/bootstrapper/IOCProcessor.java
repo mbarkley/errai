@@ -447,7 +447,7 @@ public class IOCProcessor {
       final List<MetaField> fields = type.getFieldsAnnotatedWith(anno);
       for (final MetaField field : fields) {
         final Injectable producedInjectable = builder.addConcreteInjectable(field.getType(),
-                qualFactory.forConcreteInjectable(field), anno, FactoryType.Producer,
+                qualFactory.forConcreteInjectable(field), getDirectScope(field), FactoryType.Producer,
                 getWiringTypesForScopeAnnotation(anno));
         final Injectable abstractProducerInjectable = builder
                 .lookupAbstractInjectable(concreteInjectable.getInjectedType(), concreteInjectable.getQualifier());
