@@ -69,16 +69,19 @@ import org.jboss.errai.ioc.client.container.ContextManager;
 import org.jboss.errai.ioc.client.container.ContextManagerImpl;
 import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.client.container.JsTypeProvider;
-import org.jboss.errai.ioc.rebind.ioc.graph.DefaultQualifierFactory;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.FactoryType;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilderImpl;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.graph.InjectableHandle;
+import org.jboss.errai.ioc.rebind.ioc.graph.ProvidedInjectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.QualifierFactory;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableProvider;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
+import com.google.common.collect.Multimap;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.js.JsType;
 
@@ -90,13 +93,14 @@ public class IOCProcessor {
 
   public IOCProcessor(final InjectionContext injectionContext) {
     this.injectionContext = injectionContext;
-    this.qualFactory = new DefaultQualifierFactory();
+    this.qualFactory = injectionContext.getQualifierFactory();
   }
 
   public void process(final IOCProcessingContext processingContext) {
     final Collection<MetaClass> allMetaClasses = findRelevantClasses(processingContext);
 
     final DependencyGraphBuilder graphBuilder = new DependencyGraphBuilderImpl();
+    addAllInjectableProviders(graphBuilder);
     final DependencyGraph dependencyGraph = processDependencies(allMetaClasses, graphBuilder);
     FactoryGenerator.setDependencyGraph(dependencyGraph);
     FactoryGenerator.setInjectionContext(injectionContext);
@@ -113,6 +117,13 @@ public class IOCProcessor {
     registerFactoriesBody.finish();
 
     processingContext.getBlockBuilder()._(loadVariable("this").invoke("registerFactories"));
+  }
+
+  private void addAllInjectableProviders(final DependencyGraphBuilder graphBuilder) {
+    final Multimap<InjectableHandle, InjectableProvider> providerMap = injectionContext.getRegisteredInjectableProviders();
+    for (final InjectableHandle handle : providerMap.keySet()) {
+      graphBuilder.addConcreteInjectable(handle.getType(), handle.getQualifier(), Dependent.class, FactoryType.CustomProvider);
+    }
   }
 
   private void addContextsToContextManager(final Collection<MetaClass> scopeContextImpls,
@@ -145,16 +156,39 @@ public class IOCProcessor {
           @SuppressWarnings("rawtypes") final BlockBuilder registerFactoriesBody) {
     for (final Injectable injectable : dependencyGraph) {
       if (!injectable.isContextual()) {
-        final MetaClass factoryClass = addFactoryDeclaration(injectable, processingContext);
-        registerFactoryWithContext(injectable, factoryClass, scopeContexts, registerFactoriesBody);
-        if (injectable.getWiringElementTypes().contains(WiringElementType.JsType)) {
-          registerFactoriesBody._(loadVariable("windowContext").invoke("addBeanProvider",
-                  injectable.getInjectedType().getFullyQualifiedName(), createJsTypeProviderFor(injectable)));
-          for (final MetaClass mc : injectable.getInjectedType().getAllSuperTypesAndInterfaces()) {
-            registerFactoriesBody._(loadVariable("windowContext").invoke("addSuperTypeAlias",
-                    mc.getFullyQualifiedName(), injectable.getInjectedType().getFullyQualifiedName()));
-          }
+        if (injectable.getFactoryType().equals(FactoryType.CustomProvided)) {
+          declareAndRegisterConcreteInjectable(injectable, processingContext, scopeContexts, registerFactoriesBody);
+          registerFactoryBodyGeneratorForInjectionSite(injectable);
+        } else {
+          declareAndRegisterConcreteInjectable(injectable, processingContext, scopeContexts, registerFactoriesBody);
         }
+      }
+    }
+  }
+
+  private void registerFactoryBodyGeneratorForInjectionSite(final Injectable injectable) {
+    final Collection<InjectableProvider> providers = injectionContext.getRegisteredInjectableProviders().get(injectable.getHandle());
+    if (providers.size() > 1) {
+      throw new RuntimeException("Multiple providers for " + injectable.getHandle() + ". An error should have been thrown in the graph builder.");
+    } else if (providers.isEmpty()) {
+      throw new RuntimeException("No providers for " + injectable.getHandle() + ". An error should have been thrown in the graph builder.");
+    }
+
+    final InjectableProvider provider = providers.iterator().next();
+    FactoryGenerator.registerCustomBodyGenerator(injectable.getFactoryName(), provider.getGenerator(((ProvidedInjectable) injectable).getInjectionSite()));
+  }
+
+  private void declareAndRegisterConcreteInjectable(final Injectable injectable,
+          final IOCProcessingContext processingContext, final Map<Class<? extends Annotation>, MetaClass> scopeContexts,
+          @SuppressWarnings("rawtypes") final BlockBuilder registerFactoriesBody) {
+    final MetaClass factoryClass = addFactoryDeclaration(injectable, processingContext);
+    registerFactoryWithContext(injectable, factoryClass, scopeContexts, registerFactoriesBody);
+    if (injectable.getWiringElementTypes().contains(WiringElementType.JsType)) {
+      registerFactoriesBody._(loadVariable("windowContext").invoke("addBeanProvider",
+              injectable.getInjectedType().getFullyQualifiedName(), createJsTypeProviderFor(injectable)));
+      for (final MetaClass mc : injectable.getInjectedType().getAllSuperTypesAndInterfaces()) {
+        registerFactoriesBody._(loadVariable("windowContext").invoke("addSuperTypeAlias",
+                mc.getFullyQualifiedName(), injectable.getInjectedType().getFullyQualifiedName()));
       }
     }
   }
@@ -198,9 +232,11 @@ public class IOCProcessor {
   private void registerFactoryWithContext(final Injectable injectable, final MetaClass factoryClass,
           final Map<Class<? extends Annotation>, MetaClass> scopeContexts,
           @SuppressWarnings("rawtypes") final BlockBuilder registerFactoriesBody) {
-    final String contextVarName = getContextVarName(scopeContexts.get(injectable.getScope()));
+    final Class<? extends Annotation> scope = injectable.getScope();
+    final MetaClass injectedType = injectable.getInjectedType();
+    final String contextVarName = getContextVarName(scopeContexts.get(scope));
     registerFactoriesBody._(loadVariable(contextVarName).invoke("registerFactory",
-            Stmt.castTo(parameterizedAs(Factory.class, typeParametersOf(injectable.getInjectedType())),
+            Stmt.castTo(parameterizedAs(Factory.class, typeParametersOf(injectedType)),
                     invokeStatic(GWT.class, "create", factoryClass))));
   }
 
@@ -235,10 +271,17 @@ public class IOCProcessor {
   }
 
   private MetaClass addFactoryDeclaration(final Injectable injectable, final IOCProcessingContext processingContext) {
+    final String factoryName = injectable.getFactoryName();
+    final MetaClass typeCreatedByFactory = injectable.getInjectedType();
+    return addFactoryDeclaration(factoryName, typeCreatedByFactory, processingContext);
+  }
+
+  private MetaClass addFactoryDeclaration(final String factoryName, final MetaClass typeCreatedByFactory,
+          final IOCProcessingContext processingContext) {
     final ClassStructureBuilder<?> builder = processingContext.getBootstrapBuilder();
     final BuildMetaClass factory = ClassBuilder
-            .define(injectable.getFactoryName(),
-                    parameterizedAs(Factory.class, typeParametersOf(injectable.getInjectedType())))
+            .define(factoryName,
+                    parameterizedAs(Factory.class, typeParametersOf(typeCreatedByFactory)))
             .publicScope().abstractClass().body().getClassDefinition();
     builder.declaresInnerClass(new InnerClass(factory));
 

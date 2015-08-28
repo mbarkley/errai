@@ -44,7 +44,10 @@ import org.jboss.errai.common.client.api.Assert;
 import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
+import org.jboss.errai.ioc.rebind.ioc.graph.DefaultQualifierFactory;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.graph.InjectableHandle;
+import org.jboss.errai.ioc.rebind.ioc.graph.QualifierFactory;
 import org.jboss.errai.ioc.rebind.ioc.injector.Injector;
 import org.jboss.errai.ioc.rebind.ioc.injector.InjectorImpl;
 import org.jboss.errai.reflections.util.SimplePackageFilter;
@@ -53,6 +56,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Multimaps;
 
 public class InjectionContext {
   private static final Logger log = LoggerFactory.getLogger(InjectionContext.class);
@@ -60,10 +64,12 @@ public class InjectionContext {
   private final IOCProcessingContext processingContext;
 
   private final Multimap<WiringElementType, Class<? extends Annotation>> elementBindings = HashMultimap.create();
+  private final Multimap<InjectableHandle, InjectableProvider> injectableProviders = HashMultimap.create();
 
   private final boolean async;
 
   private final Map<Injectable, Injector> injectors = new HashMap<Injectable, Injector>();
+  private final QualifierFactory qualifierFactory;
 
   private final Set<String> whitelist;
   private final Set<String> blacklist;
@@ -79,8 +85,14 @@ public class InjectionContext {
 
   private final Map<String, Object> attributeMap = new HashMap<String, Object>();
 
+
   private InjectionContext(final Builder builder) {
-    this.processingContext = builder.processingContext;
+    this.processingContext = Assert.notNull(builder.processingContext);
+    if (builder.qualifierFactory == null) {
+      this.qualifierFactory = new DefaultQualifierFactory();
+    } else {
+      this.qualifierFactory = builder.qualifierFactory;
+    }
     this.whitelist = Assert.notNull(builder.whitelist);
     this.blacklist = Assert.notNull(builder.blacklist);
     this.async = builder.async;
@@ -89,12 +101,18 @@ public class InjectionContext {
   public static class Builder {
     private IOCProcessingContext processingContext;
     private boolean async;
+    private QualifierFactory qualifierFactory;
     private final HashSet<String> enabledAlternatives = new HashSet<String>();
     private final HashSet<String> whitelist = new HashSet<String>();
     private final HashSet<String> blacklist = new HashSet<String>();
 
     public static Builder create() {
       return new Builder();
+    }
+
+    public Builder qualifierFactory(final QualifierFactory qualifierFactory) {
+      this.qualifierFactory = qualifierFactory;
+      return this;
     }
 
     public Builder processingContext(final IOCProcessingContext processingContext) {
@@ -127,6 +145,18 @@ public class InjectionContext {
 
       return new InjectionContext(this);
     }
+  }
+
+  public void registerInjectableProvider(final InjectableHandle handle, final InjectableProvider provider) {
+    injectableProviders.put(handle, provider);
+  }
+
+  public Multimap<InjectableHandle, InjectableProvider> getRegisteredInjectableProviders() {
+    return Multimaps.unmodifiableMultimap(injectableProviders);
+  }
+
+  public QualifierFactory getQualifierFactory() {
+    return qualifierFactory;
   }
 
   public boolean isIncluded(final MetaClass type) {

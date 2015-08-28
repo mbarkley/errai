@@ -10,6 +10,8 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 public interface Injectable {
 
+  InjectableHandle getHandle();
+
   MetaClass getInjectedType();
 
   Class<? extends Annotation> getScope();

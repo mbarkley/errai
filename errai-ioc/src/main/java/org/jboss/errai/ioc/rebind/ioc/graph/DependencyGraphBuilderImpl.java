@@ -17,12 +17,14 @@ import java.util.Stack;
 
 import javax.enterprise.context.Dependent;
 
+import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.MetaParameterizedType;
 import org.jboss.errai.ioc.client.api.EntryPoint;
+import org.jboss.errai.ioc.rebind.ioc.graph.ProvidedInjectable.InjectionSite;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 import com.google.common.collect.HashMultimap;
@@ -33,18 +35,39 @@ import com.google.common.collect.Multimap;
  */
 public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
-  private final Map<AbstractInjectableHandle, AbstractInjectable> abstractInjectables = new HashMap<AbstractInjectableHandle, AbstractInjectable>();
+  private final Map<InjectableHandle, AbstractInjectable> abstractInjectables = new HashMap<InjectableHandle, AbstractInjectable>();
   private final Multimap<MetaClass, AbstractInjectable> directAbstractInjectablesByAssignableTypes = HashMultimap.create();
   private final Map<String, ConcreteInjectable> concretesByName = new HashMap<String, ConcreteInjectable>();
 
   @Override
   public Injectable addConcreteInjectable(final MetaClass injectedType, final Qualifier qualifier, Class<? extends Annotation> literalScope,
           final FactoryType factoryType, final WiringElementType... wiringTypes) {
-    final ConcreteInjectable concrete = new ConcreteInjectable(injectedType, qualifier, literalScope, factoryType, Arrays.asList(wiringTypes));
+    final ConcreteInjectable concrete = createConcreteInjectable(injectedType, qualifier, literalScope, factoryType, wiringTypes);
     concretesByName.put(concrete.getFactoryName(), concrete);
     linkDirectAbstractInjectable(concrete);
 
     return concrete;
+  }
+
+  private ConcreteInjectable createConcreteInjectable(final MetaClass injectedType, final Qualifier qualifier,
+          Class<? extends Annotation> literalScope, final FactoryType factoryType,
+          final WiringElementType... wiringTypes) {
+    switch (factoryType) {
+    case ContextualProvider:
+    case JsType:
+    case Producer:
+    case Provider:
+    case Type:
+      return new ConcreteInjectable(injectedType, qualifier, literalScope, factoryType, Arrays.asList(wiringTypes));
+    case CustomProvider:
+      return new ConcreteProvidedInjectable(injectedType, qualifier, literalScope, factoryType, Arrays.asList(wiringTypes));
+    case Abstract:
+      throw new RuntimeException("A concrete injectable cannot have the factory type " + FactoryType.Abstract + ".");
+    case CustomProvided:
+      throw new RuntimeException(FactoryType.CustomProvided + " should not be added manually.");
+    default:
+      throw new RuntimeException("Not yet implemented!");
+    }
   }
 
   private void linkDirectAbstractInjectable(final ConcreteInjectable concreteInjectable) {
@@ -84,7 +107,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   private AbstractInjectable lookupAsAbstractInjectable(final MetaClass type, final Qualifier qualifier) {
-    final AbstractInjectableHandle handle = new AbstractInjectableHandle(type, qualifier);
+    final InjectableHandle handle = new InjectableHandle(type, qualifier);
     AbstractInjectable abstractInjectable = abstractInjectables.get(handle);
     if (abstractInjectable == null) {
       abstractInjectable = new AbstractInjectable(type, qualifier);
@@ -125,7 +148,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
           reachableNames.add(processedInjectable.getFactoryName());
           for (final BaseDependency dep : processedInjectable.dependencies) {
             final ConcreteInjectable resolvedDep = resolveDependency(dep, processedInjectable);
-            if (!reachableNames.contains(resolvedDep)) {
+            if (!reachableNames.contains(resolvedDep.getFactoryName())) {
               processingQueue.add(resolvedDep);
             }
           }
@@ -139,6 +162,8 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   private void resolveDependencies() {
     final Set<ConcreteInjectable> visited = new HashSet<ConcreteInjectable>();
     final Stack<DFSFrame> visiting = new Stack<DFSFrame>();
+    final Set<String> customProviderNames = new HashSet<String>();
+    final Map<String, ConcreteInjectable> customProvideds = new HashMap<String, ConcreteInjectable>();
 
     for (final ConcreteInjectable concrete : concretesByName.values()) {
       visiting.push(new DFSFrame(concrete));
@@ -146,7 +171,16 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
         final DFSFrame curFrame = visiting.peek();
         if (curFrame.dependencyIndex < curFrame.concrete.dependencies.size()) {
           final BaseDependency dep = curFrame.concrete.dependencies.get(curFrame.dependencyIndex);
-          final ConcreteInjectable resolved = resolveDependency(dep, curFrame.concrete);
+          ConcreteInjectable resolved = resolveDependency(dep, curFrame.concrete);
+          if (resolved.getFactoryType().equals(FactoryType.CustomProvider)) {
+            final ConcreteProvidedInjectable providedInjectable = (ConcreteProvidedInjectable) resolved;
+            customProviderNames.add(providedInjectable.getFactoryName());
+            final InjectionSite site = new InjectionSite(curFrame.concrete.type, getAnnotated(dep));
+            resolved = new ProvidedInjectableImpl(providedInjectable, site);
+            customProvideds.put(resolved.getFactoryName(), resolved);
+            dep.injectable = copyAbstractInjectable(dep.injectable);
+            dep.injectable.resolution = resolved;
+          }
           if (visited.contains(resolved)) {
             if (visiting.contains(resolved)) {
               validateCycle(visiting, resolved);
@@ -159,6 +193,34 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
           visiting.pop();
         }
       } while (visiting.size() > 0);
+    }
+
+    concretesByName.keySet().removeAll(customProviderNames);
+    concretesByName.putAll(customProvideds);
+  }
+
+  private AbstractInjectable copyAbstractInjectable(final AbstractInjectable injectable) {
+    final AbstractInjectable retVal = new AbstractInjectable(injectable.type, injectable.qualifier);
+    retVal.linked.addAll(injectable.linked);
+
+    return retVal;
+  }
+
+  private HasAnnotations getAnnotated(BaseDependency dep) {
+    switch (dep.dependencyType) {
+    case Field:
+      final FieldDependencyImpl fieldDep = (FieldDependencyImpl) dep;
+      return fieldDep.field;
+    case ProducerParameter:
+    case Constructor:
+      final ParamDependencyImpl paramDep = (ParamDependencyImpl) dep;
+      return paramDep.parameter;
+    case SetterParameter:
+      final SetterParameterDependencyImpl setterParamDep = (SetterParameterDependencyImpl) dep;
+      return setterParamDep.method;
+    case ProducerInstance:
+    default:
+      throw new RuntimeException("Not yet implemented!");
     }
   }
 
@@ -248,7 +310,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   private List<ConcreteInjectable> getProviders(final List<ConcreteInjectable> resolved) {
     final List<ConcreteInjectable> providers = new ArrayList<ConcreteInjectable>();
     for (final ConcreteInjectable injectable : resolved) {
-      if (FactoryType.Provider.equals(injectable.injectorType) || FactoryType.ContextualProvider.equals(injectable.injectorType)) {
+      if (FactoryType.Provider.equals(injectable.factoryType) || FactoryType.ContextualProvider.equals(injectable.factoryType)) {
         providers.add(injectable);
       }
     }
@@ -398,6 +460,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     public String getFactoryName() {
       return "Factory_for__" + type.getFullyQualifiedName().replace('.', '_').replace('$', '_') + "__with_qualifiers__" + qualifier.getIdentifierSafeString();
     }
+
+    @Override
+    public InjectableHandle getHandle() {
+      return new InjectableHandle(type, qualifier);
+    }
  }
 
   static class AbstractInjectable extends BaseInjectable {
@@ -461,7 +528,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   static class ConcreteInjectable extends BaseInjectable {
-    final FactoryType injectorType;
+    final FactoryType factoryType;
     final Collection<WiringElementType> wiringTypes;
     final List<BaseDependency> dependencies = new ArrayList<BaseDependency>();
     final Class<? extends Annotation> literalScope;
@@ -472,7 +539,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       super(type, qualifier);
       this.literalScope = literalScope;
       this.wiringTypes = wiringTypes;
-      this.injectorType = injectorType;
+      this.factoryType = injectorType;
     }
 
     @Override
@@ -487,7 +554,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     @Override
     public FactoryType getFactoryType() {
-      return injectorType;
+      return factoryType;
     }
 
     @Override
@@ -497,7 +564,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     @Override
     public boolean requiresProxy() {
-      switch (injectorType) {
+      switch (factoryType) {
       case Abstract:
       case ContextualProvider:
       case Provider:
@@ -517,7 +584,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     @Override
     public boolean isContextual() {
-      return FactoryType.ContextualProvider.equals(injectorType);
+      return FactoryType.ContextualProvider.equals(factoryType);
     }
 
     @Override
@@ -526,8 +593,51 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
   }
 
+  static class ConcreteProvidedInjectable extends ConcreteInjectable {
+
+    final Collection<InjectionSite> injectionSites = new ArrayList<InjectionSite>();
+
+    ConcreteProvidedInjectable(final MetaClass type, final Qualifier qualifier,
+            final Class<? extends Annotation> literalScope, final FactoryType injectorType,
+            final Collection<WiringElementType> wiringTypes) {
+      super(type, qualifier, literalScope, injectorType, wiringTypes);
+    }
+
+    public Collection<InjectionSite> getInjectionSites() {
+      return Collections.unmodifiableCollection(injectionSites);
+    }
+
+    public String getFactoryNameForInjectionSite(final InjectionSite site) {
+      return getFactoryName() + "__within__" + site.getEnclosingType().getName();
+    }
+
+  }
+
+  static class ProvidedInjectableImpl extends ConcreteInjectable implements ProvidedInjectable {
+
+    final InjectionSite site;
+    final ConcreteProvidedInjectable injectable;
+
+    ProvidedInjectableImpl(final ConcreteProvidedInjectable injectable, final InjectionSite site) {
+      super(injectable.type, injectable.qualifier, injectable.literalScope, FactoryType.CustomProvided, injectable.wiringTypes);
+      this.site = site;
+      this.injectable = injectable;
+    }
+
+    @Override
+    public String getFactoryName() {
+      return injectable.getFactoryNameForInjectionSite(site);
+    }
+
+    @Override
+    public InjectionSite getInjectionSite() {
+      return site;
+    }
+
+  }
+
   static class BaseDependency implements Dependency {
-    final AbstractInjectable injectable;
+    AbstractInjectable injectable;
     final DependencyType dependencyType;
 
     BaseDependency(final AbstractInjectable abstractInjectable, final DependencyType dependencyType) {
@@ -604,35 +714,6 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       return method;
     }
 
-  }
-
-  static class AbstractInjectableHandle {
-    final MetaClass type;
-    final Qualifier qualifier;
-
-    AbstractInjectableHandle(final MetaClass type, final Qualifier qualifier) {
-      this.type = type;
-      this.qualifier = qualifier;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (!(obj instanceof AbstractInjectableHandle))
-        return false;
-
-      final AbstractInjectableHandle other = (AbstractInjectableHandle) obj;
-      return type.equals(other.type) && qualifier.equals(qualifier);
-    }
-
-    @Override
-    public int hashCode() {
-      return type.hashCode() ^ qualifier.hashCode();
-    }
-
-    @Override
-    public String toString() {
-      return "[AbstractInjectableHandle:" + type.getName() + "$" + qualifier.toString() + "]";
-    }
   }
 
   static class DFSFrame {

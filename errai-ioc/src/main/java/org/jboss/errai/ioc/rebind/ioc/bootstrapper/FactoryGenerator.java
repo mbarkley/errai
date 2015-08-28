@@ -6,11 +6,14 @@ import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
 
 import java.io.File;
 import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.common.metadata.RebindUtils;
+import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.FactoryType;
@@ -27,6 +30,7 @@ import com.google.gwt.core.ext.UnableToCompleteException;
 public class FactoryGenerator extends IncrementalGenerator {
 
   private static final String GENERATED_PACKAGE = "org.jboss.errai.ioc.client";
+  private static final Map<String, FactoryBodyGenerator> customBodyGenerators = new HashMap<String, FactoryBodyGenerator>();
   private static DependencyGraph graph;
   private static InjectionContext injectionContext;
 
@@ -36,6 +40,10 @@ public class FactoryGenerator extends IncrementalGenerator {
 
   public static void setInjectionContext(final InjectionContext injectionContext) {
     FactoryGenerator.injectionContext = injectionContext;
+  }
+
+  public static void registerCustomBodyGenerator(final String typeName, final FactoryBodyGenerator generator) {
+    customBodyGenerators.put(typeName, generator);
   }
 
   public static String getLocalVariableName(final MetaParameter param) {
@@ -69,8 +77,7 @@ public class FactoryGenerator extends IncrementalGenerator {
 
     final ClassStructureBuilder<?> factoryBuilder = define(getFactorySubTypeName(typeName),
             parameterizedAs(Factory.class, typeParametersOf(injectable.getInjectedType()))).publicScope().body();
-    final FactoryBodyGenerator generator = selectBodyGenerator(factoryType);
-
+    final FactoryBodyGenerator generator = selectBodyGenerator(factoryType, typeName);
 
     final String factorySimpleClassName = getFactorySubTypeSimpleName(typeName);
     final PrintWriter pw = generatorContext.tryCreate(logger, GENERATED_PACKAGE, factorySimpleClassName);
@@ -89,7 +96,7 @@ public class FactoryGenerator extends IncrementalGenerator {
     }
   }
 
-  private FactoryBodyGenerator selectBodyGenerator(final FactoryType factoryType) {
+  private FactoryBodyGenerator selectBodyGenerator(final FactoryType factoryType, final String typeName) {
     final FactoryBodyGenerator generator;
     switch (factoryType) {
     case Type:
@@ -101,14 +108,26 @@ public class FactoryGenerator extends IncrementalGenerator {
     case JsType:
       generator = new JsTypeFactoryBodyGenerator();
       break;
+    case CustomProvided:
+      final String simpleName = getSimpleName(typeName);
+      if (!customBodyGenerators.containsKey(simpleName)) {
+        throw new RuntimeException(simpleName + " has " + FactoryType.class.getSimpleName() + " " + FactoryType.CustomProvided
+                + " but no custom " + FactoryBodyGenerator.class.getSimpleName() + " has been registered.");
+      }
+      generator = customBodyGenerators.get(simpleName);
+      break;
     case ContextualProvider:
-      throw new RuntimeException();
+      throw new RuntimeException("Types provided by a " + ContextualTypeProvider.class.getSimpleName() + " should not have factories generated.");
     case Producer:
     default:
       throw new RuntimeException("Not yet implemented!");
     }
 
     return generator;
+  }
+
+  private String getSimpleName(final String typeName) {
+    return typeName.substring(typeName.lastIndexOf('.')+1);
   }
 
   private String getFactorySubTypeName(final String typeName) {
