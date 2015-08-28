@@ -3,6 +3,7 @@ package org.jboss.errai.ioc.rebind.ioc.graph;
 import java.lang.annotation.Annotation;
 
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
@@ -26,7 +27,7 @@ public interface DependencyGraphBuilder {
 
   ParamDependency createProducerParamDependency(Injectable abstractInjectable, int paramIndex, MetaParameter param);
 
-  Dependency createProducerInstanceDependency(Injectable abstractInjectble);
+  ProducerInstanceDependency createProducerInstanceDependency(Injectable abstractInjectble, MetaClassMember producingMember);
 
   SetterParameterDependency createSetterMethodDependency(Injectable abstractInjectable, MetaMethod setter);
 
@@ -65,6 +66,12 @@ public interface DependencyGraphBuilder {
   public static interface SetterParameterDependency extends Dependency {
 
     MetaMethod getMethod();
+
+  }
+
+  public static interface ProducerInstanceDependency extends Dependency {
+
+    MetaClassMember getProducingMember();
 
   }
 }

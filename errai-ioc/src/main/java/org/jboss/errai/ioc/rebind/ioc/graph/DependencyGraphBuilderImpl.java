@@ -19,6 +19,7 @@ import javax.enterprise.context.Dependent;
 
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
@@ -450,8 +451,8 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   @Override
-  public Dependency createProducerInstanceDependency(final Injectable abstractInjectable) {
-    return new BaseDependency(AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerInstance);
+  public ProducerInstanceDependency createProducerInstanceDependency(final Injectable abstractInjectable, final MetaClassMember member) {
+    return new ProducerInstanceDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerInstance, member);
   }
 
   static abstract class BaseInjectable implements Injectable {
@@ -734,6 +735,22 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     @Override
     public MetaMethod getMethod() {
       return method;
+    }
+
+  }
+
+  static class ProducerInstanceDependencyImpl extends BaseDependency implements ProducerInstanceDependency {
+
+    private final MetaClassMember producingMember;
+
+    ProducerInstanceDependencyImpl(final AbstractInjectable abstractInjectable, final DependencyType dependencyType, final MetaClassMember producingMember) {
+      super(abstractInjectable, dependencyType);
+      this.producingMember = producingMember;
+    }
+
+    @Override
+    public MetaClassMember getProducingMember() {
+      return producingMember;
     }
 
   }

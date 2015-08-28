@@ -210,6 +210,14 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     implementSetInstance(proxyImpl, injectable);
     implementClearInstance(proxyImpl, injectable);
     implementSetContext(proxyImpl, injectable);
+    implementUnwrappedInstance(proxyImpl, injectable);
+  }
+
+  private void implementUnwrappedInstance(ClassStructureBuilder<?> proxyImpl, Injectable injectable) {
+    proxyImpl.publicMethod(injectable.getInjectedType(), "unwrappedInstance")
+             .body()
+             ._(loadVariable("proxyHelper").invoke("getInstance").returnValue())
+             .finish();
   }
 
   private void implementSetContext(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {

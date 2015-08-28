@@ -10,4 +10,6 @@ public interface Proxy<T> {
 
   void setContext(Context context);
 
+  T unwrappedInstance();
+
 }

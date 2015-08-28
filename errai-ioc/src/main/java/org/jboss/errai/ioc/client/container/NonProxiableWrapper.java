@@ -28,4 +28,9 @@ public class NonProxiableWrapper<T> implements Proxy<T> {
     // No-op since non-proxied type cannot protect from being referenced from outside of active scope.
   }
 
+  @Override
+  public T unwrappedInstance() {
+    return instance;
+  }
+
 }

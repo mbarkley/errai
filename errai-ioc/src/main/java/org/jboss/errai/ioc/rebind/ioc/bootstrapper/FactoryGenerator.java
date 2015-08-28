@@ -108,6 +108,9 @@ public class FactoryGenerator extends IncrementalGenerator {
     case JsType:
       generator = new JsTypeFactoryBodyGenerator();
       break;
+    case Producer:
+      generator = new ProducerFactoryBodyGenerator();
+      break;
     case CustomProvided:
       final String simpleName = getSimpleName(typeName);
       if (!customBodyGenerators.containsKey(simpleName)) {
@@ -118,7 +121,6 @@ public class FactoryGenerator extends IncrementalGenerator {
       break;
     case ContextualProvider:
       throw new RuntimeException("Types provided by a " + ContextualTypeProvider.class.getSimpleName() + " should not have factories generated.");
-    case Producer:
     default:
       throw new RuntimeException(factoryType + " not yet implemented!");
     }
