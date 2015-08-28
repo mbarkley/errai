@@ -291,7 +291,15 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       if (providers.isEmpty()) {
         final List<ConcreteInjectable> alternatives = getAlternatives(resolved);
         if (alternatives.isEmpty()) {
-          throwAmbiguousDependencyException(dep, concrete, resolved);
+          final List<ConcreteInjectable> nonSimpletons = getNonSimpletons(resolved);
+          if (nonSimpletons.isEmpty()) {
+            throwAmbiguousDependencyException(dep, concrete, resolved);
+          } else if (nonSimpletons.size() > 1) {
+            throwAmbiguousDependencyException(dep, concrete, nonSimpletons);
+          } else {
+            resolved.clear();
+            resolved.addAll(nonSimpletons);
+          }
         } else if (alternatives.size() > 1) {
           throwAmbiguousDependencyException(dep, concrete, alternatives);
         } else {
@@ -307,6 +315,17 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
 
     return (dep.injectable.resolution = resolved.get(0));
+  }
+
+  private List<ConcreteInjectable> getNonSimpletons(final List<ConcreteInjectable> resolved) {
+    final List<ConcreteInjectable> nonSimpletons = new ArrayList<ConcreteInjectable>();
+    for (final ConcreteInjectable injectable : resolved) {
+      if (!injectable.wiringTypes.contains(WiringElementType.Simpleton)) {
+        nonSimpletons.add(injectable);
+      }
+    }
+
+    return nonSimpletons;
   }
 
   private List<ConcreteInjectable> getProviders(final List<ConcreteInjectable> resolved) {
