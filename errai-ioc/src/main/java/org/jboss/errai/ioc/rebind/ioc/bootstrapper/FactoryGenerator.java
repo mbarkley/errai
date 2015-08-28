@@ -120,7 +120,7 @@ public class FactoryGenerator extends IncrementalGenerator {
       throw new RuntimeException("Types provided by a " + ContextualTypeProvider.class.getSimpleName() + " should not have factories generated.");
     case Producer:
     default:
-      throw new RuntimeException("Not yet implemented!");
+      throw new RuntimeException(factoryType + " not yet implemented!");
     }
 
     return generator;

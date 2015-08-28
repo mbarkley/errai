@@ -166,6 +166,9 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     final Map<String, ConcreteInjectable> customProvideds = new HashMap<String, ConcreteInjectable>();
 
     for (final ConcreteInjectable concrete : concretesByName.values()) {
+      if (concrete.factoryType.equals(FactoryType.CustomProvider)) {
+        customProviderNames.add(concrete.getFactoryName());
+      }
       visiting.push(new DFSFrame(concrete));
       do {
         final DFSFrame curFrame = visiting.peek();
@@ -174,7 +177,6 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
           ConcreteInjectable resolved = resolveDependency(dep, curFrame.concrete);
           if (resolved.getFactoryType().equals(FactoryType.CustomProvider)) {
             final ConcreteProvidedInjectable providedInjectable = (ConcreteProvidedInjectable) resolved;
-            customProviderNames.add(providedInjectable.getFactoryName());
             final InjectionSite site = new InjectionSite(curFrame.concrete.type, getAnnotated(dep));
             resolved = new ProvidedInjectableImpl(providedInjectable, site);
             customProvideds.put(resolved.getFactoryName(), resolved);
