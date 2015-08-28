@@ -169,8 +169,10 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       if (concrete.factoryType.equals(FactoryType.CustomProvider)) {
         customProviderNames.add(concrete.getFactoryName());
       }
-      visiting.push(new DFSFrame(concrete));
-      do {
+      if (!visited.contains(concrete)) {
+        visiting.push(new DFSFrame(concrete));
+      }
+      while (visiting.size() > 0) {
         final DFSFrame curFrame = visiting.peek();
         if (curFrame.dependencyIndex < curFrame.concrete.dependencies.size()) {
           final BaseDependency dep = curFrame.concrete.dependencies.get(curFrame.dependencyIndex);
@@ -183,18 +185,17 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
             dep.injectable = copyAbstractInjectable(dep.injectable);
             dep.injectable.resolution = resolved;
           }
-          if (visited.contains(resolved)) {
-            if (visiting.contains(resolved)) {
-              validateCycle(visiting, resolved);
-            }
-          } else {
-            curFrame.dependencyIndex += 1;
-            visiting.push(new DFSFrame(resolved));
+          final DFSFrame newFrame = new DFSFrame(resolved);
+          if (visiting.contains(newFrame)) {
+            validateCycle(visiting, resolved);
+          } else if (!visited.contains(resolved)) {
+            visiting.push(newFrame);
           }
+          curFrame.dependencyIndex += 1;
         } else {
-          visiting.pop();
+          visited.add(visiting.pop().concrete);
         }
-      } while (visiting.size() > 0);
+      }
     }
 
     concretesByName.keySet().removeAll(customProviderNames);
@@ -232,7 +233,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
 
     int i;
-    for (i = visiting.size() - 1; !visiting.get(i).equals(resolved); i--) {
+    for (i = visiting.size() - 1; !visiting.get(i).concrete.equals(resolved); i--) {
       if (canBreakCycle(visiting.get(i).concrete)) {
         return;
       }
@@ -746,17 +747,17 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
 
     @Override
-    public boolean equals(Object obj) {
-      if (obj instanceof ConcreteInjectable) {
-        return concrete.equals(obj);
-      } else {
-        return super.equals(obj);
-      }
+    public int hashCode() {
+      return concrete.hashCode();
     }
 
     @Override
-    public int hashCode() {
-      return concrete.hashCode();
+    public boolean equals(Object obj) {
+      if (obj instanceof DFSFrame) {
+        return concrete.equals(((DFSFrame) obj).concrete);
+      } else {
+        return false;
+      }
     }
 
     @Override
