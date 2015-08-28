@@ -113,7 +113,7 @@ public class FactoryController {
     return loadVariable("this").invoke(getPrivateFieldAccessorName(field), loadVariable("instance"));
   }
 
-  public Statement getExpsoedMethodStmt(final MetaMethod method, final Statement... params) {
+  public Statement getExposedMethodStmt(final MetaMethod method, final Statement... params) {
     exposedMethods.add(method);
 
     return loadVariable("this").invoke(getPrivateMethodName(method), loadVariable("instance"));

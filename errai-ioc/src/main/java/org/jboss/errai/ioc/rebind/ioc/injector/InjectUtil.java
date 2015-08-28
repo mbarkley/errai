@@ -19,7 +19,7 @@ public class InjectUtil {
     if (method.isPublic()) {
       return Stmt.loadVariable("instance").invoke(method, (Object[]) params);
     } else {
-      return controller.getExpsoedMethodStmt(method, params);
+      return controller.getExposedMethodStmt(method, params);
     }
   }
 
