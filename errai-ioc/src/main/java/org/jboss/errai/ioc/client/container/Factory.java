@@ -30,7 +30,7 @@ public abstract class Factory<T> {
   }
 
   private Map<String, Object> getInstanceRefMap(final T instance) {
-    Map<String, Object> map = referenceMaps.get(instance);
+    Map<String, Object> map = referenceMaps.get(maybeUnwrapProxy(instance));
     if (map == null) {
       map = new HashMap<String, Object>();
       referenceMaps.put(instance, map);
@@ -41,7 +41,7 @@ public abstract class Factory<T> {
 
   @SuppressWarnings("unchecked")
   protected <P> P getReferenceAs(final T instance, final String referenceName, final Class<P> type) {
-    return (P) getInstanceRefMap(instance).get(referenceName);
+    return (P) getInstanceRefMap(maybeUnwrapProxy(instance)).get(referenceName);
   }
 
   public abstract Proxy<T> createProxy(Context context);
@@ -49,14 +49,15 @@ public abstract class Factory<T> {
   public abstract FactoryHandle getHandle();
 
   protected void registerDependentScopedReference(final T instance, final Object dependentScopedBeanRef) {
-    dependentScopedDependencies.put(instance, dependentScopedBeanRef);
+    dependentScopedDependencies.put(maybeUnwrapProxy(instance), dependentScopedBeanRef);
   }
 
   @SuppressWarnings("unchecked")
   public void destroyInstance(final Object instance, final ContextManager contextManager) {
-    generatedDestroyInstance(instance, contextManager);
-    referenceMaps.remove(instance);
-    for (final Object depRef : dependentScopedDependencies.get((T) instance)) {
+    final Object unwrapped = maybeUnwrapProxy(instance);
+    generatedDestroyInstance(unwrapped, contextManager);
+    referenceMaps.remove(unwrapped);
+    for (final Object depRef : dependentScopedDependencies.get((T) unwrapped)) {
       contextManager.destroy(depRef);
     }
     dependentScopedDependencies.removeAll(instance);

@@ -4,6 +4,7 @@ import org.jboss.errai.ioc.client.WindowInjectionContext;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ioc.client.container.IOCBeanDef;
 import org.jboss.errai.ioc.client.container.JsTypeProvider;
+import org.jboss.errai.ioc.client.container.Proxy;
 import org.jboss.errai.ioc.client.test.AbstractErraiIOCTest;
 import org.jboss.errai.ioc.tests.wiring.client.res.JsTypeConsumer;
 import org.jboss.errai.ioc.tests.wiring.client.res.JsTypeDependentBean;
@@ -58,6 +59,6 @@ public class JsTypeInjectionTest extends AbstractErraiIOCTest {
 
     final IOCBeanDef<JsTypeConsumer> consumer = IOC.getBeanManager().lookupBean(JsTypeConsumer.class);
 
-    assertSame(ref, consumer.getInstance().getIface());
+    assertSame(ref, ((Proxy<JsTypeUnimplemented>) consumer.getInstance().getIface()).unwrappedInstance());
   }
 }

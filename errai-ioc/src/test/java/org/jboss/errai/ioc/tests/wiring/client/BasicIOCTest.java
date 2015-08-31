@@ -21,6 +21,8 @@ import java.util.List;
 import org.jboss.errai.ioc.client.IOCClientTestCase;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ioc.client.container.IOCBeanDef;
+import org.jboss.errai.ioc.client.container.Proxy;
+import org.jboss.errai.ioc.client.container.SyncBeanManager;
 import org.jboss.errai.ioc.rebind.ioc.test.harness.IOCSimulatedTestRunner;
 import org.jboss.errai.ioc.tests.wiring.client.res.ActivatedBean;
 import org.jboss.errai.ioc.tests.wiring.client.res.ActivatedBeanInterface;
@@ -170,11 +172,12 @@ public class BasicIOCTest extends IOCClientTestCase {
 
   }
 
+  @SuppressWarnings("unchecked")
   public void testBeanManagerInjectable() {
     BeanManagerDependentBean bean = IOC.getBeanManager().lookupBean(BeanManagerDependentBean.class)
             .getInstance();
 
-    assertSame(IOC.getBeanManager(), bean.getBeanManager());
+    assertSame(IOC.getBeanManager(), ((Proxy<SyncBeanManager>) bean.getBeanManager()).unwrappedInstance());
   }
 
   public void testProvidedValueLookup() {
