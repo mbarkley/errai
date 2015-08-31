@@ -91,7 +91,8 @@ public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
 
     for (final Dependency dep : paramDeps) {
       final ParamDependency paramDep = (ParamDependency) dep;
-      params[paramDep.getParamIndex()+offset] = loadVariable("contextManager").invoke("getInstance", paramDep.getInjectable().getFactoryName());
+      params[paramDep.getParamIndex() + offset] = castTo(paramDep.getInjectable().getInjectedType(),
+              loadVariable("contextManager").invoke("getInstance", paramDep.getInjectable().getFactoryName()));
     }
 
     return params;
