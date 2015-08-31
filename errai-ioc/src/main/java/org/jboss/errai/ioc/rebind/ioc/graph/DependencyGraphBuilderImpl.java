@@ -29,7 +29,9 @@ import org.jboss.errai.ioc.rebind.ioc.graph.ProvidedInjectable.InjectionSite;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Multiset;
 
 /**
  * @author Max Barkley <mbarkley@redhat.com>
@@ -47,10 +49,23 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   public Injectable addConcreteInjectable(final MetaClass injectedType, final Qualifier qualifier, Class<? extends Annotation> literalScope,
           final FactoryType factoryType, final WiringElementType... wiringTypes) {
     final ConcreteInjectable concrete = createConcreteInjectable(injectedType, qualifier, literalScope, factoryType, wiringTypes);
-    concretesByName.put(concrete.getFactoryName(), concrete);
+    final String factoryName = concrete.getFactoryName();
+    if (concretesByName.containsKey(factoryName)) {
+      throwDuplicateConcreteInjectableException(factoryName, concretesByName.get(factoryName), concrete);
+    }
+    concretesByName.put(factoryName, concrete);
     linkDirectAbstractInjectable(concrete);
 
     return concrete;
+  }
+
+  private void throwDuplicateConcreteInjectableException(final String name, final ConcreteInjectable first,
+          final ConcreteInjectable second) {
+    final String message = "Two concrete injectables exist with the same name (" + name + "):\n"
+                            + "\t" + first + "\n"
+                            + "\t" + second;
+
+    throw new RuntimeException(message);
   }
 
   private ConcreteInjectable createConcreteInjectable(final MetaClass injectedType, final Qualifier qualifier,
@@ -459,8 +474,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   static abstract class BaseInjectable implements Injectable {
+    private static final Multiset<String> allFactoryNames = HashMultiset.create();
+
     final MetaClass type;
     final Qualifier qualifier;
+    String factoryName;
 
     BaseInjectable(final MetaClass type, final Qualifier qualifier) {
       this.type = type;
@@ -484,13 +502,25 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     @Override
     public String getFactoryName() {
-      final String typePart = type.getFullyQualifiedName().replace('.', '_').replace('$', '_');
-      final String qualPart = qualifier.getIdentifierSafeString();
-      if (SHORT_NAMES) {
-        return "Factory__" + shorten(typePart) + "__quals__" + shorten(qualPart);
-      } else {
-        return "Factory_for__" + typePart + "__with_qualifiers__" + qualPart;
+      if (factoryName == null) {
+        final String typeName = type.getFullyQualifiedName().replace('.', '_').replace('$', '_');
+        final String qualNames = qualifier.getIdentifierSafeString();
+        if (SHORT_NAMES) {
+          final String rawName = getFactoryType() + "_factory__" + shorten(typeName) + "__quals__" + shorten(qualNames);
+
+          final int collisions = allFactoryNames.count(rawName);
+          if (collisions > 0) {
+            factoryName = rawName + "_" + String.valueOf(collisions);
+          } else {
+            factoryName = rawName;
+          }
+          allFactoryNames.add(rawName);
+        } else {
+          factoryName = getFactoryType() + "_factory_for__" + typeName + "__with_qualifiers__" + qualNames;
+        }
       }
+
+      return factoryName;
     }
 
     private String shorten(final String compoundName) {
