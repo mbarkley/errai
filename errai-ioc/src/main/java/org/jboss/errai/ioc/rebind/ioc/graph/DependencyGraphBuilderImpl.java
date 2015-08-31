@@ -222,7 +222,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     case SetterParameter:
       final SetterParameterDependencyImpl setterParamDep = (SetterParameterDependencyImpl) dep;
       return setterParamDep.method;
-    case ProducerInstance:
+    case ProducerMember:
     default:
       throw new RuntimeException("Not yet implemented!");
     }
@@ -452,7 +452,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   @Override
   public ProducerInstanceDependency createProducerInstanceDependency(final Injectable abstractInjectable, final MetaClassMember member) {
-    return new ProducerInstanceDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerInstance, member);
+    return new ProducerInstanceDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerMember, member);
   }
 
   static abstract class BaseInjectable implements Injectable {

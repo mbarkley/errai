@@ -390,7 +390,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
 
   private Injectable getProviderInjectable(final Injectable depInjectable) {
     for (final Dependency dep : depInjectable.getDependencies()) {
-      if (dep.getDependencyType().equals(DependencyType.ProducerInstance)) {
+      if (dep.getDependencyType().equals(DependencyType.ProducerMember)) {
         return dep.getInjectable();
       }
     }

@@ -27,9 +27,9 @@ public class ProviderFactoryBodyGenerator extends AbstractBodyGenerator {
   protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable, final DependencyGraph graph, InjectionContext injectionContext) {
     final Multimap<DependencyType, Dependency> dependenciesByType = separateByType(injectable.getDependencies());
     assert dependenciesByType.size() == 1 : "The factory " + injectable.getFactoryName() + " is a Provider and should have exactly one dependency";
-    final Collection<Dependency> providerInstanceDeps = dependenciesByType.get(DependencyType.ProducerInstance);
+    final Collection<Dependency> providerInstanceDeps = dependenciesByType.get(DependencyType.ProducerMember);
     assert providerInstanceDeps.size() == 1 : "The factory " + injectable.getFactoryName()
-            + " is a Provider but does not have a " + DependencyType.ProducerInstance.toString() + " depenency.";
+            + " is a Provider but does not have a " + DependencyType.ProducerMember.toString() + " depenency.";
 
     final Dependency providerDep = providerInstanceDeps.iterator().next();
     final List<Statement> createInstanceStatements = getAndInvokeProvider(injectable, providerDep);

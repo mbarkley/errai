@@ -38,7 +38,7 @@ public interface DependencyGraphBuilder {
   }
 
   public static enum DependencyType {
-    Constructor, Field, ProducerInstance, ProducerParameter, SetterParameter
+    Constructor, Field, ProducerMember, ProducerParameter, SetterParameter
   }
 
   public static interface Dependency {

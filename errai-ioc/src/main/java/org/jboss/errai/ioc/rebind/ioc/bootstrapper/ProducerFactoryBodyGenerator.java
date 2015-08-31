@@ -38,11 +38,11 @@ public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
   protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
           final Injectable injectable, final DependencyGraph graph, final InjectionContext injectionContext) {
     final Multimap<DependencyType, Dependency> depsByType = separateByType(injectable.getDependencies());
-    if (depsByType.get(DependencyType.ProducerInstance).size() != 1) {
+    if (depsByType.get(DependencyType.ProducerMember).size() != 1) {
       throw new RuntimeException("A produced type must have exactly 1 producing instance but "
-              + depsByType.get(DependencyType.ProducerInstance).size() + " were found.");
+              + depsByType.get(DependencyType.ProducerMember).size() + " were found.");
     }
-    final ProducerInstanceDependency producerInstanceDep = (ProducerInstanceDependency) depsByType.get(DependencyType.ProducerInstance).iterator().next();
+    final ProducerInstanceDependency producerInstanceDep = (ProducerInstanceDependency) depsByType.get(DependencyType.ProducerMember).iterator().next();
     final Injectable producerInjectable = producerInstanceDep.getInjectable();
     final MetaClassMember producingMember = producerInstanceDep.getProducingMember();
 
@@ -78,11 +78,20 @@ public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
 
   private Object[] getProducerInvocationParams(final MetaMethod producingMember, final Collection<Dependency> paramDeps) {
     // TODO validate params
-    final Object[] params = new Object[producingMember.getParameters().length+1];
-    params[0] = loadVariable("producerInstance");
+    final int offset;
+    final Object[] params;
+    if (producingMember.isStatic()) {
+      offset = 0;
+      params = new Object[producingMember.getParameters().length];
+    } else {
+      offset = 1;
+      params = new Object[producingMember.getParameters().length+1];
+      params[0] = loadVariable("producerInstance");
+    }
+
     for (final Dependency dep : paramDeps) {
       final ParamDependency paramDep = (ParamDependency) dep;
-      params[paramDep.getParamIndex()+1] = loadVariable("contextManager").invoke("getInstance", paramDep.getInjectable().getFactoryName());
+      params[paramDep.getParamIndex()+offset] = loadVariable("contextManager").invoke("getInstance", paramDep.getInjectable().getFactoryName());
     }
 
     return params;
@@ -104,7 +113,8 @@ public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
                             castTo(parameterizedAs(Proxy.class, typeParametersOf(producerInjectable.getInjectedType())),
                                     loadVariable("producerInstance")).invoke("unwrappedInstance")))
                             .finish());
-    stmts.add(loadVariable("this").invoke(getPrivateFieldAccessorName(producingMember), loadVariable("producerInstance")).returnValue());
+    final Object[] params = (producingMember.isStatic()) ? new Object[0] : new Object[] { loadVariable("producerInstance") };
+    stmts.add(loadVariable("this").invoke(getPrivateFieldAccessorName(producingMember), params).returnValue());
 
     return stmts;
   }
