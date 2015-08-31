@@ -12,14 +12,17 @@ public class DependentScopeContext extends AbstractContext {
   @Override
   public <T> T getInstance(final String factoryName) {
     final Factory<T> factory = this.<T>getFactory(factoryName);
-    final T instance = factory.createInstance(getContextManager());
+    final T instance = factory.createProxy(this).asBeanType();
     registerInstance(instance, factory);
     return instance;
   }
 
   @Override
-  public <T> T getActiveNonProxiedInstance(final String factoryType) {
-    throw new RuntimeException("This method should never be called on the DependentScopeContext because it's beans are not proxied.");
+  public <T> T getActiveNonProxiedInstance(final String factoryName) {
+    final Factory<T> factory = this.<T>getFactory(factoryName);
+    final T instance = factory.createInstance(getContextManager());
+
+    return instance;
   }
 
   @Override
