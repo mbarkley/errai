@@ -36,6 +36,9 @@ import com.google.common.collect.Multimap;
  */
 public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
+  private static final String SHORT_NAMES_PROP = "errai.graph_builder.short_factory_names";
+  private static final boolean SHORT_NAMES = Boolean.getBoolean(SHORT_NAMES_PROP);
+
   private final Map<InjectableHandle, AbstractInjectable> abstractInjectables = new HashMap<InjectableHandle, AbstractInjectable>();
   private final Multimap<MetaClass, AbstractInjectable> directAbstractInjectablesByAssignableTypes = HashMultimap.create();
   private final Map<String, ConcreteInjectable> concretesByName = new HashMap<String, ConcreteInjectable>();
@@ -481,7 +484,43 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     @Override
     public String getFactoryName() {
-      return "Factory_for__" + type.getFullyQualifiedName().replace('.', '_').replace('$', '_') + "__with_qualifiers__" + qualifier.getIdentifierSafeString();
+      final String typePart = type.getFullyQualifiedName().replace('.', '_').replace('$', '_');
+      final String qualPart = qualifier.getIdentifierSafeString();
+      if (SHORT_NAMES) {
+        return "Factory__" + shorten(typePart) + "__quals__" + shorten(qualPart);
+      } else {
+        return "Factory_for__" + typePart + "__with_qualifiers__" + qualPart;
+      }
+    }
+
+    private String shorten(final String compoundName) {
+      final String[] names = compoundName.split("__");
+      final StringBuilder builder = new StringBuilder();
+      for (final String name : names) {
+        builder.append(shortenName(name))
+               .append('_');
+      }
+      builder.delete(builder.length()-1, builder.length());
+
+      return builder.toString();
+    }
+
+    private String shortenName(final String name) {
+      final String[] parts = name.split("_");
+      final StringBuilder builder = new StringBuilder();
+      boolean haveSeenUpperCase = false;
+      for (final String part : parts) {
+        if (haveSeenUpperCase || Character.isUpperCase(part.charAt(0))) {
+          builder.append(part);
+          haveSeenUpperCase = true;
+        } else {
+          builder.append(part.charAt(0));
+        }
+        builder.append('_');
+      }
+      builder.delete(builder.length()-1, builder.length());
+
+      return builder.toString();
     }
 
     @Override
