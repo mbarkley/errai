@@ -15,7 +15,9 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 public interface DependencyGraphBuilder {
 
   Injectable addConcreteInjectable(MetaClass injectedType, Qualifier qualifier, Class<? extends Annotation> literalScope,
-          FactoryType factoryType, WiringElementType... wiringTypes);
+          InjectableType factoryType, WiringElementType... wiringTypes);
+
+  Injectable addTransientInjectable(MetaClass injectedType, Qualifier qualifier, Class<? extends Annotation> literalScope, WiringElementType... wiringTypes);
 
   Injectable lookupAbstractInjectable(MetaClass type, Qualifier qualifier);
 
@@ -33,8 +35,8 @@ public interface DependencyGraphBuilder {
 
   DependencyGraph createGraph(boolean removeUnreachable);
 
-  public static enum FactoryType {
-    Type, JsType, Producer, Provider, ContextualProvider, Abstract, CustomProvided, CustomProvider
+  public static enum InjectableType {
+    Type, JsType, Producer, Provider, ContextualProvider, Abstract, Extension
   }
 
   public static enum DependencyType {

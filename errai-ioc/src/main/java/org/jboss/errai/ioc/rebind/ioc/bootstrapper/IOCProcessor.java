@@ -71,7 +71,7 @@ import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.client.container.JsTypeProvider;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder;
-import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.FactoryType;
+import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilderImpl;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.InjectableHandle;
@@ -122,7 +122,7 @@ public class IOCProcessor {
   private void addAllInjectableProviders(final DependencyGraphBuilder graphBuilder) {
     final Multimap<InjectableHandle, InjectableProvider> providerMap = injectionContext.getRegisteredInjectableProviders();
     for (final InjectableHandle handle : providerMap.keySet()) {
-      graphBuilder.addConcreteInjectable(handle.getType(), handle.getQualifier(), Dependent.class, FactoryType.CustomProvider);
+      graphBuilder.addTransientInjectable(handle.getType(), handle.getQualifier(), Dependent.class);
     }
   }
 
@@ -156,7 +156,7 @@ public class IOCProcessor {
           @SuppressWarnings("rawtypes") final BlockBuilder registerFactoriesBody) {
     for (final Injectable injectable : dependencyGraph) {
       if (!injectable.isContextual()) {
-        if (injectable.getFactoryType().equals(FactoryType.CustomProvided)) {
+        if (injectable.getInjectableType().equals(InjectableType.Extension)) {
           declareAndRegisterConcreteInjectable(injectable, processingContext, scopeContexts, registerFactoriesBody);
           registerFactoryBodyGeneratorForInjectionSite(injectable);
         } else {
@@ -299,19 +299,19 @@ public class IOCProcessor {
   private void processType(final MetaClass type, final DependencyGraphBuilder builder) {
     if (isTypeInjectableCandidate(type)) {
       if (isSimpleton(type)) {
-        builder.addConcreteInjectable(type, qualFactory.forConcreteInjectable(type), Dependent.class, FactoryType.Type,
+        builder.addConcreteInjectable(type, qualFactory.forConcreteInjectable(type), Dependent.class, InjectableType.Type,
                 WiringElementType.DependentBean, WiringElementType.Simpleton);
       } else if (isTypeInjectable(type)) {
         final Class<? extends Annotation> directScope = getDirectScope(type);
         final Injectable typeInjectable = builder.addConcreteInjectable(type, qualFactory.forConcreteInjectable(type),
-                directScope, FactoryType.Type, getWiringTypes(type, directScope));
+                directScope, InjectableType.Type, getWiringTypes(type, directScope));
         processInjectionPoints(typeInjectable, builder);
         processProducerMethods(typeInjectable, builder);
         processProducerFields(typeInjectable, builder);
         maybeProcessAsProvider(typeInjectable, builder);
       }
     } else if (type.isAnnotationPresent(JsType.class)) {
-      builder.addConcreteInjectable(type, qualFactory.forUniversallyQualified(), Dependent.class, FactoryType.JsType);
+      builder.addConcreteInjectable(type, qualFactory.forUniversallyQualified(), Dependent.class, InjectableType.JsType);
     }
   }
 
@@ -383,7 +383,7 @@ public class IOCProcessor {
     final MetaMethod providerMethod = providerImpl.getMethod("provide", Class[].class, Annotation[].class);
     final MetaClass providedType = providerMethod.getReturnType();
     final Injectable providedInjectable = builder.addConcreteInjectable(providedType, qualFactory.forUniversallyQualified(),
-            Dependent.class, FactoryType.ContextualProvider, WiringElementType.Provider);
+            Dependent.class, InjectableType.ContextualProvider, WiringElementType.Provider);
     final Injectable abstractProviderInjectable = builder.lookupAbstractInjectable(providerImpl, providerInjectable.getQualifier());
     builder.addDependency(providedInjectable, builder.createProducerInstanceDependency(abstractProviderInjectable, providerMethod));
   }
@@ -393,7 +393,7 @@ public class IOCProcessor {
     final MetaMethod providerMethod = providerImpl.getMethod("get", new Class[0]);
     final MetaClass providedType = providerMethod.getReturnType();
     final Injectable providedInjectable = builder.addConcreteInjectable(providedType, qualFactory.forUniversallyQualified(),
-            Dependent.class, FactoryType.Provider, WiringElementType.Provider);
+            Dependent.class, InjectableType.Provider, WiringElementType.Provider);
     final Injectable abstractProviderImplInjectable = builder.lookupAbstractInjectable(providerImplInjectable.getInjectedType(), providerImplInjectable.getQualifier());
     builder.addDependency(providedInjectable, builder.createProducerInstanceDependency(abstractProviderImplInjectable, providerMethod));
   }
@@ -419,7 +419,7 @@ public class IOCProcessor {
         final Class<? extends Annotation> directScope = getDirectScope(method);
         final WiringElementType wiringTypes = getWiringTypesForScopeAnnotation(directScope);
         final Injectable producedInjectable = builder.addConcreteInjectable(method.getReturnType(),
-                qualFactory.forConcreteInjectable(method), directScope, FactoryType.Producer, wiringTypes);
+                qualFactory.forConcreteInjectable(method), directScope, InjectableType.Producer, wiringTypes);
         final Injectable abstractProducerInjectable = builder.lookupAbstractInjectable(typeInjectable.getInjectedType(), typeInjectable.getQualifier());
         builder.addDependency(producedInjectable, builder.createProducerInstanceDependency(abstractProducerInjectable, method));
         final MetaParameter[] params = method.getParameters();
@@ -447,7 +447,7 @@ public class IOCProcessor {
       final List<MetaField> fields = type.getFieldsAnnotatedWith(anno);
       for (final MetaField field : fields) {
         final Injectable producedInjectable = builder.addConcreteInjectable(field.getType(),
-                qualFactory.forConcreteInjectable(field), getDirectScope(field), FactoryType.Producer,
+                qualFactory.forConcreteInjectable(field), getDirectScope(field), InjectableType.Producer,
                 getWiringTypesForScopeAnnotation(anno));
         final Injectable abstractProducerInjectable = builder
                 .lookupAbstractInjectable(concreteInjectable.getInjectedType(), concreteInjectable.getQualifier());

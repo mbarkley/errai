@@ -5,7 +5,7 @@ import java.util.Collection;
 
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.Dependency;
-import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.FactoryType;
+import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 public interface Injectable {
@@ -22,7 +22,7 @@ public interface Injectable {
 
   Collection<Dependency> getDependencies();
 
-  FactoryType getFactoryType();
+  InjectableType getInjectableType();
 
   Collection<WiringElementType> getWiringElementTypes();
 
@@ -31,5 +31,7 @@ public interface Injectable {
   void setRequiresProxyTrue();
 
   boolean isContextual();
+
+  boolean isTransient();
 
 }

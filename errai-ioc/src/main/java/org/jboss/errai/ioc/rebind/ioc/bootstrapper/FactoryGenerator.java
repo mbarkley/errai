@@ -16,7 +16,7 @@ import org.jboss.errai.common.metadata.RebindUtils;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
-import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.FactoryType;
+import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 
@@ -73,7 +73,7 @@ public class FactoryGenerator extends IncrementalGenerator {
     final DependencyGraph graph = assertGraphSet();
     final InjectionContext injectionContext = assertInjectionContextSet();
     final Injectable injectable = graph.getConcreteInjectable(typeName.substring(typeName.lastIndexOf('.')+1));
-    final FactoryType factoryType = injectable.getFactoryType();
+    final InjectableType factoryType = injectable.getInjectableType();
 
     final ClassStructureBuilder<?> factoryBuilder = define(getFactorySubTypeName(typeName),
             parameterizedAs(Factory.class, typeParametersOf(injectable.getInjectedType()))).publicScope().body();
@@ -96,7 +96,7 @@ public class FactoryGenerator extends IncrementalGenerator {
     }
   }
 
-  private FactoryBodyGenerator selectBodyGenerator(final FactoryType factoryType, final String typeName) {
+  private FactoryBodyGenerator selectBodyGenerator(final InjectableType factoryType, final String typeName) {
     final FactoryBodyGenerator generator;
     switch (factoryType) {
     case Type:
@@ -111,10 +111,10 @@ public class FactoryGenerator extends IncrementalGenerator {
     case Producer:
       generator = new ProducerFactoryBodyGenerator();
       break;
-    case CustomProvided:
+    case Extension:
       final String simpleName = getSimpleName(typeName);
       if (!customBodyGenerators.containsKey(simpleName)) {
-        throw new RuntimeException(simpleName + " has " + FactoryType.class.getSimpleName() + " " + FactoryType.CustomProvided
+        throw new RuntimeException(simpleName + " has " + InjectableType.class.getSimpleName() + " " + InjectableType.Extension
                 + " but no custom " + FactoryBodyGenerator.class.getSimpleName() + " has been registered.");
       }
       generator = customBodyGenerators.get(simpleName);

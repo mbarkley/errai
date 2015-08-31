@@ -47,8 +47,12 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   @Override
   public Injectable addConcreteInjectable(final MetaClass injectedType, final Qualifier qualifier, Class<? extends Annotation> literalScope,
-          final FactoryType factoryType, final WiringElementType... wiringTypes) {
-    final ConcreteInjectable concrete = createConcreteInjectable(injectedType, qualifier, literalScope, factoryType, wiringTypes);
+          final InjectableType factoryType, final WiringElementType... wiringTypes) {
+    final ConcreteInjectable concrete = new ConcreteInjectable(injectedType, qualifier, literalScope, factoryType, Arrays.asList(wiringTypes));
+    return registerNewConcreteInjectable(concrete);
+  }
+
+  private Injectable registerNewConcreteInjectable(final ConcreteInjectable concrete) {
     final String factoryName = concrete.getFactoryName();
     if (concretesByName.containsKey(factoryName)) {
       throwDuplicateConcreteInjectableException(factoryName, concretesByName.get(factoryName), concrete);
@@ -59,6 +63,13 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     return concrete;
   }
 
+  @Override
+  public Injectable addTransientInjectable(final MetaClass injectedType, final Qualifier qualifier,
+          final Class<? extends Annotation> literalScope, final WiringElementType... wiringTypes) {
+    final ConcreteInjectable concrete = new TransientInjectable(injectedType, qualifier, literalScope, InjectableType.Abstract, Arrays.asList(wiringTypes));
+    return registerNewConcreteInjectable(concrete);
+  }
+
   private void throwDuplicateConcreteInjectableException(final String name, final ConcreteInjectable first,
           final ConcreteInjectable second) {
     final String message = "Two concrete injectables exist with the same name (" + name + "):\n"
@@ -66,27 +77,6 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
                             + "\t" + second;
 
     throw new RuntimeException(message);
-  }
-
-  private ConcreteInjectable createConcreteInjectable(final MetaClass injectedType, final Qualifier qualifier,
-          Class<? extends Annotation> literalScope, final FactoryType factoryType,
-          final WiringElementType... wiringTypes) {
-    switch (factoryType) {
-    case ContextualProvider:
-    case JsType:
-    case Producer:
-    case Provider:
-    case Type:
-      return new ConcreteInjectable(injectedType, qualifier, literalScope, factoryType, Arrays.asList(wiringTypes));
-    case CustomProvider:
-      return new ConcreteProvidedInjectable(injectedType, qualifier, literalScope, factoryType, Arrays.asList(wiringTypes));
-    case Abstract:
-      throw new RuntimeException("A concrete injectable cannot have the factory type " + FactoryType.Abstract + ".");
-    case CustomProvided:
-      throw new RuntimeException(FactoryType.CustomProvided + " should not be added manually.");
-    default:
-      throw new RuntimeException("Not yet implemented!");
-    }
   }
 
   private void linkDirectAbstractInjectable(final ConcreteInjectable concreteInjectable) {
@@ -181,12 +171,12 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   private void resolveDependencies() {
     final Set<ConcreteInjectable> visited = new HashSet<ConcreteInjectable>();
     final Stack<DFSFrame> visiting = new Stack<DFSFrame>();
-    final Set<String> customProviderNames = new HashSet<String>();
+    final Set<String> transientInjectableNames = new HashSet<String>();
     final Map<String, ConcreteInjectable> customProvideds = new HashMap<String, ConcreteInjectable>();
 
     for (final ConcreteInjectable concrete : concretesByName.values()) {
-      if (concrete.factoryType.equals(FactoryType.CustomProvider)) {
-        customProviderNames.add(concrete.getFactoryName());
+      if (concrete.isTransient()) {
+        transientInjectableNames.add(concrete.getFactoryName());
       }
       if (!visited.contains(concrete)) {
         visiting.push(new DFSFrame(concrete));
@@ -196,8 +186,8 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
         if (curFrame.dependencyIndex < curFrame.concrete.dependencies.size()) {
           final BaseDependency dep = curFrame.concrete.dependencies.get(curFrame.dependencyIndex);
           ConcreteInjectable resolved = resolveDependency(dep, curFrame.concrete);
-          if (resolved.getFactoryType().equals(FactoryType.CustomProvider)) {
-            final ConcreteProvidedInjectable providedInjectable = (ConcreteProvidedInjectable) resolved;
+          if (resolved.isTransient()) {
+            final TransientInjectable providedInjectable = (TransientInjectable) resolved;
             final InjectionSite site = new InjectionSite(curFrame.concrete.type, getAnnotated(dep));
             resolved = new ProvidedInjectableImpl(providedInjectable, site);
             customProvideds.put(resolved.getFactoryName(), resolved);
@@ -217,7 +207,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       }
     }
 
-    concretesByName.keySet().removeAll(customProviderNames);
+    concretesByName.keySet().removeAll(transientInjectableNames);
     concretesByName.putAll(customProvideds);
   }
 
@@ -358,7 +348,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   private List<ConcreteInjectable> getProviders(final List<ConcreteInjectable> resolved) {
     final List<ConcreteInjectable> providers = new ArrayList<ConcreteInjectable>();
     for (final ConcreteInjectable injectable : resolved) {
-      if (FactoryType.Provider.equals(injectable.factoryType) || FactoryType.ContextualProvider.equals(injectable.factoryType)) {
+      if (InjectableType.Provider.equals(injectable.factoryType) || InjectableType.ContextualProvider.equals(injectable.factoryType)) {
         providers.add(injectable);
       }
     }
@@ -499,7 +489,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     @Override
     public String toString() {
-      return "class=" + type + ", injectorType=" + getFactoryType() + ", qualifier=" + qualifier.toString();
+      return "class=" + type + ", injectorType=" + getInjectableType() + ", qualifier=" + qualifier.toString();
     }
 
     @Override
@@ -513,7 +503,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
         final String typeName = type.getFullyQualifiedName().replace('.', '_').replace('$', '_');
         final String qualNames = qualifier.getIdentifierSafeString();
         if (SHORT_NAMES) {
-          final String rawName = getFactoryType() + "_factory__" + shorten(typeName) + "__quals__" + shorten(qualNames);
+          final String rawName = getInjectableType() + "_factory__" + shorten(typeName) + "__quals__" + shorten(qualNames);
 
           final int collisions = allFactoryNames.count(rawName);
           if (collisions > 0) {
@@ -523,7 +513,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
           }
           allFactoryNames.add(rawName);
         } else {
-          factoryName = getFactoryType() + "_factory_for__" + typeName + "__with_qualifiers__" + qualNames;
+          factoryName = getInjectableType() + "_factory_for__" + typeName + "__with_qualifiers__" + qualNames;
         }
       }
 
@@ -588,8 +578,8 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
 
     @Override
-    public FactoryType getFactoryType() {
-      return FactoryType.Abstract;
+    public InjectableType getInjectableType() {
+      return InjectableType.Abstract;
     }
 
     @Override
@@ -624,17 +614,22 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     public boolean isContextual() {
       return resolution != null && resolution.isContextual();
     }
+
+    @Override
+    public boolean isTransient() {
+      return false;
+    }
   }
 
   static class ConcreteInjectable extends BaseInjectable {
-    final FactoryType factoryType;
+    final InjectableType factoryType;
     final Collection<WiringElementType> wiringTypes;
     final List<BaseDependency> dependencies = new ArrayList<BaseDependency>();
     final Class<? extends Annotation> literalScope;
     boolean requiresProxy = false;
 
     ConcreteInjectable(final MetaClass type, final Qualifier qualifier, final Class<? extends Annotation> literalScope,
-            final FactoryType injectorType, final Collection<WiringElementType> wiringTypes) {
+            final InjectableType injectorType, final Collection<WiringElementType> wiringTypes) {
       super(type, qualifier);
       this.literalScope = literalScope;
       this.wiringTypes = wiringTypes;
@@ -652,7 +647,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
 
     @Override
-    public FactoryType getFactoryType() {
+    public InjectableType getInjectableType() {
       return factoryType;
     }
 
@@ -683,21 +678,26 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     @Override
     public boolean isContextual() {
-      return FactoryType.ContextualProvider.equals(factoryType);
+      return InjectableType.ContextualProvider.equals(factoryType);
     }
 
     @Override
     public void setRequiresProxyTrue() {
       requiresProxy = true;
     }
+
+    @Override
+    public boolean isTransient() {
+      return false;
+    }
   }
 
-  static class ConcreteProvidedInjectable extends ConcreteInjectable {
+  static class TransientInjectable extends ConcreteInjectable {
 
     final Collection<InjectionSite> injectionSites = new ArrayList<InjectionSite>();
 
-    ConcreteProvidedInjectable(final MetaClass type, final Qualifier qualifier,
-            final Class<? extends Annotation> literalScope, final FactoryType injectorType,
+    TransientInjectable(final MetaClass type, final Qualifier qualifier,
+            final Class<? extends Annotation> literalScope, final InjectableType injectorType,
             final Collection<WiringElementType> wiringTypes) {
       super(type, qualifier, literalScope, injectorType, wiringTypes);
     }
@@ -710,15 +710,20 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       return getFactoryName() + "__within__" + site.getEnclosingType().getName();
     }
 
+    @Override
+    public boolean isTransient() {
+      return true;
+    }
+
   }
 
   static class ProvidedInjectableImpl extends ConcreteInjectable implements ProvidedInjectable {
 
     final InjectionSite site;
-    final ConcreteProvidedInjectable injectable;
+    final TransientInjectable injectable;
 
-    ProvidedInjectableImpl(final ConcreteProvidedInjectable injectable, final InjectionSite site) {
-      super(injectable.type, injectable.qualifier, injectable.literalScope, FactoryType.CustomProvided, injectable.wiringTypes);
+    ProvidedInjectableImpl(final TransientInjectable injectable, final InjectionSite site) {
+      super(injectable.type, injectable.qualifier, injectable.literalScope, InjectableType.Extension, injectable.wiringTypes);
       this.site = site;
       this.injectable = injectable;
     }
