@@ -110,8 +110,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
   }
 
-  @Override
-  public Injectable lookupAbstractInjectable(final MetaClass type, final Qualifier qualifier) {
+  private Injectable lookupAbstractInjectable(final MetaClass type, final Qualifier qualifier) {
     return lookupAsAbstractInjectable(type, qualifier);
   }
 
@@ -126,8 +125,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     return abstractInjectable;
   }
 
-  @Override
-  public void addDependency(final Injectable concreteInjectable, Dependency dependency) {
+  private void addDependency(final Injectable concreteInjectable, Dependency dependency) {
     assert (concreteInjectable instanceof ConcreteInjectable);
 
     final ConcreteInjectable concrete = (ConcreteInjectable) concreteInjectable;
@@ -445,28 +443,23 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
   }
 
-  @Override
-  public FieldDependency createFieldDependency(final Injectable abstractInjectable, final MetaField dependentField) {
+  private FieldDependency createFieldDependency(final Injectable abstractInjectable, final MetaField dependentField) {
     return new FieldDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), dependentField);
   }
 
-  @Override
-  public SetterParameterDependency createSetterMethodDependency(final Injectable abstractInjectable, final MetaMethod setter) {
+  private SetterParameterDependency createSetterMethodDependency(final Injectable abstractInjectable, final MetaMethod setter) {
     return new SetterParameterDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), setter);
   }
 
-  @Override
-  public ParamDependency createConstructorDependency(final Injectable abstractInjectable, final int paramIndex, final MetaParameter param) {
+  private ParamDependency createConstructorDependency(final Injectable abstractInjectable, final int paramIndex, final MetaParameter param) {
     return new ParamDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.Constructor, paramIndex, param);
   }
 
-  @Override
-  public ParamDependency createProducerParamDependency(final Injectable abstractInjectable, final int paramIndex, final MetaParameter param) {
+  private ParamDependency createProducerParamDependency(final Injectable abstractInjectable, final int paramIndex, final MetaParameter param) {
     return new ParamDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerParameter, paramIndex, param);
   }
 
-  @Override
-  public ProducerInstanceDependency createProducerInstanceDependency(final Injectable abstractInjectable, final MetaClassMember member) {
+  private ProducerInstanceDependency createProducerInstanceDependency(final Injectable abstractInjectable, final MetaClassMember member) {
     return new ProducerInstanceDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerMember, member);
   }
 
@@ -883,6 +876,46 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       return concretesByName.get(injectableName);
     }
 
+  }
+
+  @Override
+  public void addFieldDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier,
+          final MetaField dependentField) {
+    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
+    final FieldDependency dep = createFieldDependency(abstractInjectable, dependentField);
+    addDependency(concreteInjectable, dep);
+  }
+
+  @Override
+  public void addConstructorDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
+          int paramIndex, MetaParameter param) {
+    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
+    final ParamDependency dep = createConstructorDependency(abstractInjectable, paramIndex, param);
+    addDependency(concreteInjectable, dep);
+  }
+
+  @Override
+  public void addProducerParamDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
+          int paramIndex, MetaParameter param) {
+    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
+    final ParamDependency dep = createProducerParamDependency(abstractInjectable, paramIndex, param);
+    addDependency(concreteInjectable, dep);
+  }
+
+  @Override
+  public void addProducerInstanceDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
+          MetaClassMember producingMember) {
+    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
+    final ProducerInstanceDependency dep = createProducerInstanceDependency(abstractInjectable, producingMember);
+    addDependency(concreteInjectable, dep);
+  }
+
+  @Override
+  public void addSetterMethodDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
+          MetaMethod setter) {
+    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
+    final SetterParameterDependency dep = createSetterMethodDependency(abstractInjectable, setter);
+    addDependency(concreteInjectable, dep);
   }
 
 }

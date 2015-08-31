@@ -19,19 +19,15 @@ public interface DependencyGraphBuilder {
 
   Injectable addTransientInjectable(MetaClass injectedType, Qualifier qualifier, Class<? extends Annotation> literalScope, WiringElementType... wiringTypes);
 
-  Injectable lookupAbstractInjectable(MetaClass type, Qualifier qualifier);
+  void addFieldDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier, MetaField dependentField);
 
-  void addDependency(Injectable concreteInjectable, Dependency dependency);
+  void addConstructorDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier, int paramIndex, MetaParameter param);
 
-  FieldDependency createFieldDependency(Injectable abstractInjectable, MetaField dependentField);
+  void addProducerParamDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier, int paramIndex, MetaParameter param);
 
-  ParamDependency createConstructorDependency(Injectable abstractInjectable, int paramIndex, MetaParameter param);
+  void addProducerInstanceDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier, MetaClassMember producingMember);
 
-  ParamDependency createProducerParamDependency(Injectable abstractInjectable, int paramIndex, MetaParameter param);
-
-  ProducerInstanceDependency createProducerInstanceDependency(Injectable abstractInjectble, MetaClassMember producingMember);
-
-  SetterParameterDependency createSetterMethodDependency(Injectable abstractInjectable, MetaMethod setter);
+  void addSetterMethodDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier, MetaMethod setter);
 
   DependencyGraph createGraph(boolean removeUnreachable);
 
