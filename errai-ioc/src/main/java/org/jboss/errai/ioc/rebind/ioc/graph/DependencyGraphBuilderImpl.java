@@ -204,9 +204,9 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
             dep.injectable = copyAbstractInjectable(dep.injectable);
             dep.injectable.resolution = resolved;
           }
-          final DFSFrame newFrame = new DFSFrame(resolved);
+          final DFSFrame newFrame = new DFSFrame(resolved, dep);
           if (visiting.contains(newFrame)) {
-            validateCycle(visiting, resolved);
+            validateCycle(visiting, newFrame);
           } else if (!visited.contains(resolved)) {
             visiting.push(newFrame);
           }
@@ -246,24 +246,31 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
   }
 
-  private void validateCycle(final Stack<DFSFrame> visiting, final ConcreteInjectable resolved) {
-    if (canBreakCycle(resolved)) {
-      return;
-    }
+  private void validateCycle(final Stack<DFSFrame> visiting, final DFSFrame newFrame) {
+    boolean hasCycleBreaker = canBreakCycle(newFrame.concrete);
 
     int i;
-    for (i = visiting.size() - 1; !visiting.get(i).concrete.equals(resolved); i--) {
-      if (canBreakCycle(visiting.get(i).concrete)) {
-        return;
+    for (i = visiting.size() - 1; !visiting.get(i).equals(newFrame); i--) {
+      hasCycleBreaker = hasCycleBreaker || canBreakCycle(visiting.get(i).concrete);
+      final DFSFrame curFrame = visiting.get(i);
+      if (curFrame.dep != null && curFrame.dep.dependencyType.equals(DependencyType.Constructor)) {
+        curFrame.concrete.setRequiresProxyTrue();
+        if (!(curFrame.concrete.type.isInterface() || curFrame.concrete.type.isDefaultInstantiable())) {
+          throwCycleErrorMessage(visiting, visiting.indexOf(newFrame),
+                  "the type " + curFrame.concrete.type.getFullyQualifiedName()
+                          + " is part of a cycle via constructor injection, but is not proxiable");
+        }
       }
     }
 
-    throwCycleErrorMessage(visiting, i);
+    if (!hasCycleBreaker) {
+      throwCycleErrorMessage(visiting, i, "it contains no normal scoped, proxiable beans");
+    }
   }
 
-  private void throwCycleErrorMessage(final Stack<DFSFrame> visiting, final int startIndex) {
+  private void throwCycleErrorMessage(final Stack<DFSFrame> visiting, final int startIndex, final String cause) {
     final StringBuilder messageBuilder = new StringBuilder();
-    messageBuilder.append("The following cycle cannot be wired because it contains no normal scoped beans:\n");
+    messageBuilder.append("The following cycle cannot be wired because " + cause + ":\n");
     for (int i = startIndex; i < visiting.size(); i++) {
       final MetaClass injectedType = visiting.get(i).concrete.getInjectedType();
       messageBuilder.append(injectedType.getName())
@@ -826,10 +833,16 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   static class DFSFrame {
     final ConcreteInjectable concrete;
+    final BaseDependency dep;
     int dependencyIndex = 0;
 
     DFSFrame(final ConcreteInjectable concrete) {
+      this(concrete, null);
+    }
+
+    DFSFrame(final ConcreteInjectable concrete, final BaseDependency dep) {
       this.concrete = concrete;
+      this.dep = dep;
     }
 
     @Override
