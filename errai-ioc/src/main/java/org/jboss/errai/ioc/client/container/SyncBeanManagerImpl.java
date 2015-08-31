@@ -215,7 +215,15 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
 
     @Override
     public T getInstance() {
-      return contextManager.getInstance(handle.getFactoryName());
+      final T instance = contextManager.getInstance(handle.getFactoryName());
+      if (instance instanceof Proxy) {
+        @SuppressWarnings("unchecked")
+        final Proxy<T> proxy = (Proxy<T>) instance;
+        // Forces bean to be loaded.
+        proxy.unwrappedInstance();
+      }
+
+      return instance;
     }
 
     @Override
