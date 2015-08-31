@@ -64,6 +64,14 @@ public abstract class AbstractContext implements Context {
   public <T> T getNewInstance(final String factoryName) {
     final Factory<T> factory = getFactory(factoryName);
     final Proxy<T> proxy = factory.createProxy(this);
+    final T instance;
+    if (!(proxy instanceof NonProxiableWrapper)) {
+      instance = factory.createInstance(getContextManager());
+      proxy.setInstance(instance);
+    } else {
+      instance = proxy.asBeanType();
+    }
+    registerInstance(instance, factory);
 
     return proxy.asBeanType();
   }
