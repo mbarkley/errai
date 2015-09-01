@@ -11,6 +11,7 @@ import java.util.TreeSet;
 import javax.enterprise.inject.Any;
 import javax.enterprise.inject.Default;
 
+import org.apache.commons.lang3.AnnotationUtils;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 
 public class DefaultQualifierFactory implements QualifierFactory {
@@ -75,13 +76,14 @@ public class DefaultQualifierFactory implements QualifierFactory {
   }
 
   private NormalQualifier getOrCreateQualifier(final SortedSet<AnnotationWrapper> annos) {
-    NormalQualifier qualifier = qualifiers.get(annos);
-    if (qualifier == null) {
-      qualifier = new NormalQualifier(annos);
-      qualifiers.put(annos, qualifier);
-    }
-
-    return qualifier;
+//    NormalQualifier qualifier = qualifiers.get(annos);
+//    if (qualifier == null) {
+//      qualifier = new NormalQualifier(annos);
+//      qualifiers.put(annos, qualifier);
+//    }
+//
+//    return qualifier;
+    return new NormalQualifier(annos);
   }
 
   private SortedSet<AnnotationWrapper> getQualifierAnnotations(final HasAnnotations annotated) {
@@ -154,7 +156,7 @@ public class DefaultQualifierFactory implements QualifierFactory {
 
     @Override
     public String toString() {
-      return getIdentifierSafeString();
+      return annotations.toString();
     }
 
     @Override
@@ -190,7 +192,6 @@ public class DefaultQualifierFactory implements QualifierFactory {
     }
   }
 
-  // TODO handle annotation properties
   private static final class AnnotationWrapper implements Comparable<AnnotationWrapper> {
     private final Annotation anno;
 
@@ -210,7 +211,8 @@ public class DefaultQualifierFactory implements QualifierFactory {
       }
       final AnnotationWrapper other = (AnnotationWrapper) obj;
 
-      return anno.annotationType().equals(other.anno.annotationType());
+      // TODO needs to ignore @NonBinding properties
+      return AnnotationUtils.equals(anno, other.anno);
     }
 
     @Override
@@ -220,7 +222,14 @@ public class DefaultQualifierFactory implements QualifierFactory {
 
     @Override
     public int compareTo(final AnnotationWrapper o) {
-      return anno.annotationType().getName().compareTo(o.anno.annotationType().getName());
+      final int compareTo = anno.annotationType().getName().compareTo(o.anno.annotationType().getName());
+      if (compareTo != 0) {
+        return compareTo;
+      } else if (equals(o)) {
+        return 0;
+      } else {
+        return anno.toString().compareTo(o.anno.toString());
+      }
     }
   }
 

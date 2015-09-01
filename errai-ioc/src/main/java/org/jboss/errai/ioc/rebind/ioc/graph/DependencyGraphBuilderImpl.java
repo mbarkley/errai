@@ -505,17 +505,15 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
         final String typeName = type.getFullyQualifiedName().replace('.', '_').replace('$', '_');
         final String qualNames = qualifier.getIdentifierSafeString();
         if (SHORT_NAMES) {
-          final String rawName = getInjectableType() + "_factory__" + shorten(typeName) + "__quals__" + shorten(qualNames);
+          factoryName = getInjectableType() + "_factory__" + shorten(typeName) + "__quals__" + shorten(qualNames);
 
-          final int collisions = allFactoryNames.count(rawName);
-          if (collisions > 0) {
-            factoryName = rawName + "_" + String.valueOf(collisions);
-          } else {
-            factoryName = rawName;
-          }
-          allFactoryNames.add(rawName);
         } else {
           factoryName = getInjectableType() + "_factory_for__" + typeName + "__with_qualifiers__" + qualNames;
+        }
+        final int collisions = allFactoryNames.count(factoryName);
+        allFactoryNames.add(factoryName);
+        if (collisions > 0) {
+          factoryName = factoryName + "_" + String.valueOf(collisions);
         }
       }
 
@@ -558,6 +556,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
  }
 
+  // TODO needs to be renamed and not be an Injectable
   static class AbstractInjectable extends BaseInjectable {
     // TODO review getDependencies and similar to see if they should throw errors.
     // They should probably only be called on ConcreteInjectables
