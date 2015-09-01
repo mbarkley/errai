@@ -25,9 +25,13 @@ public interface DependencyGraphBuilder {
 
   void addProducerParamDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier, int paramIndex, MetaParameter param);
 
-  void addProducerInstanceDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier, MetaClassMember producingMember);
+  void addProducerMemberDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier, MetaClassMember producingMember);
 
   void addSetterMethodDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier, MetaMethod setter);
+
+  void addDisposesMethodDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier, MetaMethod disposer);
+
+  void addDisposesParamDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier, Integer index, MetaParameter param);
 
   DependencyGraph createGraph(boolean removeUnreachable);
 
@@ -36,7 +40,7 @@ public interface DependencyGraphBuilder {
   }
 
   public static enum DependencyType {
-    Constructor, Field, ProducerMember, ProducerParameter, SetterParameter
+    Constructor, Field, ProducerMember, ProducerParameter, SetterParameter, DisposerMethod, DisposerParameter
   }
 
   public static interface Dependency {
@@ -72,4 +76,11 @@ public interface DependencyGraphBuilder {
     MetaClassMember getProducingMember();
 
   }
+
+  public static interface DisposerMethodDependency extends Dependency {
+
+    MetaMethod getDisposerMethod();
+
+  }
+
 }

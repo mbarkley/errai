@@ -260,7 +260,8 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     final StringBuilder messageBuilder = new StringBuilder();
     messageBuilder.append("The following cycle cannot be wired because " + cause + ":\n");
     for (int i = startIndex; i < visiting.size(); i++) {
-      final MetaClass injectedType = visiting.get(i).concrete.getInjectedType();
+      final DFSFrame curFrame = visiting.get(i);
+      final MetaClass injectedType = curFrame.concrete.getInjectedType();
       messageBuilder.append(injectedType.getName())
                     .append(" -> ");
     }
@@ -461,6 +462,14 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   private ProducerInstanceDependency createProducerInstanceDependency(final Injectable abstractInjectable, final MetaClassMember member) {
     return new ProducerInstanceDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerMember, member);
+  }
+
+  private DisposerMethodDependency createDisposerMethodDependency(final Injectable abstractInjectable, final MetaMethod disposer) {
+    return new DisposerMethodDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), disposer);
+  }
+
+  private ParamDependency createDisposerParamDependency(final Injectable abstractInjectable, final Integer index, final MetaParameter param) {
+    return new ParamDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.DisposerParameter, index, param);
   }
 
   static abstract class BaseInjectable implements Injectable {
@@ -829,6 +838,22 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   }
 
+  static class DisposerMethodDependencyImpl extends BaseDependency implements DisposerMethodDependency {
+
+    private final MetaMethod disposer;
+
+    DisposerMethodDependencyImpl(final AbstractInjectable abstractInjectable, final MetaMethod disposer) {
+      super(abstractInjectable, DependencyType.DisposerMethod);
+      this.disposer = disposer;
+    }
+
+    @Override
+    public MetaMethod getDisposerMethod() {
+      return disposer;
+    }
+
+  }
+
   static class DFSFrame {
     final ConcreteInjectable concrete;
     final BaseDependency dep;
@@ -903,7 +928,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   @Override
-  public void addProducerInstanceDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
+  public void addProducerMemberDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
           MetaClassMember producingMember) {
     final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
     final ProducerInstanceDependency dep = createProducerInstanceDependency(abstractInjectable, producingMember);
@@ -915,6 +940,21 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
           MetaMethod setter) {
     final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
     final SetterParameterDependency dep = createSetterMethodDependency(abstractInjectable, setter);
+    addDependency(concreteInjectable, dep);
+  }
+
+  @Override
+  public void addDisposesMethodDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier, final MetaMethod disposer) {
+    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
+    final DisposerMethodDependency dep = createDisposerMethodDependency(abstractInjectable, disposer);
+    addDependency(concreteInjectable, dep);
+  }
+
+  @Override
+  public void addDisposesParamDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier,
+          final Integer index, final MetaParameter param) {
+    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
+    final ParamDependency dep = createDisposerParamDependency(abstractInjectable, index, param);
     addDependency(concreteInjectable, dep);
   }
 

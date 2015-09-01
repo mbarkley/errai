@@ -19,7 +19,7 @@ import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
-import org.jboss.errai.codegen.util.Stmt;
+import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
@@ -100,11 +100,11 @@ public class FactoryController {
   }
 
   public Statement constructGetReference(final String name, final Class<?> refType) {
-    return Stmt.loadVariable("this").invoke("getReferenceAs", Stmt.loadVariable("instance"), name, refType);
+    return InjectUtil.constructGetReference(name, refType);
   }
 
   public Statement constructSetReference(final String name, final Statement value) {
-    return Stmt.loadVariable("this").invoke("setReference", Stmt.loadVariable("instance"), name, value);
+    return InjectUtil.constructSetReference(name, value);
   }
 
   public Statement getExposedFieldStmt(final MetaField field) {

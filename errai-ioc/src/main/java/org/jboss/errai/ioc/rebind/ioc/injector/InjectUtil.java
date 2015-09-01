@@ -42,4 +42,12 @@ public class InjectUtil {
     }
   }
 
+  public static Statement constructGetReference(final String name, final Class<?> refType) {
+    return Stmt.loadVariable("this").invoke("getReferenceAs", Stmt.loadVariable("instance"), name, refType);
+  }
+
+  public static Statement constructSetReference(final String name, final Statement value) {
+    return Stmt.loadVariable("this").invoke("setReference", Stmt.loadVariable("instance"), name, value);
+  }
+
 }

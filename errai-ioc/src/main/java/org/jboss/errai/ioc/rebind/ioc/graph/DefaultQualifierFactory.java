@@ -60,7 +60,7 @@ public class DefaultQualifierFactory implements QualifierFactory {
   }
 
   @Override
-  public Qualifier forConcreteInjectable(final HasAnnotations annotated) {
+  public Qualifier forSource(final HasAnnotations annotated) {
     final SortedSet<AnnotationWrapper> annos = getQualifierAnnotations(annotated);
     annos.add(ANY_WRAPPER);
 
@@ -68,7 +68,7 @@ public class DefaultQualifierFactory implements QualifierFactory {
   }
 
   @Override
-  public Qualifier forAbstractInjectable(final HasAnnotations annotated) {
+  public Qualifier forSink(final HasAnnotations annotated) {
     final SortedSet<AnnotationWrapper> annos = getQualifierAnnotations(annotated);
 
     return getOrCreateQualifier(annos);

@@ -48,8 +48,10 @@ public abstract class Factory<T> {
 
   public abstract FactoryHandle getHandle();
 
-  protected void registerDependentScopedReference(final T instance, final Object dependentScopedBeanRef) {
+  protected <D> D registerDependentScopedReference(final T instance, final D dependentScopedBeanRef) {
     dependentScopedDependencies.put(maybeUnwrapProxy(instance), dependentScopedBeanRef);
+
+    return dependentScopedBeanRef;
   }
 
   @SuppressWarnings("unchecked")
