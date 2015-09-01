@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Queue;
 
+import javax.enterprise.context.Dependent;
 import javax.inject.Qualifier;
 
 import org.jboss.errai.codegen.InnerClass;
@@ -314,8 +315,19 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
   }
 
   private Object isEager(final MetaClass injectedType) {
-    // TODO Support other annotations like @Startup
-    return injectedType.isAnnotationPresent(EntryPoint.class);
+    return injectedType.isAnnotationPresent(EntryPoint.class) ||
+            // TODO review this before adding any scopes other than app-scoped and depdendent
+            (!injectedType.isAnnotationPresent(Dependent.class) && hasStartupAnnotation(injectedType));
+  }
+
+  private boolean hasStartupAnnotation(final MetaClass injectedType) {
+    for (final Annotation anno : injectedType.getAnnotations()) {
+      if (anno.annotationType().getName().equals("javax.ejb.Startup")) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private Object annotationLiteral(final Annotation qual) {
