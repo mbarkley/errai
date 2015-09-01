@@ -82,12 +82,6 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
   }
 
   @Override
-  public void addBeanToContext(Object ref, CreationalContext creationalContext) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
-  }
-
-  @Override
   public void destroyAllBeans() {
     // TODO Decide how this should be implemented.
   }
@@ -224,11 +218,6 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
       }
 
       return instance;
-    }
-
-    @Override
-    public T getInstance(CreationalContext context) {
-      return getInstance();
     }
 
     @Override

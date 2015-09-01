@@ -27,7 +27,6 @@ import javax.enterprise.inject.Alternative;
 import org.jboss.errai.common.client.util.CreationalCallback;
 import org.jboss.errai.ioc.client.container.async.AsyncBeanDef;
 import org.jboss.errai.ioc.client.container.async.AsyncBeanManager;
-import org.jboss.errai.ioc.client.container.async.AsyncCreationalContext;
 
 /**
  * An adapter that makes the asynchronous bean manager API work with a synchronous bean manager.
@@ -77,11 +76,6 @@ public class SyncToAsyncBeanManagerAdapter implements AsyncBeanManager {
   @Override
   public boolean addDestructionCallback(Object beanInstance, DestructionCallback<?> destructionCallback) {
     return bm.addDestructionCallback(beanInstance, destructionCallback);
-  }
-
-  @Override
-  public void addBeanToContext(Object ref, CreationalContext creationalContext) {
-    bm.addBeanToContext(ref, creationalContext);
   }
 
   @Override
@@ -149,12 +143,6 @@ public class SyncToAsyncBeanManagerAdapter implements AsyncBeanManager {
       @Override
       public void getInstance(CreationalCallback callback) {
         callback.callback(beanDef.getInstance());
-      }
-
-      @Override
-      public void getInstance(CreationalCallback callback, AsyncCreationalContext context) {
-        throw new UnsupportedOperationException(
-            "Not supported in SyncOrAsyncBeanManager. Only to be called from generated bootstrapper for specific bean managers!");
       }
 
       @Override

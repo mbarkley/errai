@@ -58,7 +58,6 @@ import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
-import org.jboss.errai.ioc.rebind.ioc.metadata.QualifyingMetadataFactory;
 import org.jboss.errai.ioc.util.PropertiesUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -170,26 +169,6 @@ public class IOCBootstrapGenerator {
 
       if (qualifyingMetadataFactoryProperties.size() > 1) {
         throw new RuntimeException("the property '" + QUALIFYING_METADATA_FACTORY_PROPERTY + "' is set in more than one place");
-      }
-      else if (qualifyingMetadataFactoryProperties.size() == 1) {
-        final String fqcnQualifyingMetadataFactory = qualifyingMetadataFactoryProperties.iterator().next().trim();
-
-        try {
-          final QualifyingMetadataFactory factory = (QualifyingMetadataFactory)
-              Class.forName
-                  (fqcnQualifyingMetadataFactory).newInstance();
-
-          iocProcContextBuilder.qualifyingMetadata(factory);
-        }
-        catch (ClassNotFoundException e) {
-          e.printStackTrace();
-        }
-        catch (InstantiationException e) {
-          e.printStackTrace();
-        }
-        catch (IllegalAccessException e) {
-          e.printStackTrace();
-        }
       }
 
       final Collection<String> alternatives = PropertiesUtil.getPropertyValues(ENABLED_ALTERNATIVES_PROPERTY, "\\s");

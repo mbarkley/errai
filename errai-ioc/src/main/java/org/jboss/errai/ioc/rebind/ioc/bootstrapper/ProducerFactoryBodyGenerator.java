@@ -35,7 +35,6 @@ import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.DisposerMetho
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.ParamDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.ProducerInstanceDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
-import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 
 import com.google.common.collect.Multimap;

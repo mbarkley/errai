@@ -16,17 +16,12 @@
 
 package org.jboss.errai.databinding.rebind;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.databinding.client.api.DataBinder;
 import org.jboss.errai.ioc.client.api.IOCExtension;
 import org.jboss.errai.ioc.client.container.RefHolder;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessor;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
-import org.jboss.errai.ioc.rebind.ioc.injector.Injector;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ui.shared.api.annotations.Model;
 
@@ -41,7 +36,7 @@ import org.jboss.errai.ui.shared.api.annotations.Model;
 @IOCExtension
 public class DataBindingIOCExtension implements IOCExtensionConfigurator {
 
-  private final Map<MetaClass, Injector> typeInjectors = new HashMap<MetaClass, Injector>();
+//  private final Map<MetaClass, Injector> typeInjectors = new HashMap<MetaClass, Injector>();
 
   @Override
   public void configure(final IOCProcessingContext context, final InjectionContext injectionContext,

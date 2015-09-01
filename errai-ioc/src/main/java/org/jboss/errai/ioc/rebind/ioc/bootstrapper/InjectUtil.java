@@ -1,4 +1,4 @@
-package org.jboss.errai.ioc.rebind.ioc.injector;
+package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;

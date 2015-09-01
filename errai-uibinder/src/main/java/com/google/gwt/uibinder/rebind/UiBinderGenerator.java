@@ -15,6 +15,13 @@
  */
 package com.google.gwt.uibinder.rebind;
 
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.List;
+
+import org.w3c.dom.Document;
+import org.xml.sax.SAXParseException;
+
 import com.google.gwt.core.ext.BadPropertyValueException;
 import com.google.gwt.core.ext.Generator;
 import com.google.gwt.core.ext.GeneratorContext;
@@ -30,13 +37,6 @@ import com.google.gwt.dev.util.Util;
 import com.google.gwt.uibinder.client.UiTemplate;
 import com.google.gwt.uibinder.rebind.messages.MessagesWriter;
 import com.google.gwt.uibinder.rebind.model.ImplicitClientBundle;
-import org.jboss.errai.ioc.client.api.PackageTarget;
-import org.w3c.dom.Document;
-import org.xml.sax.SAXParseException;
-
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.List;
 
 /**
  * Generator for implementations of
@@ -159,16 +159,7 @@ public class UiBinderGenerator extends Generator {
   }
 
   private static String determinePackage(JClassType interfaceType) {
-    String packageName;
-
-    if (interfaceType.isAnnotationPresent(PackageTarget.class)) {
-      packageName = interfaceType.getAnnotation(PackageTarget.class).value();
-    }
-    else {
-      packageName = interfaceType.getPackage().getName();
-    }
-
-    return packageName;
+    return interfaceType.getPackage().getName();
   }
 
   private void generateOnce(JClassType interfaceType, String implName,

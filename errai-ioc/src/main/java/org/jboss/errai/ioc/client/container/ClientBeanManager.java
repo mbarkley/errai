@@ -16,6 +16,8 @@
 
 package org.jboss.errai.ioc.client.container;
 
+import javax.enterprise.context.spi.CreationalContext;
+
 /**
  * @author Mike Brock
  */
@@ -89,16 +91,6 @@ public interface ClientBeanManager {
    *         {@link CreationalContext} and <tt>false</tt> if not.
    */
   boolean addDestructionCallback(Object beanInstance, DestructionCallback<?> destructionCallback);
-
-  /**
-   * Associates a bean instance with a creational context.
-   *
-   * @param ref
-   *     the reference to the bean
-   * @param creationalContext
-   *     the {@link CreationalContext} instance to associate the bean instance with.
-   */
-  void addBeanToContext(final Object ref, final CreationalContext creationalContext);
 
   /**
    * Destroy all beans currently managed by the bean manager. Don't do this.

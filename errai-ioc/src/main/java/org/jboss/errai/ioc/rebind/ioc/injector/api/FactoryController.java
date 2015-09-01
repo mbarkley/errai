@@ -19,7 +19,7 @@ import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
-import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.InjectUtil;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;

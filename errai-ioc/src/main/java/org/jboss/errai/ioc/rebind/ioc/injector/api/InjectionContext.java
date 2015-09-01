@@ -45,11 +45,8 @@ import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.graph.DefaultQualifierFactory;
-import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.InjectableHandle;
 import org.jboss.errai.ioc.rebind.ioc.graph.QualifierFactory;
-import org.jboss.errai.ioc.rebind.ioc.injector.Injector;
-import org.jboss.errai.ioc.rebind.ioc.injector.InjectorImpl;
 import org.jboss.errai.reflections.util.SimplePackageFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +65,6 @@ public class InjectionContext {
 
   private final boolean async;
 
-  private final Map<Injectable, Injector> injectors = new HashMap<Injectable, Injector>();
   private final QualifierFactory qualifierFactory;
 
   private final Set<String> whitelist;
@@ -212,16 +208,6 @@ public class InjectionContext {
       }
     }
     decorators.get(annotation).add(iocExtension);
-  }
-
-  public Injector getInjector(final Injectable injectable) {
-    Injector injector = injectors.get(injectable);
-    if (injector == null) {
-      injector = new InjectorImpl(injectable);
-      injectors.put(injectable, injector);
-    }
-
-    return injector;
   }
 
   public Set<Class<? extends Annotation>> getDecoratorAnnotations() {

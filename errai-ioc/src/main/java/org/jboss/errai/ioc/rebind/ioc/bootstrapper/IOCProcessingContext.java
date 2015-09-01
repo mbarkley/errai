@@ -29,8 +29,6 @@ import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.common.client.api.Assert;
-import org.jboss.errai.ioc.rebind.ioc.metadata.JSR330QualifyingMetadataFactory;
-import org.jboss.errai.ioc.rebind.ioc.metadata.QualifyingMetadataFactory;
 
 import com.google.gwt.core.ext.GeneratorContext;
 import com.google.gwt.core.ext.TreeLogger;
@@ -53,8 +51,6 @@ public class IOCProcessingContext {
   protected final TreeLogger treeLogger;
   protected final GeneratorContext generatorContext;
 
-  protected final QualifyingMetadataFactory qualifyingMetadataFactory;
-
   protected final boolean gwtTarget;
 
   private IOCProcessingContext(final Builder builder) {
@@ -69,7 +65,6 @@ public class IOCProcessingContext {
 
     this.appendToEnd = new ArrayList<Statement>();
     this.packages = builder.packages;
-    this.qualifyingMetadataFactory = builder.qualifyingMetadataFactory;
     this.gwtTarget = builder.gwtTarget;
   }
 
@@ -81,7 +76,6 @@ public class IOCProcessingContext {
     private ClassStructureBuilder bootstrapBuilder;
     private BlockBuilder<?> blockBuilder;
     private Set<String> packages;
-    private QualifyingMetadataFactory qualifyingMetadataFactory;
     private boolean gwtTarget;
 
     public static Builder create() {
@@ -123,11 +117,6 @@ public class IOCProcessingContext {
       return this;
     }
 
-    public Builder qualifyingMetadata(final QualifyingMetadataFactory qualifyingMetadataFactory) {
-      this.qualifyingMetadataFactory = qualifyingMetadataFactory;
-      return this;
-    }
-
     public Builder gwtTarget(final boolean gwtTarget) {
       this.gwtTarget = gwtTarget;
       return this;
@@ -141,10 +130,6 @@ public class IOCProcessingContext {
       Assert.notNull("bootstrapBuilder cannot be null", bootstrapBuilder);
       Assert.notNull("blockBuilder cannot be null", blockBuilder);
       Assert.notNull("packages cannot be null", packages);
-
-      if (qualifyingMetadataFactory == null) {
-        qualifyingMetadataFactory = new JSR330QualifyingMetadataFactory();
-      }
 
       return new IOCProcessingContext(this);
     }
@@ -210,9 +195,5 @@ public class IOCProcessingContext {
 
   public boolean isGwtTarget() {
     return gwtTarget;
-  }
-
-  public QualifyingMetadataFactory getQualifyingMetadataFactory() {
-    return qualifyingMetadataFactory;
   }
 }

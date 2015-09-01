@@ -42,15 +42,6 @@ public interface AsyncBeanDef<T> {
   public void getInstance(CreationalCallback<T> callback);
 
   /**
-   * Returns an instance of the bean within the active scope, using the specified SimpleCreationalContext.
-   *
-   * @param context
-   *
-   * @return
-   */
-  void getInstance(CreationalCallback<T> callback, AsyncCreationalContext context);
-
-  /**
    * Returns a new instance of the bean. Calling this method overrides the underlying scope and instantiates a new
    * instance of the bean.
    *
@@ -88,12 +79,12 @@ public interface AsyncBeanDef<T> {
    * @return true if concrete.
    */
   public boolean isConcrete();
-  
+
   /**
    * Returns true if the bean is activated. All managed beans are activated by default unless a
    * {@link BeanActivator} was specified using {@link ActivatedBy} which will be consulted when
    * invoking this method.
-   * 
+   *
    * @return true if activated, otherwise false.
    */
   public boolean isActivated();
