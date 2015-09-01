@@ -30,15 +30,23 @@ public class FactoryHandleImpl implements FactoryHandle {
   private final String factoryName;
   private final Class<? extends Annotation> scope;
   private final boolean eager;
+  private final Class<? extends BeanActivator> activatorType;
 
 
-  public FactoryHandleImpl(final Class<?> actualType, final String factoryName, final Class<? extends Annotation> scope, final boolean eager) {
+
+  public FactoryHandleImpl(final Class<?> actualType, final String factoryName, final Class<? extends Annotation> scope,
+          final boolean eager, final Class<? extends BeanActivator> activatorType) {
     this.actualType = actualType;
     this.factoryName = factoryName;
     this.scope = scope;
     this.eager = eager;
+    this.activatorType = activatorType;
     qualifiers.add(ANY);
     qualifiers.add(DEFAULT);
+  }
+
+  public FactoryHandleImpl(final Class<?> actualType, final String factoryName, final Class<? extends Annotation> scope, final boolean eager) {
+    this(actualType, factoryName, scope, eager, null);
   }
 
   @Override
@@ -84,6 +92,11 @@ public class FactoryHandleImpl implements FactoryHandle {
   @Override
   public boolean isEager() {
     return eager;
+  }
+
+  @Override
+  public Class<? extends BeanActivator> getBeanActivatorType() {
+    return activatorType;
   }
 
 }

@@ -17,4 +17,6 @@ public interface FactoryHandle {
 
   boolean isEager();
 
+  Class<? extends BeanActivator> getBeanActivatorType();
+
 }

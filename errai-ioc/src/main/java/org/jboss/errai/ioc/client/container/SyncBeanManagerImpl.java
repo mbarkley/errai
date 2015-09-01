@@ -259,7 +259,13 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
 
     @Override
     public boolean isActivated() {
-      return true;
+      final Class<? extends BeanActivator> activatorType = handle.getBeanActivatorType();
+      if (activatorType == null) {
+        return true;
+      } else {
+        final BeanActivator activator = lookupBean(activatorType).getInstance();
+        return activator.isActivated();
+      }
     }
   }
 }

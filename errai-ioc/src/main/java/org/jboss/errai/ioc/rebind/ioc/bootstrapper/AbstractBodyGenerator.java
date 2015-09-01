@@ -6,6 +6,7 @@ import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.addPrivateAccessStubs;
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateMethodName;
 import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
+import static org.jboss.errai.codegen.util.Stmt.loadLiteral;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 import static org.jboss.errai.codegen.util.Stmt.newObject;
 
@@ -36,7 +37,9 @@ import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.util.Stmt;
+import org.jboss.errai.ioc.client.api.ActivatedBy;
 import org.jboss.errai.ioc.client.api.EntryPoint;
+import org.jboss.errai.ioc.client.container.BeanActivator;
 import org.jboss.errai.ioc.client.container.Context;
 import org.jboss.errai.ioc.client.container.ContextManager;
 import org.jboss.errai.ioc.client.container.FactoryHandle;
@@ -298,10 +301,16 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
   }
 
   private void implementGetHandle(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable) {
-    bodyBlockBuilder.privateField("handle", FactoryHandleImpl.class)
-            .initializesWith(newObject(FactoryHandleImpl.class, injectable.getInjectedType().asClass(),
-                    injectable.getFactoryName(), injectable.getScope(), isEager(injectable.getInjectedType())))
-            .finish();
+    final Statement newObject;
+    if (injectable.getInjectedType().isAnnotationPresent(ActivatedBy.class)) {
+      final Class<? extends BeanActivator> activatorType = injectable.getInjectedType().getAnnotation(ActivatedBy.class).value();
+      newObject = newObject(FactoryHandleImpl.class, injectable.getInjectedType().asClass(),
+              injectable.getFactoryName(), injectable.getScope(), isEager(injectable.getInjectedType()), loadLiteral(activatorType));
+    } else {
+      newObject = newObject(FactoryHandleImpl.class, injectable.getInjectedType().asClass(),
+              injectable.getFactoryName(), injectable.getScope(), isEager(injectable.getInjectedType()));
+    }
+    bodyBlockBuilder.privateField("handle", FactoryHandleImpl.class).initializesWith(newObject).finish();
     final ConstructorBlockBuilder<?> con = bodyBlockBuilder.publicConstructor();
     for (final MetaClass assignableType : getAllAssignableTypes(injectable.getInjectedType())) {
       con._(loadVariable("handle").invoke("addAssignableType", assignableType.asClass()));
