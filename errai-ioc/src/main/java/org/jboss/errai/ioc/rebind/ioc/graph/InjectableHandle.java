@@ -26,7 +26,7 @@ public class InjectableHandle {
       return false;
 
     final InjectableHandle other = (InjectableHandle) obj;
-    return type.equals(other.type) && qualifier.equals(qualifier);
+    return type.equals(other.type) && qualifier.equals(other.qualifier);
   }
 
   @Override

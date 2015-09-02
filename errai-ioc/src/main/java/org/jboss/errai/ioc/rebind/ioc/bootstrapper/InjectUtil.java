@@ -7,6 +7,7 @@ import java.util.List;
 import javax.inject.Qualifier;
 
 import org.jboss.errai.codegen.Statement;
+import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
@@ -34,7 +35,7 @@ public class InjectUtil {
     return qualifiers;
   }
 
-  public static Statement getPublicOrPrivateFieldValue(final FactoryController controller, final MetaField field) {
+  public static ContextualStatementBuilder getPublicOrPrivateFieldValue(final FactoryController controller, final MetaField field) {
     if (field.isPublic()) {
       return Stmt.loadVariable("instance").loadField(field);
     } else {
@@ -42,11 +43,11 @@ public class InjectUtil {
     }
   }
 
-  public static Statement constructGetReference(final String name, final Class<?> refType) {
-    return Stmt.loadVariable("this").invoke("getReferenceAs", Stmt.loadVariable("instance"), name, refType);
+  public static ContextualStatementBuilder constructGetReference(final String name, final Class<?> refType) {
+    return Stmt.castTo(refType, Stmt.loadVariable("this").invoke("getReferenceAs", Stmt.loadVariable("instance"), name, refType));
   }
 
-  public static Statement constructSetReference(final String name, final Statement value) {
+  public static ContextualStatementBuilder constructSetReference(final String name, final Statement value) {
     return Stmt.loadVariable("this").invoke("setReference", Stmt.loadVariable("instance"), name, value);
   }
 

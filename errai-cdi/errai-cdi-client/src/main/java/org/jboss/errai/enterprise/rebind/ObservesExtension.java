@@ -66,7 +66,7 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
 
   @Override
   public List<? extends Statement> generateDecorator(final Decorable decorable, final FactoryController controller) {
-    final Context ctx = decorable.getInjectionContext().getProcessingContext().getContext();
+    final Context ctx = decorable.getCodegenContext();
     final MetaParameter parm = decorable.getAsParameter();
     final MetaMethod method = (MetaMethod) parm.getDeclaringMember();
 
@@ -117,7 +117,7 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
             callBackBlock.finish().finish());
 
     initStatements.add(controller.constructSetReference(subscrVar, subscribeStatement));
-    destroyStatements.add(Stmt.nestedCall(controller.constructGetReference(subscrVar, Subscription.class)).invoke("remove"));
+    destroyStatements.add(controller.constructGetReference(subscrVar, Subscription.class).invoke("remove"));
 
     for (final Class<?> cls : EnvUtil.getAllPortableConcreteSubtypes(parm.getType().asClass())) {
       if (!EnvUtil.isLocalEventType(cls)) {

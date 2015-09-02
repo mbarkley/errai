@@ -128,15 +128,15 @@ public class FactoryGenerator extends IncrementalGenerator {
     return generator;
   }
 
-  private String getSimpleName(final String typeName) {
+  private static String getSimpleName(final String typeName) {
     return typeName.substring(typeName.lastIndexOf('.')+1);
   }
 
-  private String getFactorySubTypeName(final String typeName) {
+  public static String getFactorySubTypeName(final String typeName) {
     return GENERATED_PACKAGE + "." + getFactorySubTypeSimpleName(typeName);
   }
 
-  private String getFactorySubTypeSimpleName(final String typeName) {
+  public static String getFactorySubTypeSimpleName(final String typeName) {
     final int simpleNameStart = Math.max(typeName.lastIndexOf('.'), typeName.lastIndexOf('$')) + 1;
     return typeName.substring(simpleNameStart);
   }

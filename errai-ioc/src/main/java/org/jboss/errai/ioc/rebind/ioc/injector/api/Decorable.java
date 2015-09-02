@@ -9,6 +9,7 @@ import static org.jboss.errai.ioc.rebind.ioc.bootstrapper.FactoryGenerator.getLo
 import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 
+import org.jboss.errai.codegen.Context;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
@@ -56,7 +57,7 @@ public class Decorable {
       Statement getAccessStatement(final HasAnnotations annotated, final Statement[] statement) {
         final MetaMethod method = (MetaMethod) annotated;
         if (method.isPublic()) {
-          return loadVariable("this").invoke(method, (Object[]) statement);
+          return loadVariable("instance").invoke(method, (Object[]) statement);
         } else {
           final Object[] params = new Object[statement.length+1];
           for (int i = 0; i < statement.length; i++) {
@@ -154,12 +155,15 @@ public class Decorable {
   private final Annotation annotation;
   private final DecorableType decorableType;
   private final InjectionContext injectionContext;
+  private final Context context;
 
-  public Decorable(final HasAnnotations annotated, final Annotation annotation, final DecorableType decorableType, final InjectionContext injectionContext) {
+  public Decorable(final HasAnnotations annotated, final Annotation annotation, final DecorableType decorableType,
+          final InjectionContext injectionContext, final Context context) {
     this.annotated = annotated;
     this.annotation = annotation;
     this.decorableType = decorableType;
     this.injectionContext = injectionContext;
+    this.context = context;
   }
 
   public Annotation getAnnotation() {
@@ -180,6 +184,10 @@ public class Decorable {
 
   public HasAnnotations get() {
     return annotated;
+  }
+
+  public Context getCodegenContext() {
+    return context;
   }
 
   public MetaMethod getAsMethod() {

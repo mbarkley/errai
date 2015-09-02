@@ -125,7 +125,8 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
       for (final Annotation anno : annos) {
         final IOCDecoratorExtension[] decorators = injectionContext.getDecorators(anno.annotationType());
         for (final IOCDecoratorExtension decorator : decorators) {
-          final Decorable decorable = new Decorable(annotated, anno, Decorable.DecorableType.fromElementType(elemType), injectionContext);
+          final Decorable decorable = new Decorable(annotated, anno, Decorable.DecorableType.fromElementType(elemType),
+                  injectionContext, builder.getClassDefinition().getContext());
           if (isNonPublicField(annotated) && !createdAccessors.contains(annotated)) {
             addPrivateAccessStubs(PrivateAccessType.Both, "jsni", builder, (MetaField) annotated);
             createdAccessors.add(annotated);

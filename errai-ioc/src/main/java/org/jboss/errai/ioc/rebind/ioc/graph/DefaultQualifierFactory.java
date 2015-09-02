@@ -11,8 +11,9 @@ import java.util.TreeSet;
 import javax.enterprise.inject.Any;
 import javax.enterprise.inject.Default;
 
-import org.apache.commons.lang3.AnnotationUtils;
 import org.jboss.errai.codegen.meta.HasAnnotations;
+
+import com.google.inject.name.Named;
 
 public class DefaultQualifierFactory implements QualifierFactory {
 
@@ -62,7 +63,8 @@ public class DefaultQualifierFactory implements QualifierFactory {
 
   @Override
   public Qualifier forSource(final HasAnnotations annotated) {
-    final SortedSet<AnnotationWrapper> annos = getQualifierAnnotations(annotated);
+    final SortedSet<AnnotationWrapper> annos = getRawQualifiers(annotated);
+    maybeAddDefaultForSource(annos);
     annos.add(ANY_WRAPPER);
 
     return getOrCreateQualifier(annos);
@@ -70,23 +72,23 @@ public class DefaultQualifierFactory implements QualifierFactory {
 
   @Override
   public Qualifier forSink(final HasAnnotations annotated) {
-    final SortedSet<AnnotationWrapper> annos = getQualifierAnnotations(annotated);
+    final SortedSet<AnnotationWrapper> annos = getRawQualifiers(annotated);
+    maybeAddDefaultForSink(annos);
 
     return getOrCreateQualifier(annos);
   }
 
   private NormalQualifier getOrCreateQualifier(final SortedSet<AnnotationWrapper> annos) {
-//    NormalQualifier qualifier = qualifiers.get(annos);
-//    if (qualifier == null) {
-//      qualifier = new NormalQualifier(annos);
-//      qualifiers.put(annos, qualifier);
-//    }
-//
-//    return qualifier;
-    return new NormalQualifier(annos);
+    NormalQualifier qualifier = qualifiers.get(annos);
+    if (qualifier == null) {
+      qualifier = new NormalQualifier(annos);
+      qualifiers.put(annos, qualifier);
+    }
+
+    return qualifier;
   }
 
-  private SortedSet<AnnotationWrapper> getQualifierAnnotations(final HasAnnotations annotated) {
+  private SortedSet<AnnotationWrapper> getRawQualifiers(final HasAnnotations annotated) {
     final SortedSet<AnnotationWrapper> annos = new TreeSet<AnnotationWrapper>();
     for (final Annotation anno : annotated.getAnnotations()) {
       // TODO handle stereotypes
@@ -94,15 +96,24 @@ public class DefaultQualifierFactory implements QualifierFactory {
         annos.add(new AnnotationWrapper(anno));
       }
     }
-    addDefaulIfUnqualified(annos);
 
     return annos;
   }
 
-  private void addDefaulIfUnqualified(final Set<AnnotationWrapper> annos) {
+  private void maybeAddDefaultForSource(final Set<AnnotationWrapper> annos) {
+    if (annos.isEmpty() || onlyContainsNamed(annos)) {
+      annos.add(DEFAULT_WRAPPER);
+    }
+  }
+
+  private void maybeAddDefaultForSink(final Set<AnnotationWrapper> annos) {
     if (annos.isEmpty()) {
       annos.add(DEFAULT_WRAPPER);
     }
+  }
+
+  private boolean onlyContainsNamed(final Set<AnnotationWrapper> annos) {
+    return annos.size() == 1 && annos.iterator().next().anno.annotationType().equals(Named.class);
   }
 
   @Override
@@ -165,7 +176,7 @@ public class DefaultQualifierFactory implements QualifierFactory {
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(final Object obj) {
       if (!(obj instanceof NormalQualifier)) {
         return false;
       }
@@ -190,6 +201,11 @@ public class DefaultQualifierFactory implements QualifierFactory {
     public String toString() {
       return getIdentifierSafeString();
     }
+
+    @Override
+    public boolean equals(final Object obj) {
+      return obj instanceof Universal;
+    }
   }
 
   private static final class AnnotationWrapper implements Comparable<AnnotationWrapper> {
@@ -211,8 +227,7 @@ public class DefaultQualifierFactory implements QualifierFactory {
       }
       final AnnotationWrapper other = (AnnotationWrapper) obj;
 
-      // TODO needs to ignore @NonBinding properties
-      return AnnotationUtils.equals(anno, other.anno);
+      return CDIAnnotationUtils.equals(anno, other.anno);
     }
 
     @Override
@@ -228,6 +243,7 @@ public class DefaultQualifierFactory implements QualifierFactory {
       } else if (equals(o)) {
         return 0;
       } else {
+        // Arbitrary stable ordering for annotations of same type with different values.
         return anno.toString().compareTo(o.anno.toString());
       }
     }

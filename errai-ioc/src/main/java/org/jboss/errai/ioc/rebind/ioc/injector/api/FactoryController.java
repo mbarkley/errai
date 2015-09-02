@@ -15,6 +15,7 @@ import java.util.Set;
 
 import org.jboss.errai.codegen.Context;
 import org.jboss.errai.codegen.Statement;
+import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaField;
@@ -99,15 +100,15 @@ public class FactoryController {
     return attributes.get(name);
   }
 
-  public Statement constructGetReference(final String name, final Class<?> refType) {
+  public ContextualStatementBuilder constructGetReference(final String name, final Class<?> refType) {
     return InjectUtil.constructGetReference(name, refType);
   }
 
-  public Statement constructSetReference(final String name, final Statement value) {
+  public ContextualStatementBuilder constructSetReference(final String name, final Statement value) {
     return InjectUtil.constructSetReference(name, value);
   }
 
-  public Statement getExposedFieldStmt(final MetaField field) {
+  public ContextualStatementBuilder getExposedFieldStmt(final MetaField field) {
     exposedFields.add(field);
 
     return loadVariable("this").invoke(getPrivateFieldAccessorName(field), loadVariable("instance"));
