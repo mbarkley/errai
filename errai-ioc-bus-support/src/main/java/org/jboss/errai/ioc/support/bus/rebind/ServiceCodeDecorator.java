@@ -66,7 +66,7 @@ public class ServiceCodeDecorator extends IOCDecoratorExtension<Service> {
               .invoke("subscribe", svcName, decorable.getAccessStatement());
     }
 
-    controller.addInitializationStatements(Collections.singletonList(controller.constructSetReference(varName, subscribeStatement)));
+    controller.addInitializationStatements(Collections.<Statement>singletonList(controller.constructSetReference(varName, subscribeStatement)));
     controller.addDestructionStatements(Collections.<Statement> singletonList(
             Stmt.nestedCall(controller.constructGetReference(varName, Subscription.class)).invoke("remove")));
 

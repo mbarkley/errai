@@ -362,6 +362,18 @@ public abstract class AbstractMetaClass<T> extends MetaClass {
   }
 
   @Override
+  public List<MetaMethod> getDeclaredMethodsAnnotatedWith(Class<? extends Annotation> annotation) {
+    final List<MetaMethod> methods = new ArrayList<MetaMethod>();
+    for (final MetaMethod m : getDeclaredMethods()) {
+      if (m.isAnnotationPresent(annotation)) {
+        methods.add(m);
+      }
+    }
+
+    return Collections.unmodifiableList(methods); // in case we want to cache
+  }
+
+  @Override
   public List<MetaMethod> getMethodsWithMetaAnnotations(final Class<? extends Annotation> annotation) {
     final List<MetaMethod> methods = new ArrayList<MetaMethod>();
     MetaClass scanTarget = this;

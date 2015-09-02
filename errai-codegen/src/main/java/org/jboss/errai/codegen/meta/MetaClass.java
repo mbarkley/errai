@@ -20,6 +20,8 @@ import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.List;
 
+import javax.annotation.PostConstruct;
+
 /**
  * @author Mike Brock <cbrock@redhat.com>
  */
@@ -57,6 +59,8 @@ public abstract class MetaClass extends AbstractHasAnnotations implements MetaTy
    *           if {@code annotation} is null.
    */
   public abstract List<MetaMethod> getMethodsAnnotatedWith(Class<? extends Annotation> annotation);
+
+  public abstract List<MetaMethod> getDeclaredMethodsAnnotatedWith(Class<? extends Annotation> annotation);
 
   public abstract List<MetaMethod> getMethodsWithMetaAnnotations(Class<? extends Annotation> annotation);
 

@@ -194,7 +194,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
     final Queue<MetaMethod> preDestroyQueue = new LinkedList<MetaMethod>();
     MetaClass type = injectable.getInjectedType();
     do {
-      final List<MetaMethod> curPreDestroys = type.getMethodsAnnotatedWith(PreDestroy.class);
+      final List<MetaMethod> curPreDestroys = type.getDeclaredMethodsAnnotatedWith(PreDestroy.class);
       if (curPreDestroys.size() > 1) {
         throw new RuntimeException(type.getFullyQualifiedName() + " has multiple @PreDestroy methods.");
       } else if (curPreDestroys.size() == 1) {
@@ -217,7 +217,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
     final Deque<MetaMethod> postConstructs = new ArrayDeque<MetaMethod>();
 
     do {
-      final List<MetaMethod> currentPostConstructs = type.getMethodsAnnotatedWith(PostConstruct.class);
+      final List<MetaMethod> currentPostConstructs = type.getDeclaredMethodsAnnotatedWith(PostConstruct.class);
       if (currentPostConstructs.size() > 0) {
         if (currentPostConstructs.size() > 1) {
           throw new RuntimeException(type.getFullyQualifiedName() + " has multiple @PostConstruct methods.");
