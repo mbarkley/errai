@@ -59,8 +59,11 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
 
   @Override
   public Object getActualBeanReference(Object ref) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+    if (isProxyReference(ref)) {
+      return ((Proxy<?>) ref).unwrappedInstance();
+    } else {
+      return ref;
+    }
   }
 
   @Override
@@ -71,8 +74,7 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
 
   @Override
   public boolean isProxyReference(Object ref) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+    return ref instanceof Proxy;
   }
 
   @Override

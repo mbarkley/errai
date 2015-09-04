@@ -211,8 +211,6 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       final boolean isVisited = visited.contains(newFrame.concrete);
       if (isVisiting && !isVisited) {
         processCycle(visiting, newFrame);
-      } else if (isVisiting && isVisited) {
-        visiting.pop();
       } else if (!isVisiting) {
         visiting.push(newFrame);
       }
