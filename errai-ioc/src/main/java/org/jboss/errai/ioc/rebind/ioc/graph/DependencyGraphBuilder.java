@@ -36,7 +36,7 @@ public interface DependencyGraphBuilder {
   DependencyGraph createGraph(boolean removeUnreachable);
 
   public static enum InjectableType {
-    Type, JsType, Producer, Provider, ContextualProvider, Abstract, Extension
+    Type, JsType, Producer, Provider, ContextualProvider, Abstract, Transient, Extension
   }
 
   public static enum DependencyType {

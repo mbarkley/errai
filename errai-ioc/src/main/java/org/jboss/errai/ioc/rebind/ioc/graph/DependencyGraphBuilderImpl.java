@@ -1,5 +1,7 @@
 package org.jboss.errai.ioc.rebind.ioc.graph;
 
+import static org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilderImpl.ResolutionPriority.getMatchingPriority;
+
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,8 +31,10 @@ import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.rebind.ioc.graph.ProvidedInjectable.InjectionSite;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.HashMultiset;
+import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multiset;
 
@@ -67,7 +71,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   @Override
   public Injectable addTransientInjectable(final MetaClass injectedType, final Qualifier qualifier,
           final Class<? extends Annotation> literalScope, final WiringElementType... wiringTypes) {
-    final ConcreteInjectable concrete = new TransientInjectable(injectedType, qualifier, literalScope, InjectableType.Abstract, Arrays.asList(wiringTypes));
+    final ConcreteInjectable concrete = new TransientInjectable(injectedType, qualifier, literalScope, InjectableType.Transient, Arrays.asList(wiringTypes));
     return registerNewConcreteInjectable(concrete);
   }
 
@@ -352,7 +356,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       return dep.injectable.resolution;
     }
 
-    final List<ConcreteInjectable> resolved = new ArrayList<ConcreteInjectable>();
+    final ListMultimap<ResolutionPriority, ConcreteInjectable> resolvedByPriority = ArrayListMultimap.create();
     final Queue<AbstractInjectable> resolutionQueue = new LinkedList<AbstractInjectable>();
     resolutionQueue.add(dep.injectable);
 
@@ -362,81 +366,32 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
         if (link instanceof AbstractInjectable) {
           resolutionQueue.add((AbstractInjectable) link);
         } else if (link instanceof ConcreteInjectable) {
-          resolved.add((ConcreteInjectable) link);
+          resolvedByPriority.put(getMatchingPriority(link), (ConcreteInjectable) link);
         }
       }
     } while (resolutionQueue.size() > 0);
 
-    if (resolved.isEmpty()) {
-      throwUnsatisfiedDependencyException(dep, concrete);
-    } else if (resolved.size() > 1) {
-      final List<ConcreteInjectable> providers = getProviders(resolved);
-      if (providers.isEmpty()) {
-        final List<ConcreteInjectable> alternatives = getAlternatives(resolved);
-        if (alternatives.isEmpty()) {
-          final List<ConcreteInjectable> nonSimpletons = getNonSimpletons(resolved);
-          if (nonSimpletons.isEmpty()) {
-            throwAmbiguousDependencyException(dep, concrete, resolved);
-          } else if (nonSimpletons.size() > 1) {
-            throwAmbiguousDependencyException(dep, concrete, nonSimpletons);
-          } else {
-            resolved.clear();
-            resolved.addAll(nonSimpletons);
-          }
-        } else if (alternatives.size() > 1) {
-          throwAmbiguousDependencyException(dep, concrete, alternatives);
+    // Iterates through priorities from highest to lowest.
+    for (final ResolutionPriority priority : ResolutionPriority.values()) {
+      if (resolvedByPriority.containsKey(priority)) {
+        final List<ConcreteInjectable> resolved = resolvedByPriority.get(priority);
+        if (resolved.size() > 1) {
+          throwAmbiguousDependencyException(dep, concrete, resolved);
         } else {
-          resolved.clear();
-          resolved.add(alternatives.get(0));
+          return (dep.injectable.resolution = resolved.get(0));
         }
-      } else if (providers.size() > 1) {
-        throwAmbiguousDependencyException(dep, concrete, providers);
-      } else {
-        resolved.clear();
-        resolved.add(providers.get(0));
       }
     }
 
-    return (dep.injectable.resolution = resolved.get(0));
-  }
+    throwUnsatisfiedDependencyException(dep, concrete);
 
-  private List<ConcreteInjectable> getNonSimpletons(final List<ConcreteInjectable> resolved) {
-    final List<ConcreteInjectable> nonSimpletons = new ArrayList<ConcreteInjectable>();
-    for (final ConcreteInjectable injectable : resolved) {
-      if (!injectable.wiringTypes.contains(WiringElementType.Simpleton)) {
-        nonSimpletons.add(injectable);
-      }
-    }
-
-    return nonSimpletons;
-  }
-
-  private List<ConcreteInjectable> getProviders(final List<ConcreteInjectable> resolved) {
-    final List<ConcreteInjectable> providers = new ArrayList<ConcreteInjectable>();
-    for (final ConcreteInjectable injectable : resolved) {
-      if (InjectableType.Provider.equals(injectable.injectableType) || InjectableType.ContextualProvider.equals(injectable.injectableType)) {
-        providers.add(injectable);
-      }
-    }
-
-    return providers;
+    throw new RuntimeException("This line can never be reached but is required for the method to compile.");
   }
 
   private void throwUnsatisfiedDependencyException(final BaseDependency dep, final ConcreteInjectable concrete) {
     final String message = "Unsatisfied " + dep.dependencyType.toString().toLowerCase() + " dependency " + dep.injectable + " for " + concrete;
 
     throw new RuntimeException(message);
-  }
-
-  private List<ConcreteInjectable> getAlternatives(final List<ConcreteInjectable> resolved) {
-    final List<ConcreteInjectable> alternatives = new ArrayList<ConcreteInjectable>();
-    for (final ConcreteInjectable injectable : resolved) {
-      if (injectable.wiringTypes.contains(WiringElementType.AlternativeBean)) {
-        alternatives.add(injectable);
-      }
-    }
-
-    return alternatives;
   }
 
   private void throwAmbiguousDependencyException(final BaseDependency dep, final ConcreteInjectable concrete, final List<ConcreteInjectable> resolved) {
@@ -955,6 +910,54 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     @Override
     public String toString() {
       return "<concrete=" + concrete.toString() + ", index=" + dependencyIndex + ">";
+    }
+  }
+
+  static enum ResolutionPriority implements Comparable<ResolutionPriority> {
+    /*
+     * From highest to lowest priority.
+     */
+    TransientOrExtension {
+      private final Collection<InjectableType> extensionTypes = Arrays.asList(InjectableType.Transient, InjectableType.Extension);
+      @Override
+      public boolean matches(Injectable injectable) {
+        return extensionTypes.contains(injectable.getInjectableType());
+      }
+    },
+    Provided {
+      private final Collection<InjectableType> providerTypes = Arrays.<InjectableType>asList(InjectableType.Provider, InjectableType.ContextualProvider);
+      @Override
+      public boolean matches(final Injectable injectable) {
+        return providerTypes.contains(injectable.getInjectableType());
+      }
+    }, EnabledAlternative {
+      @Override
+      public boolean matches(final Injectable injectable) {
+        return injectable.getWiringElementTypes().contains(WiringElementType.AlternativeBean);
+      }
+    }, NormalType {
+      final Collection<InjectableType> matchingTypes = Arrays.<InjectableType>asList(InjectableType.Type, InjectableType.Producer, InjectableType.JsType);
+      @Override
+      public boolean matches(final Injectable injectable) {
+        return matchingTypes.contains(injectable.getInjectableType()) && !injectable.getWiringElementTypes().contains(WiringElementType.Simpleton);
+      }
+    }, Simpleton {
+      @Override
+      public boolean matches(final Injectable injectable) {
+        return injectable.getWiringElementTypes().contains(WiringElementType.Simpleton);
+      }
+    };
+
+    public abstract boolean matches(final Injectable injectable);
+
+    public static ResolutionPriority getMatchingPriority(final Injectable injectable) {
+      for (final ResolutionPriority priority : values()) {
+        if (priority.matches(injectable)) {
+          return priority;
+        }
+      }
+
+      throw new RuntimeException("The injectable " + injectable + " does not match any resolution priority.");
     }
   }
 
