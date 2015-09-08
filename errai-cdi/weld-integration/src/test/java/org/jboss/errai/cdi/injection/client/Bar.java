@@ -22,9 +22,6 @@ package org.jboss.errai.cdi.injection.client;
 public class Bar {
   private String name;
 
-  // Requires proxying.
-  public Bar() {}
-
   public Bar(String name) {
     this.name = name;
   }
