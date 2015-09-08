@@ -14,10 +14,8 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.Queue;
 
 import javax.enterprise.context.Dependent;
 import javax.inject.Qualifier;
@@ -372,43 +370,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
   }
 
   private Collection<MetaClass> getAllAssignableTypes(final MetaClass injectedType) {
-    final Collection<MetaClass> assignableTypes = new ArrayList<MetaClass>();
-
-    final Queue<MetaClass> ifaces = new LinkedList<MetaClass>();
-    if (injectedType.isInterface()) {
-      ifaces.add(injectedType);
-    } else {
-      ifaces.addAll(getPublicInterfaces(injectedType));
-    }
-    while (ifaces.size() > 0) {
-      final MetaClass iface = ifaces.poll().getErased();
-      assignableTypes.add(iface);
-      ifaces.addAll(getPublicInterfaces(iface));
-    }
-
-    if (!injectedType.isInterface()) {
-      MetaClass type = injectedType.getErased();
-      do {
-        if (type.isPublic()) {
-          assignableTypes.add(type);
-        }
-        type = type.getSuperClass().getErased();
-      } while (!type.getFullyQualifiedName().equals("java.lang.Object"));
-      assignableTypes.add(MetaClassFactory.get(Object.class));
-    }
-
-    return assignableTypes;
-  }
-
-  private Collection<MetaClass> getPublicInterfaces(final MetaClass injectedType) {
-    final Collection<MetaClass> ifaces = new ArrayList<MetaClass>();
-    for (final MetaClass iface : injectedType.getInterfaces()) {
-      if (iface.isPublic()) {
-        ifaces.add(iface);
-      }
-    }
-
-    return ifaces;
+    return injectedType.getAllSuperTypesAndInterfaces();
   }
 
 }
