@@ -390,6 +390,8 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
       createInstanceStatements.add(declareFinalVariable("instance", injectable.getInjectedType(),
               newObject(injectable.getInjectedType())));
     }
+
+    createInstanceStatements.add(loadVariable("this").invoke("setIncompleteInstance", loadVariable("instance")));
   }
 
   private Injectable getProviderInjectable(final Injectable depInjectable) {

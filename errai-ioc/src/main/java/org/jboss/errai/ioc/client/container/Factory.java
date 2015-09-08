@@ -22,6 +22,8 @@ public abstract class Factory<T> {
             }
           });
 
+  private T incompleteInstance;
+
   public abstract T createInstance(ContextManager contextManager);
 
   public abstract void invokePostConstructs(T instance);
@@ -76,6 +78,14 @@ public abstract class Factory<T> {
     } else {
       return instance;
     }
+  }
+
+  public T getIncompleteInstance() {
+    return incompleteInstance;
+  }
+
+  protected void setIncompleteInstance(T instance) {
+    incompleteInstance = instance;
   }
 
 }

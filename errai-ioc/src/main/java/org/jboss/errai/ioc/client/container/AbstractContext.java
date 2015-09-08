@@ -3,16 +3,31 @@ package org.jboss.errai.ioc.client.container;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Set;
 
 public abstract class AbstractContext implements Context {
 
   private final Map<String, Factory<?>> factories = new HashMap<String, Factory<?>>();
   private final Map<String, Proxy<?>> proxies = new HashMap<String, Proxy<?>>();
   private final Map<Object, Factory<?>> factoriesByCreatedInstances = new IdentityHashMap<Object, Factory<?>>();
+  private final Set<String> factoriesCurrentlyCreatingInstances = new HashSet<String>();
 
   private ContextManager contextManager;
+
+  protected void beforeCreateInstance(final String factoryName) {
+    factoriesCurrentlyCreatingInstances.add(factoryName);
+  }
+
+  protected void afterCreateInstance(final String factoryName) {
+    factoriesCurrentlyCreatingInstances.remove(factoryName);
+  }
+
+  protected boolean isCurrentlyCreatingInstance(final String factoryName) {
+    return factoriesCurrentlyCreatingInstances.contains(factoryName);
+  }
 
   @Override
   public ContextManager getContextManager() {

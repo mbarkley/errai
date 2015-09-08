@@ -260,6 +260,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
   }
 
   protected void addReturnStatement(final List<Statement> createInstanceStatements) {
+    createInstanceStatements.add(loadVariable("this").invoke("setIncompleteInstance", loadLiteral(null)));
     createInstanceStatements.add(loadVariable("instance").returnValue());
   }
 
