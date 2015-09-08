@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.jboss.errai.ioc.rebind.ioc.graph;
+package org.jboss.errai.ioc.util;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;

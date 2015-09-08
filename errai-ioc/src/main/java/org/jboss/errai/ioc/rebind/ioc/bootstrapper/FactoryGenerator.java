@@ -15,9 +15,9 @@ import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.common.metadata.RebindUtils;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.client.container.Factory;
-import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
-import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.InjectableType;
-import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 
 import com.google.gwt.core.ext.GeneratorContext;

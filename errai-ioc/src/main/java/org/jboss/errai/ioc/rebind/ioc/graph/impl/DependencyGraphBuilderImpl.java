@@ -1,12 +1,10 @@
-package org.jboss.errai.ioc.rebind.ioc.graph;
+package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 
-import static org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilderImpl.ResolutionPriority.getMatchingPriority;
+import static org.jboss.errai.ioc.rebind.ioc.graph.impl.ResolutionPriority.getMatchingPriority;
 
 import java.lang.annotation.Annotation;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -17,8 +15,6 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.Stack;
 
-import javax.enterprise.context.Dependent;
-
 import org.apache.commons.lang3.Validate;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
@@ -27,24 +23,22 @@ import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.MetaParameterizedType;
-import org.jboss.errai.ioc.client.api.EntryPoint;
-import org.jboss.errai.ioc.rebind.ioc.graph.ProvidedInjectable.InjectionSite;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.ProvidedInjectable.InjectionSite;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.HashMultiset;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimap;
-import com.google.common.collect.Multiset;
 
 /**
  * @author Max Barkley <mbarkley@redhat.com>
  */
 public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
-
-  private static final String SHORT_NAMES_PROP = "errai.graph_builder.short_factory_names";
-  private static final boolean SHORT_NAMES = Boolean.getBoolean(SHORT_NAMES_PROP);
 
   private final Map<InjectableHandle, AbstractInjectable> abstractInjectables = new HashMap<InjectableHandle, AbstractInjectable>();
   private final Multimap<MetaClass, AbstractInjectable> directAbstractInjectablesByAssignableTypes = HashMultimap.create();
@@ -466,499 +460,65 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
   }
 
-  private FieldDependency createFieldDependency(final Injectable abstractInjectable, final MetaField dependentField) {
-    return new FieldDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), dependentField);
+  @Override
+  public void addFieldDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier,
+          final MetaField dependentField) {
+    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
+    final FieldDependency dep = new FieldDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), dependentField);
+    addDependency(concreteInjectable, dep);
   }
 
-  private SetterParameterDependency createSetterMethodDependency(final Injectable abstractInjectable, final MetaMethod setter) {
-    return new SetterParameterDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), setter);
+  @Override
+  public void addConstructorDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
+          int paramIndex, MetaParameter param) {
+    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
+    final int paramIndex1 = paramIndex;
+    final MetaParameter param1 = param;
+    final ParamDependency dep = new ParamDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.Constructor, paramIndex1, param1);
+    addDependency(concreteInjectable, dep);
   }
 
-  private ParamDependency createConstructorDependency(final Injectable abstractInjectable, final int paramIndex, final MetaParameter param) {
-    return new ParamDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.Constructor, paramIndex, param);
+  @Override
+  public void addProducerParamDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
+          int paramIndex, MetaParameter param) {
+    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
+    final int paramIndex1 = paramIndex;
+    final MetaParameter param1 = param;
+    final ParamDependency dep = new ParamDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerParameter, paramIndex1, param1);
+    addDependency(concreteInjectable, dep);
   }
 
-  private ParamDependency createProducerParamDependency(final Injectable abstractInjectable, final int paramIndex, final MetaParameter param) {
-    return new ParamDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerParameter, paramIndex, param);
+  @Override
+  public void addProducerMemberDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
+          MetaClassMember producingMember) {
+    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
+    final MetaClassMember member = producingMember;
+    final ProducerInstanceDependency dep = new ProducerInstanceDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerMember, member);
+    addDependency(concreteInjectable, dep);
   }
 
-  private ProducerInstanceDependency createProducerInstanceDependency(final Injectable abstractInjectable, final MetaClassMember member) {
-    return new ProducerInstanceDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerMember, member);
+  @Override
+  public void addSetterMethodDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
+          MetaMethod setter) {
+    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
+    final MetaMethod setter1 = setter;
+    final SetterParameterDependency dep = new SetterParameterDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), setter1);
+    addDependency(concreteInjectable, dep);
   }
 
-  private DisposerMethodDependency createDisposerMethodDependency(final Injectable abstractInjectable, final MetaMethod disposer) {
-    return new DisposerMethodDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), disposer);
+  @Override
+  public void addDisposesMethodDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier, final MetaMethod disposer) {
+    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
+    final DisposerMethodDependency dep = new DisposerMethodDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), disposer);
+    addDependency(concreteInjectable, dep);
   }
 
-  private ParamDependency createDisposerParamDependency(final Injectable abstractInjectable, final Integer index, final MetaParameter param) {
-    return new ParamDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.DisposerParameter, index, param);
-  }
-
-  static abstract class BaseInjectable implements Injectable {
-    private static final Multiset<String> allFactoryNames = HashMultiset.create();
-
-    final MetaClass type;
-    final Qualifier qualifier;
-    String factoryName;
-
-    BaseInjectable(final MetaClass type, final Qualifier qualifier) {
-      this.type = type;
-      this.qualifier = qualifier;
-    }
-
-    @Override
-    public MetaClass getInjectedType() {
-      return type;
-    }
-
-    @Override
-    public String toString() {
-      return "class=" + type + ", injectorType=" + getInjectableType() + ", qualifier=" + qualifier.toString();
-    }
-
-    @Override
-    public Qualifier getQualifier() {
-      return qualifier;
-    }
-
-    @Override
-    public String getFactoryName() {
-      if (factoryName == null) {
-        final String typeName = type.getFullyQualifiedName().replace('.', '_').replace('$', '_');
-        final String qualNames = qualifier.getIdentifierSafeString();
-        if (SHORT_NAMES) {
-          factoryName = getInjectableType() + "_factory__" + shorten(typeName) + "__quals__" + shorten(qualNames);
-
-        } else {
-          factoryName = getInjectableType() + "_factory_for__" + typeName + "__with_qualifiers__" + qualNames;
-        }
-        final int collisions = allFactoryNames.count(factoryName);
-        allFactoryNames.add(factoryName);
-        if (collisions > 0) {
-          factoryName = factoryName + "_" + String.valueOf(collisions);
-        }
-      }
-
-      return factoryName;
-    }
-
-    private String shorten(final String compoundName) {
-      final String[] names = compoundName.split("__");
-      final StringBuilder builder = new StringBuilder();
-      for (final String name : names) {
-        builder.append(shortenName(name))
-               .append('_');
-      }
-      builder.delete(builder.length()-1, builder.length());
-
-      return builder.toString();
-    }
-
-    private String shortenName(final String name) {
-      final String[] parts = name.split("_");
-      final StringBuilder builder = new StringBuilder();
-      boolean haveSeenUpperCase = false;
-      for (final String part : parts) {
-        if (haveSeenUpperCase || Character.isUpperCase(part.charAt(0))) {
-          builder.append(part);
-          haveSeenUpperCase = true;
-        } else {
-          builder.append(part.charAt(0));
-        }
-        builder.append('_');
-      }
-      builder.delete(builder.length()-1, builder.length());
-
-      return builder.toString();
-    }
-
-    @Override
-    public InjectableHandle getHandle() {
-      return new InjectableHandle(type, qualifier);
-    }
- }
-
-  // TODO needs to be renamed and not be an Injectable
-  static class AbstractInjectable extends BaseInjectable {
-    // TODO review getDependencies and similar to see if they should throw errors.
-    // They should probably only be called on ConcreteInjectables
-
-    final Collection<BaseInjectable> linked = new HashSet<BaseInjectable>();
-    ConcreteInjectable resolution;
-
-    AbstractInjectable(final MetaClass type, final Qualifier qualifier) {
-      super(type, qualifier);
-    }
-
-    @Override
-    public String toString() {
-      return "[AbstractInjectable:" + super.toString() + "]";
-    }
-
-    @Override
-    public Class<? extends Annotation> getScope() {
-      return null;
-    }
-
-    @Override
-    public InjectableType getInjectableType() {
-      return InjectableType.Abstract;
-    }
-
-    @Override
-    public Collection<Dependency> getDependencies() {
-      if (resolution == null) {
-        return Collections.emptyList();
-      } else {
-        return resolution.getDependencies();
-      }
-    }
-
-    @Override
-    public boolean requiresProxy() {
-      if (resolution == null) {
-        return false;
-      } else {
-        return resolution.requiresProxy();
-      }
-    }
-
-    @Override
-    public void setRequiresProxyTrue() {
-      throw new RuntimeException("Should not be callled on " + AbstractInjectable.class.getSimpleName());
-    }
-
-    @Override
-    public Collection<WiringElementType> getWiringElementTypes() {
-      return Collections.emptyList();
-    }
-
-    @Override
-    public boolean isContextual() {
-      return resolution != null && resolution.isContextual();
-    }
-
-    @Override
-    public boolean isTransient() {
-      return false;
-    }
-  }
-
-  static class ConcreteInjectable extends BaseInjectable {
-    final InjectableType injectableType;
-    final Collection<WiringElementType> wiringTypes;
-    final List<BaseDependency> dependencies = new ArrayList<BaseDependency>();
-    final Class<? extends Annotation> literalScope;
-    Boolean proxiable = null;
-    boolean requiresProxy = false;
-
-    ConcreteInjectable(final MetaClass type, final Qualifier qualifier, final Class<? extends Annotation> literalScope,
-            final InjectableType injectorType, final Collection<WiringElementType> wiringTypes) {
-      super(type, qualifier);
-      this.literalScope = literalScope;
-      this.wiringTypes = wiringTypes;
-      this.injectableType = injectorType;
-    }
-
-    private boolean isProxiable() {
-      if (proxiable == null) {
-        proxiable = type.isInterface() || (type.isDefaultInstantiable() && !type.isFinal());
-      }
-
-      return proxiable;
-    }
-
-    @Override
-    public String toString() {
-      return "[Concrete:" + super.toString() + "]";
-    }
-
-    @Override
-    public Class<? extends Annotation> getScope() {
-      return literalScope;
-    }
-
-    @Override
-    public InjectableType getInjectableType() {
-      return injectableType;
-    }
-
-    @Override
-    public Collection<Dependency> getDependencies() {
-      return Collections.<Dependency>unmodifiableCollection(dependencies);
-    }
-
-    @Override
-    public boolean requiresProxy() {
-      switch (injectableType) {
-      case Abstract:
-      case ContextualProvider:
-      case Provider:
-        return false;
-      case Producer:
-      case Type:
-        return requiresProxy || !(literalScope.equals(Dependent.class) || literalScope.equals(EntryPoint.class));
-      default:
-        throw new RuntimeException("Not yet implemented!");
-      }
-    }
-
-    @Override
-    public Collection<WiringElementType> getWiringElementTypes() {
-      return Collections.unmodifiableCollection(wiringTypes);
-    }
-
-    @Override
-    public boolean isContextual() {
-      return InjectableType.ContextualProvider.equals(injectableType);
-    }
-
-    @Override
-    public void setRequiresProxyTrue() {
-      requiresProxy = true;
-    }
-
-    @Override
-    public boolean isTransient() {
-      return false;
-    }
-  }
-
-  static class TransientInjectable extends ConcreteInjectable {
-
-    final Collection<InjectionSite> injectionSites = new ArrayList<InjectionSite>();
-
-    TransientInjectable(final MetaClass type, final Qualifier qualifier,
-            final Class<? extends Annotation> literalScope, final InjectableType injectorType,
-            final Collection<WiringElementType> wiringTypes) {
-      super(type, qualifier, literalScope, injectorType, wiringTypes);
-    }
-
-    public Collection<InjectionSite> getInjectionSites() {
-      return Collections.unmodifiableCollection(injectionSites);
-    }
-
-    public String getFactoryNameForInjectionSite(final InjectionSite site) {
-      return getFactoryName() + "__within__" + site.getEnclosingType().getName();
-    }
-
-    @Override
-    public boolean isTransient() {
-      return true;
-    }
-
-  }
-
-  static class ProvidedInjectableImpl extends ConcreteInjectable implements ProvidedInjectable {
-
-    final InjectionSite site;
-    final TransientInjectable injectable;
-
-    ProvidedInjectableImpl(final TransientInjectable injectable, final InjectionSite site) {
-      super(injectable.type, injectable.qualifier, injectable.literalScope, InjectableType.Extension, injectable.wiringTypes);
-      this.site = site;
-      this.injectable = injectable;
-    }
-
-    @Override
-    public String getFactoryName() {
-      return injectable.getFactoryNameForInjectionSite(site);
-    }
-
-    @Override
-    public InjectionSite getInjectionSite() {
-      return site;
-    }
-
-  }
-
-  static class BaseDependency implements Dependency {
-    AbstractInjectable injectable;
-    final DependencyType dependencyType;
-    boolean cyclic = false;
-
-    BaseDependency(final AbstractInjectable abstractInjectable, final DependencyType dependencyType) {
-      this.injectable = abstractInjectable;
-      this.dependencyType = dependencyType;
-    }
-
-    @Override
-    public String toString() {
-      return "[depType=" + dependencyType.toString() + ", abstractInjectable=" + injectable.toString() + "]";
-    }
-
-    @Override
-    public Injectable getInjectable() {
-      return injectable.resolution;
-    }
-
-    @Override
-    public DependencyType getDependencyType() {
-      return dependencyType;
-    }
-  }
-
-  static class ParamDependencyImpl extends BaseDependency implements ParamDependency {
-
-    private final int paramIndex;
-    private final MetaParameter parameter;
-
-    ParamDependencyImpl(final AbstractInjectable abstractInjectable, final DependencyType dependencyType, final int paramIndex, final MetaParameter parameter) {
-      super(abstractInjectable, dependencyType);
-      this.paramIndex = paramIndex;
-      this.parameter = parameter;
-    }
-
-    @Override
-    public int getParamIndex() {
-      return paramIndex;
-    }
-
-    @Override
-    public MetaParameter getParameter() {
-      return parameter;
-    }
-
-  }
-
-  static class FieldDependencyImpl extends BaseDependency implements FieldDependency {
-
-    private final MetaField field;
-
-    FieldDependencyImpl(final AbstractInjectable abstractInjectable, final MetaField field) {
-      super(abstractInjectable, DependencyType.Field);
-      this.field = field;
-    }
-
-    @Override
-    public MetaField getField() {
-      return field;
-    }
-
-  }
-
-  static class SetterParameterDependencyImpl extends BaseDependency implements SetterParameterDependency {
-
-    private final MetaMethod method;
-
-    SetterParameterDependencyImpl(final AbstractInjectable abstractInjectable, final MetaMethod method) {
-      super(abstractInjectable, DependencyType.SetterParameter);
-      this.method = method;
-    }
-
-    @Override
-    public MetaMethod getMethod() {
-      return method;
-    }
-
-  }
-
-  static class ProducerInstanceDependencyImpl extends BaseDependency implements ProducerInstanceDependency {
-
-    private final MetaClassMember producingMember;
-
-    ProducerInstanceDependencyImpl(final AbstractInjectable abstractInjectable, final DependencyType dependencyType, final MetaClassMember producingMember) {
-      super(abstractInjectable, dependencyType);
-      this.producingMember = producingMember;
-    }
-
-    @Override
-    public MetaClassMember getProducingMember() {
-      return producingMember;
-    }
-
-  }
-
-  static class DisposerMethodDependencyImpl extends BaseDependency implements DisposerMethodDependency {
-
-    private final MetaMethod disposer;
-
-    DisposerMethodDependencyImpl(final AbstractInjectable abstractInjectable, final MetaMethod disposer) {
-      super(abstractInjectable, DependencyType.DisposerMethod);
-      this.disposer = disposer;
-    }
-
-    @Override
-    public MetaMethod getDisposerMethod() {
-      return disposer;
-    }
-
-  }
-
-  static class DFSFrame {
-    final ConcreteInjectable concrete;
-    int dependencyIndex = -1;
-
-    DFSFrame(final ConcreteInjectable concrete) {
-      this.concrete = concrete;
-    }
-
-    @Override
-    public int hashCode() {
-      return concrete.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (obj instanceof DFSFrame) {
-        return concrete.equals(((DFSFrame) obj).concrete);
-      } else {
-        return false;
-      }
-    }
-
-    @Override
-    public String toString() {
-      return "<concrete=" + concrete.toString() + ", index=" + dependencyIndex + ">";
-    }
-  }
-
-  static enum ResolutionPriority implements Comparable<ResolutionPriority> {
-    /*
-     * From highest to lowest priority.
-     */
-    TransientOrExtension {
-      private final Collection<InjectableType> extensionTypes = Arrays.asList(InjectableType.Transient, InjectableType.Extension);
-      @Override
-      public boolean matches(Injectable injectable) {
-        return extensionTypes.contains(injectable.getInjectableType());
-      }
-    },
-    Provided {
-      private final Collection<InjectableType> providerTypes = Arrays.<InjectableType>asList(InjectableType.Provider, InjectableType.ContextualProvider);
-      @Override
-      public boolean matches(final Injectable injectable) {
-        return providerTypes.contains(injectable.getInjectableType());
-      }
-    }, EnabledAlternative {
-      @Override
-      public boolean matches(final Injectable injectable) {
-        return injectable.getWiringElementTypes().contains(WiringElementType.AlternativeBean);
-      }
-    }, NormalType {
-      final Collection<InjectableType> matchingTypes = Arrays.<InjectableType>asList(InjectableType.Type, InjectableType.Producer, InjectableType.JsType);
-      @Override
-      public boolean matches(final Injectable injectable) {
-        return matchingTypes.contains(injectable.getInjectableType()) && !injectable.getWiringElementTypes().contains(WiringElementType.Simpleton);
-      }
-    }, Simpleton {
-      @Override
-      public boolean matches(final Injectable injectable) {
-        return injectable.getWiringElementTypes().contains(WiringElementType.Simpleton);
-      }
-    };
-
-    public abstract boolean matches(final Injectable injectable);
-
-    public static ResolutionPriority getMatchingPriority(final Injectable injectable) {
-      for (final ResolutionPriority priority : values()) {
-        if (priority.matches(injectable)) {
-          return priority;
-        }
-      }
-
-      throw new RuntimeException("The injectable " + injectable + " does not match any resolution priority.");
-    }
+  @Override
+  public void addDisposesParamDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier,
+          final Integer index, final MetaParameter param) {
+    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
+    final ParamDependency dep = new ParamDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.DisposerParameter, index, param);
+    addDependency(concreteInjectable, dep);
   }
 
   class DependencyGraphImpl implements DependencyGraph {
@@ -974,61 +534,6 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       return concretesByName.get(injectableName);
     }
 
-  }
-
-  @Override
-  public void addFieldDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier,
-          final MetaField dependentField) {
-    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
-    final FieldDependency dep = createFieldDependency(abstractInjectable, dependentField);
-    addDependency(concreteInjectable, dep);
-  }
-
-  @Override
-  public void addConstructorDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
-          int paramIndex, MetaParameter param) {
-    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
-    final ParamDependency dep = createConstructorDependency(abstractInjectable, paramIndex, param);
-    addDependency(concreteInjectable, dep);
-  }
-
-  @Override
-  public void addProducerParamDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
-          int paramIndex, MetaParameter param) {
-    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
-    final ParamDependency dep = createProducerParamDependency(abstractInjectable, paramIndex, param);
-    addDependency(concreteInjectable, dep);
-  }
-
-  @Override
-  public void addProducerMemberDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
-          MetaClassMember producingMember) {
-    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
-    final ProducerInstanceDependency dep = createProducerInstanceDependency(abstractInjectable, producingMember);
-    addDependency(concreteInjectable, dep);
-  }
-
-  @Override
-  public void addSetterMethodDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
-          MetaMethod setter) {
-    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
-    final SetterParameterDependency dep = createSetterMethodDependency(abstractInjectable, setter);
-    addDependency(concreteInjectable, dep);
-  }
-
-  @Override
-  public void addDisposesMethodDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier, final MetaMethod disposer) {
-    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
-    final DisposerMethodDependency dep = createDisposerMethodDependency(abstractInjectable, disposer);
-    addDependency(concreteInjectable, dep);
-  }
-
-  @Override
-  public void addDisposesParamDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier,
-          final Integer index, final MetaParameter param) {
-    final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
-    final ParamDependency dep = createDisposerParamDependency(abstractInjectable, index, param);
-    addDependency(concreteInjectable, dep);
   }
 
 }

@@ -1,4 +1,4 @@
-package org.jboss.errai.ioc.rebind.ioc.graph;
+package org.jboss.errai.ioc.rebind.ioc.graph.api;
 
 public interface DependencyGraph extends Iterable<Injectable> {
 

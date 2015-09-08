@@ -1,6 +1,7 @@
-package org.jboss.errai.ioc.rebind.ioc.graph;
+package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 
 public class InjectableHandle {
   final MetaClass type;

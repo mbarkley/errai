@@ -1,4 +1,4 @@
-package org.jboss.errai.ioc.rebind.ioc.graph;
+package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 
 import java.lang.annotation.Annotation;
 import java.util.Collections;
@@ -12,6 +12,9 @@ import javax.enterprise.inject.Any;
 import javax.enterprise.inject.Default;
 
 import org.jboss.errai.codegen.meta.HasAnnotations;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.QualifierFactory;
+import org.jboss.errai.ioc.util.CDIAnnotationUtils;
 
 import com.google.inject.name.Named;
 

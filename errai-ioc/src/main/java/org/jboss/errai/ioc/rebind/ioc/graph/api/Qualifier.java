@@ -1,4 +1,4 @@
-package org.jboss.errai.ioc.rebind.ioc.graph;
+package org.jboss.errai.ioc.rebind.ioc.graph.api;
 
 /**
  * @author Max Barkley <mbarkley@redhat.com>

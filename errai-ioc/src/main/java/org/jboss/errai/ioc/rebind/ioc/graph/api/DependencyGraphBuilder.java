@@ -1,4 +1,4 @@
-package org.jboss.errai.ioc.rebind.ioc.graph;
+package org.jboss.errai.ioc.rebind.ioc.graph.api;
 
 import java.lang.annotation.Annotation;
 
@@ -13,6 +13,9 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
  * @author Max Barkley <mbarkley@redhat.com>
  */
 public interface DependencyGraphBuilder {
+
+  public String SHORT_NAMES_PROP = "errai.graph_builder.short_factory_names";
+  public boolean SHORT_NAMES = Boolean.getBoolean(SHORT_NAMES_PROP);
 
   Injectable addConcreteInjectable(MetaClass injectedType, Qualifier qualifier, Class<? extends Annotation> literalScope,
           InjectableType factoryType, WiringElementType... wiringTypes);

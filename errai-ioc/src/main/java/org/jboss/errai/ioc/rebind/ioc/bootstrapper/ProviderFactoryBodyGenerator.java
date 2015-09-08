@@ -13,10 +13,10 @@ import javax.inject.Provider;
 
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
-import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraph;
-import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.Dependency;
-import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.DependencyType;
-import org.jboss.errai.ioc.rebind.ioc.graph.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 
 import com.google.common.collect.Multimap;

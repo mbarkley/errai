@@ -1,4 +1,4 @@
-package org.jboss.errai.ioc.rebind.ioc.graph;
+package org.jboss.errai.ioc.rebind.ioc.graph.api;
 
 import org.jboss.errai.codegen.meta.HasAnnotations;
 

@@ -1,11 +1,12 @@
-package org.jboss.errai.ioc.rebind.ioc.graph;
+package org.jboss.errai.ioc.rebind.ioc.graph.api;
 
 import java.lang.annotation.Annotation;
 import java.util.Collection;
 
 import org.jboss.errai.codegen.meta.MetaClass;
-import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.Dependency;
-import org.jboss.errai.ioc.rebind.ioc.graph.DependencyGraphBuilder.InjectableType;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
+import org.jboss.errai.ioc.rebind.ioc.graph.impl.InjectableHandle;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 public interface Injectable {
