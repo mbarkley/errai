@@ -12,8 +12,13 @@ public class DependentScopeContext extends AbstractContext {
   @Override
   public <T> T getInstance(final String factoryName) {
     final Factory<T> factory = this.<T>getFactory(factoryName);
-    final T instance = factory.createProxy(this).asBeanType();
-    registerInstance(instance, factory);
+    final Proxy<T> proxy = factory.createProxy(this);
+    final T instance;
+    if (proxy == null) {
+      instance = getActiveNonProxiedInstance(factoryName);
+    } else {
+      instance = proxy.asBeanType();
+    }
     return instance;
   }
 
@@ -21,6 +26,8 @@ public class DependentScopeContext extends AbstractContext {
   public <T> T getActiveNonProxiedInstance(final String factoryName) {
     final Factory<T> factory = this.<T>getFactory(factoryName);
     final T instance = factory.createInstance(getContextManager());
+    registerInstance(instance, factory);
+    factory.invokePostConstructs(instance);
 
     return instance;
   }

@@ -33,10 +33,13 @@ public abstract class AbstractContext implements Context {
     factories.put(factory.getHandle().getFactoryName(), factory);
   }
 
+  /**
+   * @return Returns null if a proxy cannot be created.
+   */
   protected <T> Proxy<T> getOrCreateProxy(final String factoryName) {
     @SuppressWarnings("unchecked")
     Proxy<T> proxy = (Proxy<T>) proxies.get(factoryName);
-    if (proxy == null) {
+    if (proxy == null && !proxies.containsKey(factoryName)) {
       final Factory<T> factory = getFactory(factoryName);
       proxy = factory.createProxy(this);
       proxies.put(factoryName, proxy);
@@ -64,34 +67,42 @@ public abstract class AbstractContext implements Context {
   public <T> T getNewInstance(final String factoryName) {
     final Factory<T> factory = getFactory(factoryName);
     final Proxy<T> proxy = factory.createProxy(this);
-    final T instance;
-    if (!(proxy instanceof NonProxiableWrapper)) {
-      instance = factory.createInstance(getContextManager());
+    final T instance = factory.createInstance(getContextManager());
+    if (proxy != null) {
       proxy.setInstance(instance);
-    } else {
-      instance = proxy.asBeanType();
     }
+    factory.invokePostConstructs(instance);
     registerInstance(instance, factory);
 
-    return proxy.asBeanType();
+    return (proxy != null) ? proxy.asBeanType() : instance;
   }
 
-  protected void registerInstance(Object instance, Factory<?> factory) {
-    factoriesByCreatedInstances.put(instance, factory);
+  protected void registerInstance(Object unwrappedInstance, Factory<?> factory) {
+    factoriesByCreatedInstances.put(unwrappedInstance, factory);
   }
 
   @Override
   public void destroyInstance(final Object instance) {
-    final Factory<?> factory = factoriesByCreatedInstances.get(instance);
+    // TODO destroy proxy if dependent scope
+    final Object unwrapped = maybeUnwrap(instance);
+    final Factory<?> factory = factoriesByCreatedInstances.get(unwrapped);
     if (factory != null) {
-      factory.destroyInstance(instance, contextManager);
-      factoriesByCreatedInstances.remove(instance);
+      factory.destroyInstance(unwrapped, contextManager);
+      factoriesByCreatedInstances.remove(unwrapped);
+    }
+  }
+
+  private Object maybeUnwrap(Object instance) {
+    if (instance instanceof Proxy) {
+      return ((Proxy<?>) instance).unwrappedInstance();
+    } else {
+      return instance;
     }
   }
 
   @Override
   public boolean isManaged(final Object ref) {
-    return factoriesByCreatedInstances.containsKey(ref);
+    return factoriesByCreatedInstances.containsKey(maybeUnwrap(ref));
   }
 
 }

@@ -71,7 +71,6 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
     injectSetterMethodDependencies(injectable, setterDependencies, createInstanceStatements, bodyBlockBuilder);
     runDecorators(injectable, injectionContext, createInstanceStatements, bodyBlockBuilder);
     addInitializationStatements(createInstanceStatements);
-    maybeInvokePostConstructs(injectable, createInstanceStatements, bodyBlockBuilder);
     addReturnStatement(createInstanceStatements);
 
     return createInstanceStatements;
@@ -87,6 +86,23 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
             .addAll(super.generateDestroyInstanceStatements(bodyBlockBuilder, injectable, graph, injectionContext));
 
     return destructionStmts;
+  }
+
+  @Override
+  protected List<Statement> generateInovkePostConstructsStatements(ClassStructureBuilder<?> bodyBlockBuilder,
+          Injectable injectable, DependencyGraph graph, InjectionContext injectionContext) {
+    final List<Statement> stmts = new ArrayList<Statement>();
+    final Queue<MetaMethod> postConstructMethods = gatherPostConstructs(injectable);
+    for (final MetaMethod postConstruct : postConstructMethods) {
+      if (postConstruct.isPublic()) {
+        stmts.add(loadVariable("instance").invoke(postConstruct));
+      } else {
+        final String accessorName = addPrivateMethodAccessor(postConstruct, bodyBlockBuilder);
+        stmts.add(invokePrivateAccessorWithNoParams(accessorName));
+      }
+    }
+
+    return stmts;
   }
 
   private void addInitializationStatements(final List<Statement> createInstanceStatements) {
@@ -158,19 +174,6 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
     }
 
     return annos;
-  }
-
-  private void maybeInvokePostConstructs(final Injectable injectable, final List<Statement> createInstanceStatements,
-          final ClassStructureBuilder<?> bodyBlockBuilder) {
-    final Queue<MetaMethod> postConstructMethods = gatherPostConstructs(injectable);
-    for (final MetaMethod postConstruct : postConstructMethods) {
-      if (postConstruct.isPublic()) {
-        createInstanceStatements.add(loadVariable("instance").invoke(postConstruct));
-      } else {
-        final String accessorName = addPrivateMethodAccessor(postConstruct, bodyBlockBuilder);
-        createInstanceStatements.add(invokePrivateAccessorWithNoParams(accessorName));
-      }
-    }
   }
 
   private void maybeInvokePreDestroys(final Injectable injectable, final List<Statement> destructionStmts,

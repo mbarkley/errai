@@ -18,9 +18,11 @@ public class ApplicationScopedContext extends AbstractContext {
   @Override
   public <T> T getInstance(final String factoryName) {
     final Proxy<T> proxy = getOrCreateProxy(factoryName);
-    registerInstance(proxy, getFactory(factoryName));
-
-    return proxy.asBeanType();
+    if (proxy == null) {
+      return getActiveNonProxiedInstance(factoryName);
+    } else {
+      return proxy.asBeanType();
+    }
   }
 
   @Override
@@ -28,8 +30,11 @@ public class ApplicationScopedContext extends AbstractContext {
     @SuppressWarnings("unchecked")
     T instance = (T) instances.get(factoryName);
     if (instance == null) {
-      instance = this.<T>getFactory(factoryName).createInstance(getContextManager());
+      final Factory<T> factory = this.<T>getFactory(factoryName);
+      instance = factory.createInstance(getContextManager());
       instances.put(factoryName, instance);
+      registerInstance(instance, factory);
+      factory.invokePostConstructs(instance);
     }
 
     return instance;

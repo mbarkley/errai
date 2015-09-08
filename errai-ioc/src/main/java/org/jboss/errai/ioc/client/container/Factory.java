@@ -24,6 +24,8 @@ public abstract class Factory<T> {
 
   public abstract T createInstance(ContextManager contextManager);
 
+  public abstract void invokePostConstructs(T instance);
+
   protected void setReference(final T instance, final String referenceName, final Object ref) {
     final Map<String, Object> instanceRefMap = getInstanceRefMap(instance);
     instanceRefMap.put(referenceName, ref);

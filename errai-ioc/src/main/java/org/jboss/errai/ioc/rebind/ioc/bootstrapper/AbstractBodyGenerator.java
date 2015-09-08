@@ -13,6 +13,7 @@ import static org.jboss.errai.codegen.util.Stmt.newObject;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
@@ -44,14 +45,13 @@ import org.jboss.errai.ioc.client.container.Context;
 import org.jboss.errai.ioc.client.container.ContextManager;
 import org.jboss.errai.ioc.client.container.FactoryHandle;
 import org.jboss.errai.ioc.client.container.FactoryHandleImpl;
-import org.jboss.errai.ioc.client.container.NonProxiableWrapper;
 import org.jboss.errai.ioc.client.container.Proxy;
 import org.jboss.errai.ioc.client.container.ProxyHelper;
 import org.jboss.errai.ioc.client.container.ProxyHelperImpl;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
-import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
@@ -77,28 +77,29 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
 
   protected void implementCreateProxy(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable) {
     final MetaClass proxyImpl = maybeCreateProxyImplementation(injectable, bodyBlockBuilder);
-    final Object newProxyImplStmt;
 
     final BlockBuilder<?> createProxyBody = bodyBlockBuilder
             .publicMethod(parameterizedAs(Proxy.class, typeParametersOf(injectable.getInjectedType())), "createProxy",
                     finalOf(Context.class, "context"))
             .body();
-    // TODO clean this up
-    if (proxyImpl.getFullyQualifiedName().equals(NonProxiableWrapper.class.getName())) {
-      newProxyImplStmt = newObject(
-              parameterizedAs(NonProxiableWrapper.class, typeParametersOf(injectable.getInjectedType())),
-              loadVariable("this").invoke("createInstance", loadVariable("context").invoke("getContextManager")));
-    } else {
-      newProxyImplStmt = newObject(proxyImpl);
+    if (proxyImpl == null) {
+      // Type is not proxiable
+      createProxyBody._(loadLiteral(null).returnValue()).finish();
     }
-
-    createProxyBody
-            ._(declareFinalVariable("proxyImpl",
-                    parameterizedAs(Proxy.class, typeParametersOf(injectable.getInjectedType())), newProxyImplStmt))
-            ._(loadVariable("proxyImpl").invoke("setContext", loadVariable("context")))
-            ._(loadVariable("proxyImpl").returnValue()).finish();
+    else {
+      createProxyBody
+              ._(declareFinalVariable("proxyImpl",
+                      parameterizedAs(Proxy.class, typeParametersOf(injectable.getInjectedType())),
+                      newObject(proxyImpl)))
+              ._(loadVariable("proxyImpl").invoke("setContext", loadVariable("context")))
+              ._(loadVariable("proxyImpl").returnValue()).finish();
+    }
   }
 
+  /**
+   *
+   * @return Returns null if unproxiable and a proxy is not required.
+   */
   private MetaClass maybeCreateProxyImplementation(final Injectable injectable, final ClassStructureBuilder<?> bodyBlockBuilder) {
 
     final ClassStructureBuilder<?> proxyImpl;
@@ -118,7 +119,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
       declareAndInitializeProxyHelper(injectable, proxyImpl);
     } else {
       if (!injectable.requiresProxy()) {
-        return parameterizedAs(NonProxiableWrapper.class, typeParametersOf(injectedType));
+        return null;
       } else {
         throw new RuntimeException(injectedType + " must be proxiable but is not default instatiable.");
       }
@@ -268,17 +269,32 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     return getPrivateMethodName(postConstruct);
   }
 
-  protected abstract List<Statement> generateCreateInstanceStatements(ClassStructureBuilder<?> bodyBlockBuilder, Injectable injectable, DependencyGraph graph, InjectionContext injectionContext);
+  protected abstract List<Statement> generateCreateInstanceStatements(ClassStructureBuilder<?> bodyBlockBuilder,
+          Injectable injectable, DependencyGraph graph, InjectionContext injectionContext);
 
   @Override
   public void generate(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable, final DependencyGraph graph, InjectionContext injectionContext, final TreeLogger logger, final GeneratorContext context) {
     final List<Statement> createInstanceStatements = generateCreateInstanceStatements(bodyBlockBuilder, injectable, graph, injectionContext);
     final List<Statement> destroyInstanceStatements = generateDestroyInstanceStatements(bodyBlockBuilder, injectable, graph, injectionContext);
+    final List<Statement> invokePostConstructStatements = generateInovkePostConstructsStatements(bodyBlockBuilder, injectable, graph, injectionContext);
 
     implementCreateInstance(bodyBlockBuilder, injectable, createInstanceStatements);
     implementDestroyInstance(bodyBlockBuilder, injectable, destroyInstanceStatements);
+    implementInvokePostConstructs(bodyBlockBuilder, injectable, invokePostConstructStatements);
     implementCreateProxy(bodyBlockBuilder, injectable);
     implementGetHandle(bodyBlockBuilder, injectable);
+  }
+
+  protected List<Statement> generateInovkePostConstructsStatements(ClassStructureBuilder<?> bodyBlockBuilder,
+          Injectable injectable, DependencyGraph graph, InjectionContext injectionContext) {
+    return Collections.emptyList();
+  }
+
+  private void implementInvokePostConstructs(final ClassStructureBuilder<?> bodyBlockBuilder,
+          final Injectable injectable, final List<Statement> invokePostConstructStatements) {
+    bodyBlockBuilder
+            .publicMethod(MetaClassFactory.get(void.class), "invokePostConstructs", finalOf(injectable.getInjectedType(), "instance"))
+            .appendAll(invokePostConstructStatements).finish();
   }
 
   private void implementDestroyInstance(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable,

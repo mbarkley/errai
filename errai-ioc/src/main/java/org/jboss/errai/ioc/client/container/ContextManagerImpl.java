@@ -33,9 +33,8 @@ public class ContextManagerImpl implements ContextManager {
   public <T> T getEagerInstance(final String factoryName) {
     final Context context = contextsByFactoryName.get(factoryName);
     final T instance = context.<T>getInstance(factoryName);
-    if ((instance instanceof Proxy) && !(instance instanceof NonProxiableWrapper)) {
-      final T nonProxiedInstance = context.<T>getActiveNonProxiedInstance(factoryName);
-      ((Proxy<T>) instance).setInstance(nonProxiedInstance);
+    if ((instance instanceof Proxy)) {
+      ((Proxy<T>) instance).unwrappedInstance();
     }
 
     return instance;
