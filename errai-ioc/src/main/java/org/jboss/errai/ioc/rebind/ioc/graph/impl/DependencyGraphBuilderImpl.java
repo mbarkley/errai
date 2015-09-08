@@ -3,17 +3,18 @@ package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 import static org.jboss.errai.ioc.rebind.ioc.graph.impl.ResolutionPriority.getMatchingPriority;
 
 import java.lang.annotation.Annotation;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
-import java.util.Stack;
 
 import org.apache.commons.lang3.Validate;
 import org.jboss.errai.codegen.meta.HasAnnotations;
@@ -136,11 +137,73 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   public DependencyGraph createGraph(boolean removeUnreachable) {
     linkAbstractInjectables();
     resolveDependencies();
+    validateDependentScopedInjectables();
     if (removeUnreachable) {
       removeUnreachableConcreteInjectables();
     }
 
     return new DependencyGraphImpl();
+  }
+
+  private void validateDependentScopedInjectables() {
+    final Set<ConcreteInjectable> visiting = new LinkedHashSet<ConcreteInjectable>();
+    final Set<ConcreteInjectable> visited = new HashSet<ConcreteInjectable>();
+    final Collection<String> problems = new ArrayList<String>();
+    for (final ConcreteInjectable injectable : concretesByName.values()) {
+      if (injectable.wiringTypes.contains(WiringElementType.DependentBean) && !visited.contains(injectable)) {
+        validateDependentScopedInjectable(injectable, visiting, visited, problems);
+      }
+    }
+    if (!problems.isEmpty()) {
+      throw new RuntimeException(combineProblemMessages(problems));
+    }
+  }
+
+  private String combineProblemMessages(final Collection<String> problems) {
+    final StringBuilder builder = new StringBuilder();
+    for (final String problem : problems) {
+      builder.append(problem)
+             .append("\n");
+    }
+
+    return builder.toString();
+  }
+
+  private void validateDependentScopedInjectable(final ConcreteInjectable injectable, final Set<ConcreteInjectable> visiting,
+          final Set<ConcreteInjectable> visited, final Collection<String> problems) {
+    if (visiting.contains(injectable)) {
+      problems.add(createDependentCycleMessage(visiting, injectable));
+      return;
+    }
+
+    visiting.add(injectable);
+    for (final BaseDependency dep : injectable.dependencies) {
+      final ConcreteInjectable resolved = getResolvedDependency(dep, injectable);
+      if (resolved.wiringTypes.contains(WiringElementType.DependentBean) && !visited.contains(resolved)) {
+        validateDependentScopedInjectable(resolved, visiting, visited, problems);
+      }
+    }
+    visiting.remove(injectable);
+    visited.add(injectable);
+  }
+
+  private String createDependentCycleMessage(Set<ConcreteInjectable> visiting, ConcreteInjectable injectable) {
+    final StringBuilder builder = new StringBuilder();
+    boolean cycleStarted = false;
+
+    builder.append("Dependent scoped cycle found:\n");
+    for (final ConcreteInjectable visitingInjectable : visiting) {
+      if (visitingInjectable.equals(injectable)) {
+        cycleStarted = true;
+      }
+      if (cycleStarted) {
+        builder.append("\t")
+               .append(visitingInjectable.type.getFullyQualifiedName())
+               .append("\n");
+      }
+    }
+
+    return builder.toString();
   }
 
   private void removeUnreachableConcreteInjectables() {
@@ -153,7 +216,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
           final ConcreteInjectable processedInjectable = processingQueue.poll();
           reachableNames.add(processedInjectable.getFactoryName());
           for (final BaseDependency dep : processedInjectable.dependencies) {
-            final ConcreteInjectable resolvedDep = resolveDependency(dep, processedInjectable);
+            final ConcreteInjectable resolvedDep = getResolvedDependency(dep, processedInjectable);
             if (!reachableNames.contains(resolvedDep.getFactoryName())) {
               processingQueue.add(resolvedDep);
             }
@@ -165,9 +228,12 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     concretesByName.keySet().retainAll(reachableNames);
   }
 
+  private ConcreteInjectable getResolvedDependency(final BaseDependency dep, final ConcreteInjectable processedInjectable) {
+    return Validate.notNull(dep.injectable.resolution, "The dependency %s in %s should have already been resolved.", dep, processedInjectable);
+  }
+
   private void resolveDependencies() {
     final Set<ConcreteInjectable> visited = new HashSet<ConcreteInjectable>();
-    final Stack<DFSFrame> visiting = new Stack<DFSFrame>();
     final Set<String> transientInjectableNames = new HashSet<String>();
     final Map<String, ConcreteInjectable> customProvideds = new HashMap<String, ConcreteInjectable>();
 
@@ -176,83 +242,14 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
         transientInjectableNames.add(concrete.getFactoryName());
       }
       if (!visited.contains(concrete)) {
-        visiting.push(new DFSFrame(concrete));
-      }
-      while (visiting.size() > 0) {
-        processStackFrame(visited, visiting, customProvideds);
+        for (final BaseDependency dep : concrete.dependencies) {
+          resolveDependency(dep, concrete, customProvideds);
+        }
       }
     }
 
     concretesByName.keySet().removeAll(transientInjectableNames);
     concretesByName.putAll(customProvideds);
-  }
-
-  private void processStackFrame(final Set<ConcreteInjectable> visited, final Stack<DFSFrame> visiting,
-          final Map<String, ConcreteInjectable> customProvideds) {
-    if (visited.contains(visiting.peek().concrete)) {
-      followCyclicDependencyOfVisited(visited, visiting, customProvideds);
-    } else {
-      processNextDependencyOfUnvisited(visited, visiting, customProvideds);
-    }
-  }
-
-  private void followCyclicDependencyOfVisited(final Set<ConcreteInjectable> visited, final Stack<DFSFrame> visiting,
-          final Map<String, ConcreteInjectable> customProvideds) {
-    final DFSFrame curFrame = visiting.peek();
-    curFrame.dependencyIndex = getIndexOfNextCyclicDep(curFrame);
-    if (curFrame.dependencyIndex < curFrame.concrete.dependencies.size()) {
-      final BaseDependency dep = curFrame.concrete.dependencies.get(curFrame.dependencyIndex);
-      final ConcreteInjectable resolved = Validate.notNull(dep.injectable.resolution);
-      final DFSFrame newFrame = new DFSFrame(resolved);
-
-      final boolean isVisiting = visiting.contains(newFrame);
-      final boolean isVisited = visited.contains(newFrame.concrete);
-      if (isVisiting && !isVisited) {
-        processCycle(visiting, newFrame);
-      } else if (!isVisiting) {
-        visiting.push(newFrame);
-      }
-    } else {
-      visiting.pop();
-    }
-  }
-
-  private int getIndexOfNextCyclicDep(final DFSFrame curFrame) {
-    int i;
-    for (i = curFrame.dependencyIndex + 1; i < curFrame.concrete.dependencies.size(); i++) {
-      final BaseDependency dep = curFrame.concrete.dependencies.get(i);
-      if (dep.cyclic) {
-        break;
-      }
-    }
-
-    return i;
-  }
-
-  private void processNextDependencyOfUnvisited(final Set<ConcreteInjectable> visited, final Stack<DFSFrame> visiting,
-          final Map<String, ConcreteInjectable> customProvideds) {
-    final DFSFrame curFrame = visiting.peek();
-    curFrame.dependencyIndex += 1;
-    if (curFrame.dependencyIndex < curFrame.concrete.dependencies.size()) {
-      final BaseDependency dep = curFrame.concrete.dependencies.get(curFrame.dependencyIndex);
-      ConcreteInjectable resolved = resolveDependency(dep, curFrame.concrete);
-      if (resolved.isTransient()) {
-        final TransientInjectable providedInjectable = (TransientInjectable) resolved;
-        final InjectionSite site = new InjectionSite(curFrame.concrete.type, getAnnotated(dep));
-        resolved = new ProvidedInjectableImpl(providedInjectable, site);
-        customProvideds.put(resolved.getFactoryName(), resolved);
-        dep.injectable = copyAbstractInjectable(dep.injectable);
-        dep.injectable.resolution = resolved;
-      }
-      final DFSFrame newFrame = new DFSFrame(resolved);
-      if (visiting.contains(newFrame)) {
-        processCycle(visiting, newFrame);
-      } else {
-        visiting.push(newFrame);
-      }
-    } else {
-      visited.add(visiting.pop().concrete);
-    }
   }
 
   private AbstractInjectable copyAbstractInjectable(final AbstractInjectable injectable) {
@@ -280,72 +277,8 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
   }
 
-  private void processCycle(final Stack<DFSFrame> visiting, final DFSFrame newFrame) {
-    final BaseDependency firstDep = getCurrentDependency(visiting.get(visiting.size()-1));
-    firstDep.cyclic = true;
-    boolean hasCycleBreaker = processCyclePart(visiting, newFrame, false, newFrame, firstDep);
-
-    int i;
-    for (i = visiting.size() - 1; !visiting.get(i).equals(newFrame); i--) {
-      final DFSFrame curFrame = visiting.get(i);
-      final BaseDependency dep = getCurrentDependency(visiting.get(i-1));
-      hasCycleBreaker = processCyclePart(visiting, newFrame, hasCycleBreaker, curFrame, dep);
-    }
-
-    if (!hasCycleBreaker) {
-      throwCycleErrorMessage(visiting, i, "it contains no normal scoped, proxiable beans");
-    }
-  }
-
-  private boolean processCyclePart(final Stack<DFSFrame> visiting, final DFSFrame newFrame, boolean hasCycleBreaker,
-          final DFSFrame curFrame, final BaseDependency dep) {
-    dep.cyclic = true;
-    hasCycleBreaker = hasCycleBreaker || canBreakCycle(curFrame.concrete, dep);
-    if (dep.dependencyType.equals(DependencyType.Constructor)) {
-      curFrame.concrete.setRequiresProxyTrue();
-      if (!curFrame.concrete.isProxiable()) {
-        throwCycleErrorMessage(visiting, visiting.indexOf(newFrame),
-                "the type " + curFrame.concrete.type.getFullyQualifiedName()
-                        + " is part of a cycle via constructor injection, but is not proxiable");
-      }
-    }
-    return hasCycleBreaker;
-  }
-
-  private BaseDependency getCurrentDependency(final DFSFrame frame) {
-    return frame.concrete.dependencies.get(frame.dependencyIndex);
-  }
-
-  private void throwCycleErrorMessage(final Stack<DFSFrame> visiting, final int startIndex, final String cause) {
-    final StringBuilder messageBuilder = new StringBuilder();
-    messageBuilder.append("The following cycle cannot be wired because " + cause + ":\n");
-    for (int i = startIndex; i < visiting.size(); i++) {
-      final DFSFrame curFrame = visiting.get(i);
-      final MetaClass injectedType = curFrame.concrete.getInjectedType();
-      messageBuilder.append(injectedType.getName())
-                    .append(" -> ");
-    }
-    messageBuilder.append(visiting.get(startIndex).concrete.getInjectedType().getName());
-
-    throw new RuntimeException(messageBuilder.toString());
-  }
-
-  private boolean canBreakCycle(final ConcreteInjectable resolved, final BaseDependency dep) {
-    final boolean isNormalScoped = resolved.wiringTypes.contains(WiringElementType.NormalScopedBean);
-    final boolean isProxiable = resolved.isProxiable();
-    final boolean isProducer = dep.dependencyType.equals(DependencyType.ProducerMember);
-    final boolean isProduced = resolved.injectableType.equals(InjectableType.Producer);
-
-    final boolean canBreakCycle = (!isProducer && isNormalScoped && isProxiable) || (isProduced && isProxiable);
-
-    if (canBreakCycle) {
-      resolved.setRequiresProxyTrue();
-    }
-
-    return canBreakCycle;
-  }
-
-  private ConcreteInjectable resolveDependency(final BaseDependency dep, final ConcreteInjectable concrete) {
+  private ConcreteInjectable resolveDependency(final BaseDependency dep, final ConcreteInjectable concrete,
+          final Map<String, ConcreteInjectable> customProvideds) {
     if (dep.injectable.resolution != null) {
       return dep.injectable.resolution;
     }
@@ -372,7 +305,15 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
         if (resolved.size() > 1) {
           throwAmbiguousDependencyException(dep, concrete, resolved);
         } else {
-          return (dep.injectable.resolution = resolved.get(0));
+          ConcreteInjectable injectable = resolved.get(0);
+          if (injectable.isTransient()) {
+            final TransientInjectable providedInjectable = (TransientInjectable) injectable;
+            final InjectionSite site = new InjectionSite(concrete.type, getAnnotated(dep));
+            injectable = new ProvidedInjectableImpl(providedInjectable, site);
+            customProvideds.put(injectable.getFactoryName(), injectable);
+            dep.injectable = copyAbstractInjectable(dep.injectable);
+          }
+          return (dep.injectable.resolution = injectable);
         }
       }
     }

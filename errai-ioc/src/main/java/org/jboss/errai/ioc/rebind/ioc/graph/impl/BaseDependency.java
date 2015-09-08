@@ -7,7 +7,6 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependenc
 class BaseDependency implements Dependency {
   AbstractInjectable injectable;
   final DependencyType dependencyType;
-  boolean cyclic = false;
 
   BaseDependency(final AbstractInjectable abstractInjectable, final DependencyType dependencyType) {
     this.injectable = abstractInjectable;
