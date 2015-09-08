@@ -9,4 +9,6 @@ public interface Qualifier {
 
   String getIdentifierSafeString();
 
+  String getName();
+
 }

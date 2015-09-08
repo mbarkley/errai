@@ -10,13 +10,12 @@ import java.util.TreeSet;
 
 import javax.enterprise.inject.Any;
 import javax.enterprise.inject.Default;
+import javax.inject.Named;
 
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.QualifierFactory;
 import org.jboss.errai.ioc.util.CDIAnnotationUtils;
-
-import com.google.inject.name.Named;
 
 public class DefaultQualifierFactory implements QualifierFactory {
 
@@ -169,6 +168,17 @@ public class DefaultQualifierFactory implements QualifierFactory {
     }
 
     @Override
+    public String getName() {
+      for (final AnnotationWrapper wrapper : annotations) {
+        if (wrapper.anno.annotationType().equals(Named.class)) {
+          return ((Named) wrapper.anno).value();
+        }
+      }
+
+      return null;
+    }
+
+    @Override
     public String toString() {
       return annotations.toString();
     }
@@ -208,6 +218,11 @@ public class DefaultQualifierFactory implements QualifierFactory {
     @Override
     public boolean equals(final Object obj) {
       return obj instanceof Universal;
+    }
+
+    @Override
+    public String getName() {
+      return null;
     }
   }
 

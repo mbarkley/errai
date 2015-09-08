@@ -17,6 +17,8 @@ public interface Injectable {
 
   Class<? extends Annotation> getScope();
 
+  String getBeanName();
+
   Qualifier getQualifier();
 
   String getFactoryName();

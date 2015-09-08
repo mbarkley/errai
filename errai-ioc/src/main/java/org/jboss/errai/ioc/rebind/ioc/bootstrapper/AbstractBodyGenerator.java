@@ -320,10 +320,12 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     if (injectable.getInjectedType().isAnnotationPresent(ActivatedBy.class)) {
       final Class<? extends BeanActivator> activatorType = injectable.getInjectedType().getAnnotation(ActivatedBy.class).value();
       newObject = newObject(FactoryHandleImpl.class, injectable.getInjectedType().asClass(),
-              injectable.getFactoryName(), injectable.getScope(), isEager(injectable.getInjectedType()), loadLiteral(activatorType));
+              injectable.getFactoryName(), injectable.getScope(), isEager(injectable.getInjectedType()),
+              injectable.getBeanName(), loadLiteral(activatorType));
     } else {
       newObject = newObject(FactoryHandleImpl.class, injectable.getInjectedType().asClass(),
-              injectable.getFactoryName(), injectable.getScope(), isEager(injectable.getInjectedType()));
+              injectable.getFactoryName(), injectable.getScope(), isEager(injectable.getInjectedType()),
+              injectable.getBeanName());
     }
     bodyBlockBuilder.privateField("handle", FactoryHandleImpl.class).initializesWith(newObject).finish();
     final ConstructorBlockBuilder<?> con = bodyBlockBuilder.publicConstructor();

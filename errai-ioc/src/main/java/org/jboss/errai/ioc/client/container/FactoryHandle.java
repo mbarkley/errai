@@ -19,4 +19,6 @@ public interface FactoryHandle {
 
   Class<? extends BeanActivator> getBeanActivatorType();
 
+  String getBeanName();
+
 }

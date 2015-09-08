@@ -21,6 +21,16 @@ abstract class BaseInjectable implements Injectable {
     }
 
     @Override
+    public String getBeanName() {
+      final String name = qualifier.getName();
+      if (name == null) {
+        return type.getName();
+      } else {
+        return name;
+      }
+    }
+
+    @Override
     public MetaClass getInjectedType() {
       return type;
     }

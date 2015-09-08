@@ -18,7 +18,6 @@ import org.jboss.errai.cdi.injection.client.DependentScopedBean;
 import org.jboss.errai.cdi.injection.client.DependentScopedBeanWithDependencies;
 import org.jboss.errai.cdi.injection.client.FoobieScopedBean;
 import org.jboss.errai.cdi.injection.client.FoobieScopedOverriddenBean;
-import org.jboss.errai.cdi.injection.client.HistoryStack;
 import org.jboss.errai.cdi.injection.client.InheritedApplicationScopedBean;
 import org.jboss.errai.cdi.injection.client.InheritedFromAbstractBean;
 import org.jboss.errai.cdi.injection.client.InterfaceA;
@@ -58,6 +57,14 @@ public class BeanManagerIntegrationTest extends AbstractErraiCDITest {
     @Override
     public Class<? extends Annotation> annotationType() {
       return QualA.class;
+    }
+  };
+
+  private Any anyAnno = new Any() {
+
+    @Override
+    public Class<? extends Annotation> annotationType() {
+      return Any.class;
     }
   };
 
@@ -138,18 +145,9 @@ public class BeanManagerIntegrationTest extends AbstractErraiCDITest {
     assertEquals("did not find exactly one managed implementation of " + InterfaceB.class.getName(), 1, beansC.size());
   }
 
-  @SuppressWarnings("rawtypes")
-  public void testBeanManagerLookupForGenericType() {
-    final IOCBeanDef<HistoryStack> bean = IOC.getBeanManager().lookupBean(HistoryStack.class);
-    assertNotNull("did not find managed bean of generic type " + HistoryStack.class.getName(), bean.getInstance());
-
-    HistoryStack beanInst = bean.getInstance();
-    assertNotNull("did not find injected generic bean", beanInst.getHistoryList());
-  }
-
   public void testBeanManagerAPIs() {
     final SyncBeanManager mgr = IOC.getBeanManager();
-    final IOCBeanDef<QualAppScopeBeanA> bean = mgr.lookupBean(QualAppScopeBeanA.class);
+    final IOCBeanDef<QualAppScopeBeanA> bean = mgr.lookupBean(QualAppScopeBeanA.class, anyAnno);
 
     final Set<Annotation> a = bean.getQualifiers();
     assertEquals("there should be two qualifiers", 2, a.size());
@@ -286,11 +284,11 @@ public class BeanManagerIntegrationTest extends AbstractErraiCDITest {
     };
 
     try {
-      final IOCBeanDef<CommonInterface> bean = IOC.getBeanManager().lookupBean(CommonInterface.class);
+      final IOCBeanDef<CommonInterface> bean = IOC.getBeanManager().lookupBean(CommonInterface.class, anyAnno);
       fail("should have thrown an exception, but got: " + bean);
     }
     catch (IOCResolutionException e) {
-      assertTrue("wrong exception thrown: " + e.getMessage(), e.getMessage().contains("multiple matching"));
+      assertTrue("wrong exception thrown: " + e.getMessage(), e.getMessage().contains("Multiple beans matched"));
     }
 
     try {
@@ -298,7 +296,7 @@ public class BeanManagerIntegrationTest extends AbstractErraiCDITest {
       fail("should have thrown an exception, but got: " + bean);
     }
     catch (IOCResolutionException e) {
-      assertTrue("wrong exception thrown", e.getMessage().contains("no matching"));
+      assertTrue("wrong exception thrown: " + e.getMessage(), e.getMessage().contains("No beans matched"));
     }
   }
 

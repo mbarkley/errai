@@ -595,7 +595,13 @@ public class IOCProcessor {
     if (injectableConstructors.size() > 1) {
       throw new RuntimeException(type.getFullyQualifiedName() + " has " + injectableConstructors.size() + " constructors annotated with @Inject.");
     } else if (injectableConstructors.size() == 1) {
-      return scopeDoesNotRequireProxy(type) || type.isDefaultInstantiable();
+      if (scopeDoesNotRequireProxy(type)) {
+        return true;
+      } else if (type.isDefaultInstantiable()) {
+        return true;
+      } else {
+        throw new RuntimeException(type.getFullyQualifiedName() + " must have a default, no args constructor.");
+      }
     } else {
       return type.isDefaultInstantiable();
     }
