@@ -86,9 +86,8 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
   }
 
   @Override
-  public boolean addDestructionCallback(Object beanInstance, DestructionCallback<?> destructionCallback) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
+  public boolean addDestructionCallback(final Object beanInstance, final DestructionCallback<?> destructionCallback) {
+    return contextManager.addDestructionCallback(beanInstance, destructionCallback);
   }
 
   @Override

@@ -75,4 +75,14 @@ public class ContextManagerImpl implements ContextManager {
     return false;
   }
 
+  @Override
+  public boolean addDestructionCallback(Object instance, DestructionCallback<?> callback) {
+    boolean success = false;
+    for (final Context context : contexts) {
+      success = success || context.addDestructionCallback(instance, callback);
+    }
+
+    return success;
+  }
+
 }

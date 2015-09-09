@@ -18,4 +18,6 @@ public interface ContextManager {
 
   boolean isManaged(Object ref);
 
+  boolean addDestructionCallback(Object instance, DestructionCallback<?> callback);
+
 }

@@ -27,4 +27,6 @@ public interface Context {
 
   boolean isManaged(Object ref);
 
+  boolean addDestructionCallback(Object instance, DestructionCallback<?> callback);
+
 }

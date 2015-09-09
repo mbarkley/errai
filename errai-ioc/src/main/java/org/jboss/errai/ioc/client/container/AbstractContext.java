@@ -8,12 +8,16 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ListMultimap;
+
 public abstract class AbstractContext implements Context {
 
   private final Map<String, Factory<?>> factories = new HashMap<String, Factory<?>>();
   private final Map<String, Proxy<?>> proxies = new HashMap<String, Proxy<?>>();
   private final Map<Object, Factory<?>> factoriesByCreatedInstances = new IdentityHashMap<Object, Factory<?>>();
   private final Set<String> factoriesCurrentlyCreatingInstances = new HashSet<String>();
+  private final ListMultimap<Object, DestructionCallback<?>> destructionCallbacksByInstance = ArrayListMultimap.create();
 
   private ContextManager contextManager;
 
@@ -96,14 +100,30 @@ public abstract class AbstractContext implements Context {
     factoriesByCreatedInstances.put(unwrappedInstance, factory);
   }
 
+  @SuppressWarnings({ "rawtypes", "unchecked" })
   @Override
   public void destroyInstance(final Object instance) {
     // TODO destroy proxy if dependent scope
     final Object unwrapped = maybeUnwrap(instance);
     final Factory<?> factory = factoriesByCreatedInstances.get(unwrapped);
     if (factory != null) {
+      for (final DestructionCallback callback : destructionCallbacksByInstance.get(unwrapped)) {
+        callback.destroy(unwrapped);
+      }
       factory.destroyInstance(unwrapped, contextManager);
       factoriesByCreatedInstances.remove(unwrapped);
+      destructionCallbacksByInstance.removeAll(unwrapped);
+    }
+  }
+
+  @Override
+  public boolean addDestructionCallback(Object instance, DestructionCallback<?> callback) {
+    final Object unwrapped = maybeUnwrap(instance);
+    if (factoriesByCreatedInstances.containsKey(unwrapped)) {
+      destructionCallbacksByInstance.put(unwrapped, callback);
+      return true;
+    } else {
+      return false;
     }
   }
 
