@@ -6,6 +6,8 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -15,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+
+import javax.enterprise.inject.Produces;
 
 import org.apache.commons.lang3.Validate;
 import org.jboss.errai.codegen.meta.HasAnnotations;
@@ -44,6 +48,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   private final Map<InjectableHandle, AbstractInjectable> abstractInjectables = new HashMap<InjectableHandle, AbstractInjectable>();
   private final Multimap<MetaClass, AbstractInjectable> directAbstractInjectablesByAssignableTypes = HashMultimap.create();
   private final Map<String, ConcreteInjectable> concretesByName = new HashMap<String, ConcreteInjectable>();
+  private final List<ConcreteInjectable> specializations = new ArrayList<ConcreteInjectable>();
 
   @Override
   public Injectable addConcreteInjectable(final MetaClass injectedType, final Qualifier qualifier, Class<? extends Annotation> literalScope,
@@ -59,6 +64,9 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
     concretesByName.put(factoryName, concrete);
     linkDirectAbstractInjectable(concrete);
+    if (concrete.wiringTypes.contains(WiringElementType.Specialization)) {
+      specializations.add(concrete);
+    }
 
     return concrete;
   }
@@ -135,6 +143,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   @Override
   public DependencyGraph createGraph(boolean removeUnreachable) {
+    resolveSpecializations();
     linkAbstractInjectables();
     resolveDependencies();
     validateDependentScopedInjectables();
@@ -143,6 +152,122 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
 
     return new DependencyGraphImpl();
+  }
+
+  private void resolveSpecializations() {
+    final Set<ConcreteInjectable> toBeRemoved = new HashSet<ConcreteInjectable>();
+    moveSubTypesBeforeSuperTypes(specializations);
+    for (final ConcreteInjectable specialization : specializations) {
+      if (specialization.injectableType.equals(InjectableType.Producer)) {
+        resolveProducerSpecialization(specialization, toBeRemoved);
+      } else {
+        resolveTypeSpecialization(specialization, toBeRemoved);
+      }
+    }
+    concretesByName.values().removeAll(toBeRemoved);
+  }
+
+  private ProducerInstanceDependencyImpl findProducerInstanceDep(final ConcreteInjectable concrete) {
+    for (final BaseDependency dep : concrete.dependencies) {
+      if (dep.dependencyType.equals(DependencyType.ProducerMember)) {
+        return (ProducerInstanceDependencyImpl) dep;
+      }
+    }
+    throw new RuntimeException("Could not find producer member.");
+  }
+
+  private void resolveProducerSpecialization(final ConcreteInjectable specialization, Set<ConcreteInjectable> toBeRemoved) {
+    final ProducerInstanceDependencyImpl producerMemberDep = findProducerInstanceDep(specialization);
+    if (producerMemberDep.producingMember instanceof MetaMethod) {
+      final MetaMethod producerMethod = (MetaMethod) producerMemberDep.producingMember;
+      final MetaClass[] producerParams = getParameterTypes(producerMethod);
+      MetaClass enclosingType = producerMethod.getDeclaringClass();
+      MetaMethod specializedMethod = null;
+      while (specializedMethod == null && enclosingType.getSuperClass() != null) {
+        enclosingType = enclosingType.getSuperClass();
+        specializedMethod = enclosingType.getDeclaredMethod(producerMethod.getName(), producerParams);
+      }
+
+      if (specializedMethod != null && specializedMethod.isAnnotationPresent(Produces.class)) {
+        for (final AbstractInjectable injectable : directAbstractInjectablesByAssignableTypes.get(specializedMethod.getReturnType().getErased())) {
+          if (injectable.type.equals(specializedMethod.getReturnType().getErased())) {
+            final Iterator<BaseInjectable> linkedIter = injectable.linked.iterator();
+            while (linkedIter.hasNext()) {
+              final BaseInjectable link = linkedIter.next();
+              if (link instanceof ConcreteInjectable) {
+                final ConcreteInjectable concreteLink = (ConcreteInjectable) link;
+                if (concreteLink.injectableType.equals(InjectableType.Producer)) {
+                  final MetaClass foundProducerType = findProducerInstanceDep(concreteLink).injectable.type.getErased();
+                  if (foundProducerType.equals(enclosingType.getErased())
+                          || foundProducerType.equals(producerMethod.getDeclaringClass().getErased())) {
+                    linkedIter.remove();
+                  }
+                  if (foundProducerType.equals(enclosingType.getErased())) {
+                    toBeRemoved.add(concreteLink);
+                  }
+                }
+              }
+            }
+            injectable.linked.add(lookupAsAbstractInjectable(specialization.type, specialization.qualifier));
+          }
+        }
+      }
+    } else {
+      throw new RuntimeException("Specialized producers can only be methods. Found " + producerMemberDep.producingMember
+              + " in " + producerMemberDep.producingMember.getDeclaringClassName());
+    }
+  }
+
+  private MetaClass[] getParameterTypes(final MetaMethod producerMethod) {
+    final MetaClass[] paramTypes = new MetaClass[producerMethod.getParameters().length];
+    for (int i = 0; i < paramTypes.length; i++) {
+      paramTypes[i] = producerMethod.getParameters()[i].getType();
+    }
+
+    return paramTypes;
+  }
+
+  private void resolveTypeSpecialization(final ConcreteInjectable specialization, final Set<ConcreteInjectable> toBeRemoved) {
+    final MetaClass specializedType = specialization.type.getSuperClass().getErased();
+    for (final AbstractInjectable injectable : directAbstractInjectablesByAssignableTypes.get(specializedType)) {
+      if (injectable.type.equals(specializedType)) {
+        assert injectable.linked.size() == 1;
+        toBeRemoved.add((ConcreteInjectable) injectable.linked.iterator().next());
+        injectable.linked.clear();
+        // TODO need to add qualifiers for both types and validate @Named is only on one of the types.
+        injectable.linked.add(lookupAsAbstractInjectable(specialization.type, specialization.qualifier));
+        break;
+      }
+    }
+  }
+
+  /**
+   * This sorting is required so that specializations in the same type hierarchy are handled correctly.
+   */
+  private void moveSubTypesBeforeSuperTypes(final List<ConcreteInjectable> specializations) {
+    Collections.sort(specializations, new Comparator<ConcreteInjectable>() {
+      @Override
+      public int compare(final ConcreteInjectable c1, final ConcreteInjectable c2) {
+        return getScore(c2) - getScore(c1);
+      }
+
+      private int getScore(final ConcreteInjectable c) {
+        if (c.injectableType.equals(InjectableType.Producer)) {
+          return getDistanceFromObject(findProducerInstanceDep(c).producingMember.getDeclaringClass());
+        } else {
+          return getDistanceFromObject(c.type);
+        }
+      }
+
+      private int getDistanceFromObject(MetaClass type) {
+        int distance = 0;
+        for (; type.getSuperClass() != null; type = type.getSuperClass()) {
+          distance++;
+        }
+
+        return distance;
+      }
+    });
   }
 
   private void validateDependentScopedInjectables() {

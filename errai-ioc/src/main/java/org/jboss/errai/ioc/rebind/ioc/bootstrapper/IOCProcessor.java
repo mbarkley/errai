@@ -36,6 +36,8 @@ import java.util.Set;
 import javax.enterprise.context.Dependent;
 import javax.enterprise.inject.Alternative;
 import javax.enterprise.inject.Disposes;
+import javax.enterprise.inject.Produces;
+import javax.enterprise.inject.Specializes;
 import javax.inject.Provider;
 
 import org.jboss.errai.codegen.InnerClass;
@@ -336,7 +338,8 @@ public class IOCProcessor {
 
   private boolean isSimpleton(final MetaClass type) {
     if (type.isAnnotationPresent(Alternative.class) || type.isAnnotationPresent(IOCProvider.class)
-            || type.isAnnotationPresent(JsType.class) || hasEnablingProperty(type)) {
+            || type.isAnnotationPresent(JsType.class) || type.isAnnotationPresent(Specializes.class)
+            || hasEnablingProperty(type)) {
       return false;
     }
     final Class<? extends Annotation> scope = getDirectScope(type);
@@ -344,6 +347,9 @@ public class IOCProcessor {
       return false;
     }
     if (!getInjectableConstructors(type).isEmpty()) {
+      return false;
+    }
+    if (!type.getMethodsAnnotatedWith(Produces.class).isEmpty()) {
       return false;
     }
     final Collection<Class<? extends Annotation>> injectAnnos = injectionContext.getAnnotationsForElementType(WiringElementType.InjectionPoint);
@@ -370,6 +376,10 @@ public class IOCProcessor {
 
     if (type.isAnnotationPresent(JsType.class)) {
       wiringTypes.add(WiringElementType.JsType);
+    }
+
+    if (type.isAnnotationPresent(Specializes.class)) {
+      wiringTypes.add(WiringElementType.Specialization);
     }
 
     return wiringTypes.toArray(new WiringElementType[wiringTypes.size()]);
@@ -432,7 +442,12 @@ public class IOCProcessor {
       final List<MetaMethod> methods = type.getMethodsAnnotatedWith(anno);
       for (final MetaMethod method : methods) {
         final Class<? extends Annotation> directScope = getDirectScope(method);
-        final WiringElementType wiringTypes = getWiringTypesForScopeAnnotation(directScope);
+        final WiringElementType[] wiringTypes;
+        if (method.isAnnotationPresent(Specializes.class)) {
+          wiringTypes = new WiringElementType[] { getWiringTypesForScopeAnnotation(directScope), WiringElementType.Specialization };
+        } else {
+          wiringTypes = new WiringElementType[] { getWiringTypesForScopeAnnotation(directScope) };
+        }
         final Injectable producedInjectable = builder.addConcreteInjectable(method.getReturnType(),
                 qualFactory.forSource(method), directScope, InjectableType.Producer, wiringTypes);
         builder.addProducerMemberDependency(producedInjectable, typeInjectable.getInjectedType(), typeInjectable.getQualifier(), method);

@@ -334,7 +334,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
         con._(loadVariable("handle").invoke("addAssignableType", assignableType.asClass()));
       }
     }
-    for (final Annotation qual : getQualifiers(injectable.getInjectedType())) {
+    for (final Annotation qual : injectable.getQualifier()) {
       con._(loadVariable("handle").invoke("addQualifier", annotationLiteral(qual)));
     }
     con.finish();

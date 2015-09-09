@@ -6,7 +6,7 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ProducerI
 
 class ProducerInstanceDependencyImpl extends BaseDependency implements ProducerInstanceDependency {
 
-  final MetaClassMember producingMember;
+  MetaClassMember producingMember;
 
   ProducerInstanceDependencyImpl(final AbstractInjectable abstractInjectable, final DependencyType dependencyType, final MetaClassMember producingMember) {
     super(abstractInjectable, dependencyType);

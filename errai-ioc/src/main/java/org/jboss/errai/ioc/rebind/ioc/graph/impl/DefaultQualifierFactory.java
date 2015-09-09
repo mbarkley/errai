@@ -3,6 +3,7 @@ package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 import java.lang.annotation.Annotation;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -197,6 +198,28 @@ public class DefaultQualifierFactory implements QualifierFactory {
 
       return annotations.equals(other.annotations);
     }
+
+    @Override
+    public Iterator<Annotation> iterator() {
+      final Iterator<AnnotationWrapper> iter = annotations.iterator();
+      return new Iterator<Annotation>() {
+
+        @Override
+        public boolean hasNext() {
+          return iter.hasNext();
+        }
+
+        @Override
+        public Annotation next() {
+          return iter.next().anno;
+        }
+
+        @Override
+        public void remove() {
+          throw new UnsupportedOperationException();
+        }
+      };
+    }
   }
 
   private static final class Universal implements Qualifier {
@@ -223,6 +246,11 @@ public class DefaultQualifierFactory implements QualifierFactory {
     @Override
     public String getName() {
       return null;
+    }
+
+    @Override
+    public Iterator<Annotation> iterator() {
+      return Collections.<Annotation>emptyList().iterator();
     }
   }
 
