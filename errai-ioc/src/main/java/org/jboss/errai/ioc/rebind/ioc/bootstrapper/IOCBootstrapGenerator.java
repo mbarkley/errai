@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
+import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.context.Dependent;
 import javax.enterprise.inject.Alternative;
 import javax.enterprise.inject.Stereotype;
@@ -373,6 +374,7 @@ public class IOCBootstrapGenerator {
    */
   private static void defaultConfigureProcessor(final InjectionContext injectionContext) {
     injectionContext.mapElementType(WiringElementType.NormalScopedBean, Singleton.class);
+    injectionContext.mapElementType(WiringElementType.NormalScopedBean, ApplicationScoped.class);
     injectionContext.mapElementType(WiringElementType.NormalScopedBean, EntryPoint.class);
 
     injectionContext.mapElementType(WiringElementType.DependentBean, Dependent.class);

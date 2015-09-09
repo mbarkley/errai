@@ -67,6 +67,7 @@ import org.jboss.errai.ioc.client.api.ScopeContext;
 import org.jboss.errai.ioc.client.container.Context;
 import org.jboss.errai.ioc.client.container.ContextManager;
 import org.jboss.errai.ioc.client.container.ContextManagerImpl;
+import org.jboss.errai.ioc.client.container.DependentScopeContext;
 import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.client.container.JsTypeProvider;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
@@ -260,6 +261,10 @@ public class IOCProcessor {
       for (final Class<? extends Annotation> scope : anno.value()) {
         annoToContextImpl.put(scope, scopeContext);
       }
+    }
+    final MetaClass depContextImpl = MetaClassFactory.get(DependentScopeContext.class);
+    for (final Class<? extends Annotation> customAnno : injectionContext.getAnnotationsForElementType(WiringElementType.DependentBean)) {
+      annoToContextImpl.put(customAnno, depContextImpl);
     }
 
     return annoToContextImpl;
