@@ -80,7 +80,7 @@ public class BeanManagerIntegrationTest extends AbstractErraiCDITest {
 
   public void testBeanManagerLookupInheritedScopeBean() {
     final IOCBeanDef<InheritedApplicationScopedBean> bean =
-        IOC.getBeanManager().lookupBean(InheritedApplicationScopedBean.class);
+        IOC.getBeanManager().lookupBean(InheritedApplicationScopedBean.class, anyAnno);
     assertNotNull("inherited application scoped bean did not lookup", bean);
 
     final InheritedApplicationScopedBean beanInst = bean.getInstance();
