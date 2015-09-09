@@ -34,11 +34,9 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.enterprise.context.Dependent;
-import javax.enterprise.context.NormalScope;
 import javax.enterprise.inject.Alternative;
 import javax.enterprise.inject.Disposes;
 import javax.inject.Provider;
-import javax.inject.Scope;
 
 import org.jboss.errai.codegen.InnerClass;
 import org.jboss.errai.codegen.Modifier;
@@ -73,11 +71,11 @@ import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.client.container.JsTypeProvider;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.ProvidedInjectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.QualifierFactory;
-import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.graph.impl.DependencyGraphBuilderImpl;
 import org.jboss.errai.ioc.rebind.ioc.graph.impl.InjectableHandle;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableProvider;
@@ -190,8 +188,10 @@ public class IOCProcessor {
       registerFactoriesBody._(loadVariable("windowContext").invoke("addBeanProvider",
               injectable.getInjectedType().getFullyQualifiedName(), createJsTypeProviderFor(injectable)));
       for (final MetaClass mc : injectable.getInjectedType().getAllSuperTypesAndInterfaces()) {
-        registerFactoriesBody._(loadVariable("windowContext").invoke("addSuperTypeAlias",
-                mc.getFullyQualifiedName(), injectable.getInjectedType().getFullyQualifiedName()));
+        if (mc.isPublic()) {
+          registerFactoriesBody._(loadVariable("windowContext").invoke("addSuperTypeAlias",
+                  mc.getFullyQualifiedName(), injectable.getInjectedType().getFullyQualifiedName()));
+        }
       }
     }
   }
@@ -407,9 +407,12 @@ public class IOCProcessor {
 
   private Class<? extends Annotation> getDirectScope(final HasAnnotations annotated) {
     // TODO validate that there's only one scope?
+    final Set<Class<? extends Annotation>> scopeAnnoTypes = new HashSet<Class<? extends Annotation>>();
+    scopeAnnoTypes.addAll(injectionContext.getAnnotationsForElementType(WiringElementType.DependentBean));
+    scopeAnnoTypes.addAll(injectionContext.getAnnotationsForElementType(WiringElementType.NormalScopedBean));
     for (final Annotation anno : annotated.getAnnotations()) {
       final Class<? extends Annotation> annoType = anno.annotationType();
-      if (annoType.isAnnotationPresent(Scope.class) || annoType.isAnnotationPresent(NormalScope.class)) {
+      if (scopeAnnoTypes.contains(annoType)) {
         return annoType;
       }
     }
@@ -610,7 +613,7 @@ public class IOCProcessor {
   private boolean scopeDoesNotRequireProxy(final MetaClass type) {
     final Class<? extends Annotation> scope = getDirectScope(type);
 
-    return scope.equals(Dependent.class) || scope.equals(EntryPoint.class);
+    return scope.equals(EntryPoint.class) || injectionContext.getAnnotationsForElementType(WiringElementType.DependentBean).contains(scope);
   }
 
   private List<MetaConstructor> getInjectableConstructors(final MetaClass type) {

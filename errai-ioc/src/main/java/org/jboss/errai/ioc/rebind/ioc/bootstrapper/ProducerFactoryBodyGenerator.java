@@ -36,6 +36,7 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DisposerM
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ParamDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ProducerInstanceDependency;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 import com.google.common.collect.Multimap;
 
@@ -87,7 +88,7 @@ public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
             .invoke(getPrivateMethodName(producingMember), getProducerInvocationParams(producingMember, paramDeps))));
     if (!producingMember.isStatic()) {
       stmts.add(setProducerInstanceReference());
-      if (producerInjectable.getScope().equals(Dependent.class)) {
+      if (producerInjectable.getWiringElementTypes().contains(WiringElementType.DependentBean)) {
         stmts.add(loadVariable("this").invoke("registerDependentScopedReference", loadVariable("instance"), loadVariable("producerInstance")));
       }
     }
@@ -127,7 +128,7 @@ public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
     if (!producingMember.isStatic()) {
       final Statement producerInstanceValue = loadVariable("contextManager").invoke("getInstance", producerInjectable.getFactoryName());
       stmts.add(declareVariable("producerInstance", producerInjectable.getInjectedType(), producerInstanceValue));
-      if (producerInjectable.getScope().equals(Dependent.class)) {
+      if (producerInjectable.getWiringElementTypes().contains(WiringElementType.DependentBean)) {
         stmts.add(loadVariable("this").invoke("registerDependentScopedReference", loadVariable("producerInstance")));
       }
 
@@ -204,7 +205,7 @@ public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
       final ContextualStatementBuilder paramInstance = castTo(paramDep.getInjectable().getInjectedType(),
               loadVariable("contextManager").invoke("getInstance", paramDep.getInjectable().getFactoryName()));
       final ContextualStatementBuilder paramExpression;
-      if (paramDep.getInjectable().getScope().equals(Dependent.class)) {
+      if (paramDep.getInjectable().getWiringElementTypes().contains(WiringElementType.DependentBean)) {
         paramExpression = loadVariable("this").invoke("registerDependentScopedReference", loadVariable("instance"), paramInstance);
       } else {
         paramExpression = paramInstance;

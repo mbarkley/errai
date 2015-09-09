@@ -50,6 +50,7 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ParamDepe
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.SetterParameterDependency;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 import com.google.common.collect.Multimap;
 
@@ -269,7 +270,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
       final String fieldDepVarName = injectable.getInjectedType().getName() + "_" + field.getName();
 
       createInstanceStatements.add(declareFinalVariable(fieldDepVarName, depInjectable.getInjectedType(), injectedValue));
-      if (depInjectable.getScope().equals(Dependent.class)) {
+      if (depInjectable.getWiringElementTypes().contains(WiringElementType.DependentBean)) {
         createInstanceStatements
                 .add(loadVariable("this").invoke("registerDependentScopedReference", loadVariable("instance"), loadVariable(fieldDepVarName)));
       }
@@ -331,7 +332,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
       final String paramLocalVarName = getLocalVariableName(param);
 
       createInstanceStatements.add(declareFinalVariable(paramLocalVarName, param.getType(), injectedValue));
-      if (depInjectable.getScope().equals(Dependent.class)) {
+      if (depInjectable.getWiringElementTypes().contains(WiringElementType.DependentBean)) {
         createInstanceStatements
                 .add(loadVariable("this").invoke("registerDependentScopedReference", loadVariable("instance"), loadVariable(paramLocalVarName)));
       }
@@ -376,7 +377,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
 
         final String paramLocalVarName = getLocalVariableName(paramDep.getParameter());
         createInstanceStatements.add(declareFinalVariable(paramLocalVarName, paramDep.getParameter().getType(), injectedValue));
-        if (dep.getInjectable().getScope().equals(Dependent.class)) {
+        if (dep.getInjectable().getWiringElementTypes().contains(WiringElementType.DependentBean)) {
           dependentScopedRegistrationStatements.add(loadVariable("this").invoke("registerDependentScopedReference",
                   loadVariable("instance"), loadVariable(paramLocalVarName)));
         }

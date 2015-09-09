@@ -330,7 +330,9 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     bodyBlockBuilder.privateField("handle", FactoryHandleImpl.class).initializesWith(newObject).finish();
     final ConstructorBlockBuilder<?> con = bodyBlockBuilder.publicConstructor();
     for (final MetaClass assignableType : getAllAssignableTypes(injectable.getInjectedType())) {
-      con._(loadVariable("handle").invoke("addAssignableType", assignableType.asClass()));
+      if (assignableType.isPublic()) {
+        con._(loadVariable("handle").invoke("addAssignableType", assignableType.asClass()));
+      }
     }
     for (final Annotation qual : getQualifiers(injectable.getInjectedType())) {
       con._(loadVariable("handle").invoke("addQualifier", annotationLiteral(qual)));
