@@ -63,12 +63,15 @@ public class DependentScopeIntegrationTest extends AbstractErraiCDITest {
     final DependentScopedBean b3 = beanA.getBean3();
     final DependentScopedBeanWithDependencies b4 = beanA.getBeanWithDependencies();
 
-    assertTrue("dependent scoped semantics broken", b2.getInstance() > b1.getInstance());
-    assertTrue("dependent scoped semantics broken", b3.getInstance() > b2.getInstance());
+    assertTrue("dependent scoped semantics broken", b1.getInstance() != b2.getInstance());
+    assertTrue("dependent scoped semantics broken", b2.getInstance() != b3.getInstance());
+    assertTrue("dependent scoped semantics broken", b1.getInstance() != b3.getInstance());
 
     assertNotNull("dependent scoped bean with injections was not injected", b4);
     assertNotNull("dependent scoped beans own injections not injected", b4.getBean());
-    assertTrue("dependent scoped semantics broken", b4.getBean().getInstance() > b3.getInstance());
+    assertTrue("dependent scoped semantics broken", b4.getBean().getInstance() != b1.getInstance());
+    assertTrue("dependent scoped semantics broken", b4.getBean().getInstance() != b2.getInstance());
+    assertTrue("dependent scoped semantics broken", b4.getBean().getInstance() != b3.getInstance());
   }
 
   public void testDependentScopesWithTransverseDependentBeans() {
