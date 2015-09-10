@@ -387,4 +387,15 @@ public class CDIAnnotationUtils {
         }
         return Arrays.hashCode((Object[]) o);
     }
+
+    public static String formatDefaultElName(final String rawName) {
+      if (rawName.isEmpty() || Character.isLowerCase(rawName.charAt(0)) || (rawName.length() > 1 && Character.isUpperCase(rawName.charAt(1)))) {
+        return rawName;
+      } else {
+        final StringBuilder builder = new StringBuilder(rawName);
+        builder.setCharAt(0, Character.toLowerCase(builder.charAt(0)));
+
+        return builder.toString();
+      }
+    }
 }

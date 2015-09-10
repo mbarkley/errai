@@ -14,6 +14,9 @@ import javax.enterprise.inject.Default;
 import javax.inject.Named;
 
 import org.jboss.errai.codegen.meta.HasAnnotations;
+import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaClassMember;
+import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.QualifierFactory;
 import org.jboss.errai.ioc.util.CDIAnnotationUtils;
@@ -99,11 +102,49 @@ public class DefaultQualifierFactory implements QualifierFactory {
     for (final Annotation anno : annotated.getAnnotations()) {
       // TODO handle stereotypes
       if (anno.annotationType().isAnnotationPresent(javax.inject.Qualifier.class)) {
-        annos.add(new AnnotationWrapper(anno));
+        if (anno.annotationType().equals(Named.class) && ((Named) anno).value().equals("")) {
+          annos.add(createNamed(annotated));
+        } else {
+          annos.add(new AnnotationWrapper(anno));
+        }
       }
     }
 
     return annos;
+  }
+
+  private AnnotationWrapper createNamed(final HasAnnotations annotated) {
+    final String rawName;
+    if (annotated instanceof MetaClassMember) {
+      rawName = ((MetaClassMember) annotated).getName();
+    } else if (annotated instanceof MetaClass) {
+      rawName = ((MetaClass) annotated).getName();
+    } else if (annotated instanceof MetaParameter) {
+      rawName = ((MetaParameter) annotated).getName();
+    } else {
+      throw new RuntimeException("Unrecognized annotated type " + annotated.getClass().getName());
+    }
+
+    return createNamed(CDIAnnotationUtils.formatDefaultElName(rawName));
+  }
+
+  private AnnotationWrapper createNamed(final String defaultName) {
+    return new AnnotationWrapper(new Named() {
+      @Override
+      public Class<? extends Annotation> annotationType() {
+        return Named.class;
+      }
+
+      @Override
+      public String value() {
+        return defaultName;
+      }
+
+      @Override
+      public String toString() {
+        return "@javax.inject.Named(value=" + defaultName + ")";
+      }
+    });
   }
 
   private void maybeAddDefaultForSource(final Set<AnnotationWrapper> annos) {
