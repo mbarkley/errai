@@ -33,6 +33,7 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.ProvidedInjectable.InjectionSite;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.QualifierFactory;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -45,10 +46,15 @@ import com.google.common.collect.Multimap;
  */
 public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
+  private final QualifierFactory qualFactory;
   private final Map<InjectableHandle, AbstractInjectable> abstractInjectables = new HashMap<InjectableHandle, AbstractInjectable>();
   private final Multimap<MetaClass, AbstractInjectable> directAbstractInjectablesByAssignableTypes = HashMultimap.create();
   private final Map<String, ConcreteInjectable> concretesByName = new HashMap<String, ConcreteInjectable>();
   private final List<ConcreteInjectable> specializations = new ArrayList<ConcreteInjectable>();
+
+  public DependencyGraphBuilderImpl(final QualifierFactory qualFactory) {
+    this.qualFactory = qualFactory;
+  }
 
   @Override
   public Injectable addConcreteInjectable(final MetaClass injectedType, final Qualifier qualifier, Class<? extends Annotation> literalScope,
@@ -204,6 +210,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
                   }
                   if (foundProducerType.equals(enclosingType.getErased())) {
                     toBeRemoved.add(concreteLink);
+                    specialization.qualifier = qualFactory.combine(specialization.qualifier, concreteLink.qualifier);
                   }
                 }
               }
@@ -232,9 +239,10 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     for (final AbstractInjectable injectable : directAbstractInjectablesByAssignableTypes.get(specializedType)) {
       if (injectable.type.equals(specializedType)) {
         assert injectable.linked.size() == 1;
-        toBeRemoved.add((ConcreteInjectable) injectable.linked.iterator().next());
+        final ConcreteInjectable specialized = (ConcreteInjectable) injectable.linked.iterator().next();
+        specialization.qualifier = qualFactory.combine(specialization.qualifier, specialized.qualifier);
+        toBeRemoved.add(specialized);
         injectable.linked.clear();
-        // TODO need to add qualifiers for both types and validate @Named is only on one of the types.
         injectable.linked.add(lookupAsAbstractInjectable(specialization.type, specialization.qualifier));
         break;
       }

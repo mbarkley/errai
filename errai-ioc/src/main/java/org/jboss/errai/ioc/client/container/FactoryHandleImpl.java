@@ -15,6 +15,10 @@ public class FactoryHandleImpl implements FactoryHandle {
     public Class<? extends Annotation> annotationType() {
       return Default.class;
     }
+    @Override
+    public String toString() {
+      return "@Default";
+    };
   };
 
   private static final Annotation ANY = new Any() {
@@ -22,6 +26,10 @@ public class FactoryHandleImpl implements FactoryHandle {
     public Class<? extends Annotation> annotationType() {
       return Any.class;
     }
+    @Override
+    public String toString() {
+      return "@Any";
+    };
   };
 
   private final Set<Annotation> qualifiers = new HashSet<Annotation>();

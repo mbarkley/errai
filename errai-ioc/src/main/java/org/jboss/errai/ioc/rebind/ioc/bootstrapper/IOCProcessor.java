@@ -103,7 +103,7 @@ public class IOCProcessor {
   public void process(final IOCProcessingContext processingContext) {
     final Collection<MetaClass> allMetaClasses = findRelevantClasses(processingContext);
 
-    final DependencyGraphBuilder graphBuilder = new DependencyGraphBuilderImpl();
+    final DependencyGraphBuilder graphBuilder = new DependencyGraphBuilderImpl(qualFactory);
     addAllInjectableProviders(graphBuilder);
     final DependencyGraph dependencyGraph = processDependencies(allMetaClasses, graphBuilder);
     FactoryGenerator.setDependencyGraph(dependencyGraph);
@@ -439,7 +439,7 @@ public class IOCProcessor {
     final MetaClass type = typeInjectable.getInjectedType();
     final Collection<Class<? extends Annotation>> producerAnnos = injectionContext.getAnnotationsForElementType(WiringElementType.ProducerElement);
     for (final Class<? extends Annotation> anno : producerAnnos) {
-      final List<MetaMethod> methods = type.getMethodsAnnotatedWith(anno);
+      final List<MetaMethod> methods = type.getDeclaredMethodsAnnotatedWith(anno);
       for (final MetaMethod method : methods) {
         final Class<? extends Annotation> directScope = getDirectScope(method);
         final WiringElementType[] wiringTypes;

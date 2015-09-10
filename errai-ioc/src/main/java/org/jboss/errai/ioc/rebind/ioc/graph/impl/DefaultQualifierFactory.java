@@ -18,6 +18,9 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.QualifierFactory;
 import org.jboss.errai.ioc.util.CDIAnnotationUtils;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
+
 public class DefaultQualifierFactory implements QualifierFactory {
 
   private static final Any ANY = new Any() {
@@ -127,6 +130,38 @@ public class DefaultQualifierFactory implements QualifierFactory {
   @Override
   public Qualifier forUniversallyQualified() {
     return UNIVERSAL;
+  }
+
+  @Override
+  public Qualifier combine(final Qualifier q1, final Qualifier q2) {
+    if (q1 instanceof Universal || q2 instanceof Universal) {
+      return UNIVERSAL;
+    } else if (q1 instanceof NormalQualifier && q2 instanceof NormalQualifier) {
+      return combineNormal((NormalQualifier) q1, (NormalQualifier) q2);
+    } else {
+      throw new RuntimeException("At least one unrecognized qualifier implementation: " + q1.getClass().getName()
+              + " and " + q2.getClass().getName());
+    }
+  }
+
+  private Qualifier combineNormal(final NormalQualifier q1, final NormalQualifier q2) {
+    final Multimap<Class<? extends Annotation>, AnnotationWrapper> allAnnosByType = HashMultimap.create();
+    for (final AnnotationWrapper wrapper : q1.annotations) {
+      allAnnosByType.put(wrapper.anno.annotationType(), wrapper);
+    }
+    for (final AnnotationWrapper wrapper : q2.annotations) {
+      allAnnosByType.put(wrapper.anno.annotationType(), wrapper);
+    }
+
+    for (final Class<? extends Annotation> annoType : allAnnosByType.keySet()) {
+      if (allAnnosByType.get(annoType).size() == 2) {
+        final Iterator<AnnotationWrapper> iter = allAnnosByType.get(annoType).iterator();
+        throw new RuntimeException("Found two annotations of same type but with different values:\n\t"
+                + iter.next() + "\n\t" + iter.next());
+      }
+    }
+
+    return getOrCreateQualifier(new TreeSet<DefaultQualifierFactory.AnnotationWrapper>(allAnnosByType.values()));
   }
 
   private static final class NormalQualifier implements Qualifier {

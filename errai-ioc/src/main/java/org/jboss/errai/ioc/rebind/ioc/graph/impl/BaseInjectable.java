@@ -12,7 +12,7 @@ abstract class BaseInjectable implements Injectable {
     private static final Multiset<String> allFactoryNames = HashMultiset.create();
 
     final MetaClass type;
-    final Qualifier qualifier;
+    Qualifier qualifier;
     String factoryName;
 
     BaseInjectable(final MetaClass type, final Qualifier qualifier) {

@@ -15,4 +15,6 @@ public interface QualifierFactory {
 
   Qualifier forUniversallyQualified();
 
+  Qualifier combine(Qualifier qualifier, Qualifier qualifier2);
+
 }
