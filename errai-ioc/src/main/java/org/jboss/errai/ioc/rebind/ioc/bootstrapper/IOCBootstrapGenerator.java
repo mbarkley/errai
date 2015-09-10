@@ -30,7 +30,6 @@ import java.util.Set;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.context.Dependent;
 import javax.enterprise.inject.Alternative;
-import javax.enterprise.inject.Stereotype;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -379,11 +378,6 @@ public class IOCBootstrapGenerator {
 
     injectionContext.mapElementType(WiringElementType.DependentBean, Dependent.class);
 
-    final GeneratorContext genCtx = injectionContext.getProcessingContext().getGeneratorContext();
-    for (final MetaClass mc : ClassScanner.getTypesAnnotatedWith(Stereotype.class, genCtx)) {
-      processStereoType(injectionContext, mc.asClass().asSubclass(Annotation.class));
-    }
-
     injectionContext.mapElementType(WiringElementType.Provider, IOCProvider.class);
 
     injectionContext.mapElementType(WiringElementType.InjectionPoint, Inject.class);
@@ -392,24 +386,4 @@ public class IOCBootstrapGenerator {
     injectionContext.mapElementType(WiringElementType.AlternativeBean, Alternative.class);
   }
 
-  private static boolean processStereoType(final InjectionContext injectionContext,
-                                           final Class<? extends Annotation> anno) {
-    boolean defaultScope = true;
-
-    for (final Annotation a : anno.getAnnotations()) {
-      if (a.annotationType().isAnnotationPresent(Stereotype.class)) {
-        defaultScope = processStereoType(injectionContext, a.annotationType());
-      }
-      if (injectionContext.isElementType(WiringElementType.SingletonBean, a.annotationType())
-          || injectionContext.isElementType(WiringElementType.DependentBean, a.annotationType())) {
-        defaultScope = false;
-      }
-    }
-
-    if (defaultScope) {
-      injectionContext.mapElementType(WiringElementType.DependentBean, anno);
-    }
-
-    return defaultScope;
-  }
 }

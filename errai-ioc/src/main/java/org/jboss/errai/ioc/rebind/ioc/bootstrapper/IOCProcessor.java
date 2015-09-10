@@ -38,6 +38,7 @@ import javax.enterprise.inject.Alternative;
 import javax.enterprise.inject.Disposes;
 import javax.enterprise.inject.Produces;
 import javax.enterprise.inject.Specializes;
+import javax.enterprise.inject.Stereotype;
 import javax.inject.Provider;
 
 import org.jboss.errai.codegen.InnerClass;
@@ -421,6 +422,11 @@ public class IOCProcessor {
   }
 
   private Class<? extends Annotation> getDirectScope(final HasAnnotations annotated) {
+    final Class<? extends Annotation> foundScope = getDirectScopeHelper(annotated);
+    return (foundScope != null) ? foundScope : Dependent.class;
+  }
+
+  private Class<? extends Annotation> getDirectScopeHelper(final HasAnnotations annotated) {
     // TODO validate that there's only one scope?
     final Set<Class<? extends Annotation>> scopeAnnoTypes = new HashSet<Class<? extends Annotation>>();
     scopeAnnoTypes.addAll(injectionContext.getAnnotationsForElementType(WiringElementType.DependentBean));
@@ -429,10 +435,15 @@ public class IOCProcessor {
       final Class<? extends Annotation> annoType = anno.annotationType();
       if (scopeAnnoTypes.contains(annoType)) {
         return annoType;
+      } else if (annoType.isAnnotationPresent(Stereotype.class)) {
+        final Class<? extends Annotation> stereotypeScope = getDirectScopeHelper(MetaClassFactory.get(annoType));
+        if (stereotypeScope != null) {
+          return stereotypeScope;
+        }
       }
     }
 
-    return Dependent.class;
+    return null;
   }
 
   private void processProducerMethods(final Injectable typeInjectable, final DependencyGraphBuilder builder, final Collection<MetaMethod> disposesMethods) {

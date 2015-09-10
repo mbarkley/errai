@@ -11,10 +11,12 @@ import java.util.TreeSet;
 
 import javax.enterprise.inject.Any;
 import javax.enterprise.inject.Default;
+import javax.enterprise.inject.Stereotype;
 import javax.inject.Named;
 
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
@@ -100,13 +102,14 @@ public class DefaultQualifierFactory implements QualifierFactory {
   private SortedSet<AnnotationWrapper> getRawQualifiers(final HasAnnotations annotated) {
     final SortedSet<AnnotationWrapper> annos = new TreeSet<AnnotationWrapper>();
     for (final Annotation anno : annotated.getAnnotations()) {
-      // TODO handle stereotypes
       if (anno.annotationType().isAnnotationPresent(javax.inject.Qualifier.class)) {
         if (anno.annotationType().equals(Named.class) && ((Named) anno).value().equals("")) {
           annos.add(createNamed(annotated));
         } else {
           annos.add(new AnnotationWrapper(anno));
         }
+      } else if (anno.annotationType().isAnnotationPresent(Stereotype.class)) {
+        annos.addAll(getRawQualifiers(MetaClassFactory.get(anno.annotationType())));
       }
     }
 
