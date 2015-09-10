@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Map.Entry;
 
 import javax.enterprise.context.Dependent;
-import javax.enterprise.inject.Any;
 import javax.inject.Qualifier;
 
 import org.jboss.errai.codegen.InnerClass;
@@ -336,10 +335,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
       }
     }
     for (final Annotation qual : injectable.getQualifier()) {
-      // a singleton @Any is added at runtime
-      if (!qual.annotationType().equals(Any.class)) {
-        con._(loadVariable("handle").invoke("addQualifier", annotationLiteral(qual)));
-      }
+      con._(loadVariable("handle").invoke("addQualifier", annotationLiteral(qual)));
     }
     con.finish();
     bodyBlockBuilder.publicMethod(FactoryHandle.class, "getHandle").body()._(loadVariable("handle").returnValue())

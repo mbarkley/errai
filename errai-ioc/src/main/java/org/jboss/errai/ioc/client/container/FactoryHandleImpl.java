@@ -5,33 +5,9 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.enterprise.inject.Any;
-import javax.enterprise.inject.Default;
-
 public class FactoryHandleImpl implements FactoryHandle {
 
-  private static final Annotation DEFAULT = new Default() {
-    @Override
-    public Class<? extends Annotation> annotationType() {
-      return Default.class;
-    }
-    @Override
-    public String toString() {
-      return "@Default";
-    };
-  };
-
-  private static final Annotation ANY = new Any() {
-    @Override
-    public Class<? extends Annotation> annotationType() {
-      return Any.class;
-    }
-    @Override
-    public String toString() {
-      return "@Any";
-    };
-  };
-
+  // TODO intern qualifiers for all FactoryHandle instances
   private final Set<Annotation> qualifiers = new HashSet<Annotation>();
   private final Set<Class<?>> assignableTypes = new HashSet<Class<?>>();
   private final Class<?> actualType;
@@ -52,8 +28,6 @@ public class FactoryHandleImpl implements FactoryHandle {
     this.eager = eager;
     this.beanName = beanName;
     this.activatorType = activatorType;
-    qualifiers.add(ANY);
-    qualifiers.add(DEFAULT);
   }
 
   public FactoryHandleImpl(final Class<?> actualType, final String factoryName, final Class<? extends Annotation> scope, final boolean eager, final String beanName) {
@@ -92,8 +66,6 @@ public class FactoryHandleImpl implements FactoryHandle {
 
   public void addQualifier(final Annotation qualifier) {
     qualifiers.add(qualifier);
-    // Because this uses Object.equals/hashCode, it should only remove this particular instance of @Default
-    qualifiers.remove(DEFAULT);
   }
 
   public void addAssignableType(final Class<?> type) {
