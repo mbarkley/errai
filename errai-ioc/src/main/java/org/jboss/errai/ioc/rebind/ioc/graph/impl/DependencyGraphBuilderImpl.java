@@ -182,7 +182,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     throw new RuntimeException("Could not find producer member.");
   }
 
-  private void resolveProducerSpecialization(final ConcreteInjectable specialization, Set<ConcreteInjectable> toBeRemoved) {
+  private void resolveProducerSpecialization(final ConcreteInjectable specialization, final Set<ConcreteInjectable> toBeRemoved) {
     final ProducerInstanceDependencyImpl producerMemberDep = findProducerInstanceDep(specialization);
     if (producerMemberDep.producingMember instanceof MetaMethod) {
       final MetaMethod specializedMethod = getOverridenMethod((MetaMethod) producerMemberDep.producingMember);
@@ -196,7 +196,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
   }
 
-  private void updateLinksToSpecialized(final ConcreteInjectable specialization, Set<ConcreteInjectable> toBeRemoved,
+  private void updateLinksToSpecialized(final ConcreteInjectable specialization, final Set<ConcreteInjectable> toBeRemoved,
           final MetaMethod specializedMethod, final MetaClass specializingType) {
     final MetaClass enclosingType = specializedMethod.getDeclaringClass();
     final MetaClass producedType = specializedMethod.getReturnType().getErased();
@@ -207,7 +207,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
           final BaseInjectable link = linkedIter.next();
           if (link instanceof ConcreteInjectable) {
             final ConcreteInjectable concreteLink = (ConcreteInjectable) link;
-            updateIfMatching(specialization, toBeRemoved, specializingType, enclosingType, linkedIter, concreteLink);
+            removeSpecializedAndSpecializingLinks(specialization, toBeRemoved, specializingType, enclosingType, linkedIter, concreteLink);
           }
         }
         injectable.linked.add(lookupAsAbstractInjectable(specialization.type, specialization.qualifier));
@@ -215,7 +215,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
   }
 
-  private void updateIfMatching(final ConcreteInjectable specialization, Set<ConcreteInjectable> toBeRemoved,
+  private void removeSpecializedAndSpecializingLinks(final ConcreteInjectable specialization, final Set<ConcreteInjectable> toBeRemoved,
           final MetaClass specializingType, final MetaClass enclosingType, final Iterator<BaseInjectable> linkedIter,
           final ConcreteInjectable concreteLink) {
     if (concreteLink.injectableType.equals(InjectableType.Producer)) {
@@ -256,20 +256,51 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     final MetaClass specializedType = specialization.type.getSuperClass().getErased();
     for (final AbstractInjectable injectable : directAbstractInjectablesByAssignableTypes.get(specializedType)) {
       if (injectable.type.equals(specializedType)) {
-        assert injectable.linked.size() == 1;
-        final ConcreteInjectable specialized = (ConcreteInjectable) injectable.linked.iterator().next();
-        specialization.qualifier = qualFactory.combine(specialization.qualifier, specialized.qualifier);
-        toBeRemoved.add(specialized);
-        injectable.linked.clear();
-        injectable.linked.add(lookupAsAbstractInjectable(specialization.type, specialization.qualifier));
+        updateSpecializedInjectableLinks(specialization, toBeRemoved, injectable);
         break;
       }
     }
   }
 
-  /**
-   * This sorting is required so that specializations in the same type hierarchy are handled correctly.
-   */
+  private void updateSpecializedInjectableLinks(final ConcreteInjectable specialization, final Set<ConcreteInjectable> toBeRemoved,
+          final AbstractInjectable injectable) {
+    assert injectable.linked.size() == 1;
+    final ConcreteInjectable specialized = (ConcreteInjectable) injectable.linked.iterator().next();
+    specialization.qualifier = qualFactory.combine(specialization.qualifier, specialized.qualifier);
+    toBeRemoved.add(specialized);
+    injectable.linked.clear();
+    injectable.linked.add(lookupAsAbstractInjectable(specialization.type, specialization.qualifier));
+    removeLinksToProducedTypes(specialized, toBeRemoved);
+  }
+
+  private void removeLinksToProducedTypes(final ConcreteInjectable specialized, final Set<ConcreteInjectable> toBeRemoved) {
+    final Collection<AbstractInjectable> producedReferences = new ArrayList<AbstractInjectable>();
+    for (final MetaMethod method : specialized.type.getDeclaredMethodsAnnotatedWith(Produces.class)) {
+      producedReferences.add(lookupAsAbstractInjectable(method.getReturnType(), qualFactory.forSource(method)));
+    }
+    for (final MetaField field : specialized.type.getDeclaredFields()) {
+      if (field.isAnnotationPresent(Produces.class)) {
+        producedReferences.add(lookupAsAbstractInjectable(field.getType(), qualFactory.forSource(field)));
+      }
+    }
+
+    for (final AbstractInjectable reference : producedReferences) {
+      final Iterator<BaseInjectable> linkIter = reference.linked.iterator();
+      while (linkIter.hasNext()) {
+        final BaseInjectable link = linkIter.next();
+        if (link instanceof ConcreteInjectable && ((ConcreteInjectable) link).injectableType.equals(InjectableType.Producer)) {
+          final ConcreteInjectable concreteLink = (ConcreteInjectable) link;
+          final ProducerInstanceDependencyImpl producerMemberDep = findProducerInstanceDep(concreteLink);
+          if (producerMemberDep.producingMember.getDeclaringClass().equals(specialized.type)) {
+            linkIter.remove();
+            toBeRemoved.add(concreteLink);
+          }
+        }
+      }
+    }
+  }
+
+  // TODO test without this: probably no longer necessary
   private void moveSubTypesBeforeSuperTypes(final List<ConcreteInjectable> specializations) {
     Collections.sort(specializations, new Comparator<ConcreteInjectable>() {
       @Override
@@ -561,8 +592,8 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   @Override
-  public void addConstructorDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
-          int paramIndex, MetaParameter param) {
+  public void addConstructorDependency(final Injectable concreteInjectable, final MetaClass type,
+          final Qualifier qualifier, final int paramIndex, final MetaParameter param) {
     final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
     final int paramIndex1 = paramIndex;
     final MetaParameter param1 = param;
@@ -571,8 +602,8 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   @Override
-  public void addProducerParamDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
-          int paramIndex, MetaParameter param) {
+  public void addProducerParamDependency(final Injectable concreteInjectable, final MetaClass type,
+          final Qualifier qualifier, final int paramIndex, final MetaParameter param) {
     final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
     final int paramIndex1 = paramIndex;
     final MetaParameter param1 = param;
@@ -581,17 +612,18 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   @Override
-  public void addProducerMemberDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
-          MetaClassMember producingMember) {
+  public void addProducerMemberDependency(final Injectable concreteInjectable, final MetaClass type,
+          final Qualifier qualifier, final MetaClassMember producingMember) {
     final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
     final MetaClassMember member = producingMember;
-    final ProducerInstanceDependency dep = new ProducerInstanceDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerMember, member);
+    final ProducerInstanceDependency dep = new ProducerInstanceDependencyImpl(
+            AbstractInjectable.class.cast(abstractInjectable), DependencyType.ProducerMember, member);
     addDependency(concreteInjectable, dep);
   }
 
   @Override
-  public void addSetterMethodDependency(Injectable concreteInjectable, MetaClass type, Qualifier qualifier,
-          MetaMethod setter) {
+  public void addSetterMethodDependency(final Injectable concreteInjectable, final MetaClass type,
+          final Qualifier qualifier, final MetaMethod setter) {
     final Injectable abstractInjectable = lookupAbstractInjectable(type, qualifier);
     final MetaMethod setter1 = setter;
     final SetterParameterDependency dep = new SetterParameterDependencyImpl(AbstractInjectable.class.cast(abstractInjectable), setter1);
