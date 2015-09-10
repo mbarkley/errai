@@ -114,7 +114,9 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
         handlesByTypeName.put(assignableType.getName(), handle);
         typesByName.put(assignableType.getName(), assignableType);
       }
-      typesByName.put(handle.getBeanName(), handle.getActualType());
+      if (handle.getBeanName() != null) {
+        typesByName.put(handle.getBeanName(), handle.getActualType());
+      }
     }
 
     for (final FactoryHandle handle : eager) {
@@ -139,7 +141,7 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
     final Collection<IOCBeanDef<T>> beanDefs = new ArrayList<IOCBeanDef<T>>(handles.size());
 
     for (final FactoryHandle handle : handles) {
-      beanDefs.add(new IOCBeanDefImplementation<T>(handle, handle.getBeanName(), type));
+      beanDefs.add(new IOCBeanDefImplementation<T>(handle, type));
     }
 
     return beanDefs;
@@ -194,12 +196,10 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
 
   private final class IOCBeanDefImplementation<T> implements IOCBeanDef<T> {
     private final FactoryHandle handle;
-    private final String name;
     private final Class<T> type;
 
-    private IOCBeanDefImplementation(FactoryHandle handle, String name, Class<T> type) {
+    private IOCBeanDefImplementation(final FactoryHandle handle, final Class<T> type) {
       this.handle = handle;
-      this.name = name;
       this.type = type;
     }
 
@@ -254,7 +254,7 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
 
     @Override
     public String getName() {
-      return name;
+      return handle.getBeanName();
     }
 
     @Override
