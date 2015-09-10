@@ -46,13 +46,6 @@ public class InjectionIntegrationTest extends AbstractErraiIOCTest {
     assertTrue("PostConstruct on InjectionTestModule did not fire", module.isPostConstructFired());
   }
 
-  public void testNewSemantics() {
-    final InjectionTestModule module = IOC.getBeanManager()
-        .lookupBean(InjectionTestModule.class).getInstance();
-
-    assertFalse("BeanC1 should be @New instance", module.getBeanC() == module.getBeanC1());
-  }
-
   public void testMixedInjectionTypes() {
     final InjectionTestModule module = IOC.getBeanManager()
         .lookupBean(InjectionTestModule.class).getInstance();
