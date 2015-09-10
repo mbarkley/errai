@@ -162,7 +162,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   private void resolveSpecializations() {
     final Set<ConcreteInjectable> toBeRemoved = new HashSet<ConcreteInjectable>();
-    moveSubTypesBeforeSuperTypes(specializations);
+    moveSuperTypesBeforeSubTypes(specializations);
     for (final ConcreteInjectable specialization : specializations) {
       if (specialization.injectableType.equals(InjectableType.Producer)) {
         resolveProducerSpecialization(specialization, toBeRemoved);
@@ -300,12 +300,15 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
   }
 
-  // TODO test without this: probably no longer necessary
-  private void moveSubTypesBeforeSuperTypes(final List<ConcreteInjectable> specializations) {
+  /**
+   * Required so that subtypes get all the qualifiers of supertypes when there
+   * are multiple @Specializes in the hierarchy.
+   */
+  private void moveSuperTypesBeforeSubTypes(final List<ConcreteInjectable> specializations) {
     Collections.sort(specializations, new Comparator<ConcreteInjectable>() {
       @Override
       public int compare(final ConcreteInjectable c1, final ConcreteInjectable c2) {
-        return getScore(c2) - getScore(c1);
+        return getScore(c1) - getScore(c2);
       }
 
       private int getScore(final ConcreteInjectable c) {
