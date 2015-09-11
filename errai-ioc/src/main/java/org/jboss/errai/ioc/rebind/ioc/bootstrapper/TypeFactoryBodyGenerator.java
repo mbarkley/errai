@@ -14,8 +14,8 @@ import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -25,14 +25,13 @@ import java.util.Set;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import javax.enterprise.context.Dependent;
 
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
-import org.jboss.errai.codegen.meta.MetaConstructor;
+import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
@@ -42,12 +41,12 @@ import org.jboss.errai.codegen.util.PrivateAccessType;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
-import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.FieldDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ParamDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.SetterParameterDependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
@@ -114,47 +113,73 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
           final List<Statement> createInstanceStatements, final ClassStructureBuilder<?> bodyBlockBuilder) {
     final MetaClass type = injectable.getInjectedType();
     final Set<HasAnnotations> createdAccessors = new HashSet<HasAnnotations>();
-    runDecoratorsForElementType(injectionContext, createInstanceStatements, new MetaClass[] { type }, ElementType.TYPE, bodyBlockBuilder, createdAccessors);
-    runDecoratorsForElementType(injectionContext, createInstanceStatements, type.getFields(), ElementType.FIELD, bodyBlockBuilder, createdAccessors);
-    runDecoratorsForElementType(injectionContext, createInstanceStatements, type.getMethods(), ElementType.METHOD, bodyBlockBuilder, createdAccessors);
-    runDecoratorsForElementType(injectionContext, createInstanceStatements, getAllParams(type), ElementType.PARAMETER, bodyBlockBuilder, createdAccessors);
-  }
-
-  private MetaParameter[] getAllParams(final MetaClass type) {
-    final List<MetaParameter> params = new ArrayList<MetaParameter>();
-    for (final MetaMethod method : type.getMethods()) {
-      params.addAll(Arrays.asList(method.getParameters()));
-    }
-    for (final MetaConstructor constructor : type.getConstructors()) {
-      params.addAll(Arrays.asList(constructor.getParameters()));
-    }
-
-    return params.toArray(new MetaParameter[0]);
+    runDecoratorsForElementType(injectionContext, createInstanceStatements, type, ElementType.TYPE, bodyBlockBuilder, createdAccessors);
+    runDecoratorsForElementType(injectionContext, createInstanceStatements, type, ElementType.FIELD, bodyBlockBuilder, createdAccessors);
+    runDecoratorsForElementType(injectionContext, createInstanceStatements, type, ElementType.METHOD, bodyBlockBuilder, createdAccessors);
+    runDecoratorsForElementType(injectionContext, createInstanceStatements, type, ElementType.PARAMETER, bodyBlockBuilder, createdAccessors);
   }
 
   @SuppressWarnings({ "unchecked", "rawtypes" })
   private void runDecoratorsForElementType(final InjectionContext injectionContext,
-          final List<Statement> createInstanceStatements, final HasAnnotations[] annotateds, final ElementType elemType,
+          final List<Statement> createInstanceStatements, final MetaClass type, final ElementType elemType,
           final ClassStructureBuilder<?> builder, final Set<HasAnnotations> createdAccessors) {
-    for (final HasAnnotations annotated : annotateds) {
-      final Collection<Class<? extends Annotation>> decoratorFieldAnnos = injectionContext.getDecoratorAnnotationsBy(elemType);
-      final Collection<? extends Annotation> annos = getAnnotationsOfType(annotated, decoratorFieldAnnos);
-      for (final Annotation anno : annos) {
-        final IOCDecoratorExtension[] decorators = injectionContext.getDecorators(anno.annotationType());
-        for (final IOCDecoratorExtension decorator : decorators) {
-          final Decorable decorable = new Decorable(annotated, anno, Decorable.DecorableType.fromElementType(elemType),
-                  injectionContext, builder.getClassDefinition().getContext());
+    final Collection<Class<? extends Annotation>> decoratorAnnos = injectionContext
+            .getDecoratorAnnotationsBy(elemType);
+    for (final Class<? extends Annotation> annoType : decoratorAnnos) {
+      final List<HasAnnotations> annotatedItems = getAnnotatedWithForElementType(type, elemType, annoType);
+
+      final IOCDecoratorExtension[] decorators = injectionContext.getDecorators(annoType);
+      for (final IOCDecoratorExtension decorator : decorators) {
+        for (final HasAnnotations annotated : annotatedItems) {
+          final Decorable decorable = new Decorable(annotated, annotated.getAnnotation(annoType), Decorable.DecorableType.fromElementType(elemType),
+                  injectionContext, builder.getClassDefinition().getContext(), builder.getClassDefinition());
           if (isNonPublicField(annotated) && !createdAccessors.contains(annotated)) {
             addPrivateAccessStubs(PrivateAccessType.Both, "jsni", builder, (MetaField) annotated);
-            createdAccessors.add(annotated);
-          } else if (isNonPublicMethod(annotated) && !createdAccessors.contains(annotated)) {
+            createdAccessors.add(type);
+          }
+          else if (isNonPublicMethod(annotated) && !createdAccessors.contains(annotated)) {
             addPrivateAccessStubs("jsni", builder, (MetaMethod) annotated);
             createdAccessors.add(annotated);
+          } else if (isParamOfNonPublicMethod(annotated) && !createdAccessors.contains(((MetaParameter) annotated).getDeclaringMember())) {
+            final MetaMethod declaringMethod = (MetaMethod) ((MetaParameter) annotated).getDeclaringMember();
+            addPrivateAccessStubs("jsni", builder, declaringMethod);
+            createdAccessors.add(declaringMethod);
           }
           createInstanceStatements.addAll(decorator.generateDecorator(decorable, controller));
         }
       }
     }
+  }
+
+  private boolean isParamOfNonPublicMethod(final HasAnnotations annotated) {
+    if (!(annotated instanceof MetaParameter)) {
+      return false;
+    }
+    final MetaClassMember member = ((MetaParameter) annotated).getDeclaringMember();
+
+    return member instanceof MetaMethod && !member.isPublic();
+  }
+
+  @SuppressWarnings({ "unchecked", "rawtypes" })
+  private List<HasAnnotations> getAnnotatedWithForElementType(final MetaClass type, final ElementType elemType, final Class<? extends Annotation> annoType) {
+    final List annotatedItems;
+    switch (elemType) {
+    case FIELD:
+      annotatedItems = type.getFieldsAnnotatedWith(annoType);
+      break;
+    case METHOD:
+      annotatedItems = type.getMethodsAnnotatedWith(annoType);
+      break;
+    case PARAMETER:
+      annotatedItems = type.getParametersAnnotatedWith(annoType);
+      break;
+    case TYPE:
+      annotatedItems = (type.isAnnotationPresent(annoType)) ? Collections.singletonList(type) : Collections.emptyList();
+      break;
+    default:
+      throw new RuntimeException("Not yet implemented.");
+    }
+    return annotatedItems;
   }
 
   private boolean isNonPublicMethod(final HasAnnotations annotated) {
@@ -163,18 +188,6 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
 
   private boolean isNonPublicField(final HasAnnotations annotated) {
     return annotated instanceof MetaField && !((MetaField) annotated).isPublic();
-  }
-
-  private Collection<? extends Annotation> getAnnotationsOfType(final HasAnnotations annotated,
-          final Collection<Class<? extends Annotation>> decoratorFieldAnnos) {
-    final Collection<Annotation> annos = new ArrayList<Annotation>();
-    for (final Annotation anno : annotated.getAnnotations()) {
-      if (decoratorFieldAnnos.contains(anno.annotationType())) {
-        annos.add(anno);
-      }
-    }
-
-    return annos;
   }
 
   private void maybeInvokePreDestroys(final Injectable injectable, final List<Statement> destructionStmts,

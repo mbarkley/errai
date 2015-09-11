@@ -17,6 +17,8 @@ import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
+import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
+import org.jboss.errai.codegen.util.Stmt;
 
 public class Decorable {
 
@@ -33,7 +35,7 @@ public class Decorable {
       }
 
       @Override
-      Statement getAccessStatement(final HasAnnotations annotated) {
+      Statement getAccessStatement(final HasAnnotations annotated, BuildMetaClass factory) {
         final MetaField field = (MetaField) annotated;
         if (field.isPublic()) {
           return loadClassMember(field.getName());
@@ -54,7 +56,7 @@ public class Decorable {
       }
 
       @Override
-      Statement getAccessStatement(final HasAnnotations annotated, final Statement[] statement) {
+      Statement getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory, final Statement[] statement) {
         final MetaMethod method = (MetaMethod) annotated;
         if (method.isPublic()) {
           return loadVariable("instance").invoke(method, (Object[]) statement);
@@ -64,13 +66,13 @@ public class Decorable {
             params[i+1] = statement[i];
           }
           params[0] = loadVariable("instance");
-          return loadVariable("this").invoke(getPrivateMethodName(method), params);
+          return Stmt.invokeStatic(factory, getPrivateMethodName(method), params);
         }
       }
 
       @Override
-      Statement getAccessStatement(final HasAnnotations annotated) {
-        return getAccessStatement(annotated, new Statement[0]);
+      Statement getAccessStatement(final HasAnnotations annotated, BuildMetaClass factory) {
+        return getAccessStatement(annotated, factory, new Statement[0]);
       }
     },
     PARAM {
@@ -85,14 +87,14 @@ public class Decorable {
       }
 
       @Override
-      Statement getAccessStatement(final HasAnnotations annotated) {
+      Statement getAccessStatement(final HasAnnotations annotated, BuildMetaClass factory) {
         final MetaParameter param = (MetaParameter) annotated;
         return loadVariable(getLocalVariableName(param));
       }
 
       @Override
-      Statement callOrBind(final HasAnnotations annotated, final Statement... params) {
-        return METHOD.getAccessStatement(((MetaParameter) annotated).getDeclaringMember(), params);
+      Statement callOrBind(final HasAnnotations annotated, final BuildMetaClass factory, final Statement... params) {
+        return METHOD.getAccessStatement(((MetaParameter) annotated).getDeclaringMember(), factory, params);
       }
 
       @Override
@@ -112,7 +114,7 @@ public class Decorable {
       }
 
       @Override
-      Statement getAccessStatement(HasAnnotations annotated) {
+      Statement getAccessStatement(HasAnnotations annotated, BuildMetaClass factory) {
         return loadVariable("instance");
       }
 
@@ -124,12 +126,12 @@ public class Decorable {
 
     abstract MetaClass getType(HasAnnotations annotated);
     abstract MetaClass getEnclosingType(HasAnnotations annotated);
-    Statement getAccessStatement(HasAnnotations annotated, Statement[] params) {
-      return getAccessStatement(annotated);
+    Statement getAccessStatement(HasAnnotations annotated, final BuildMetaClass factory, Statement[] params) {
+      return getAccessStatement(annotated, factory);
     }
-    abstract Statement getAccessStatement(HasAnnotations annotated);
-    Statement callOrBind(HasAnnotations annotated, Statement... params) {
-      return getAccessStatement(annotated, params);
+    abstract Statement getAccessStatement(HasAnnotations annotated, BuildMetaClass factory);
+    Statement callOrBind(HasAnnotations annotated, final BuildMetaClass factory, Statement... params) {
+      return getAccessStatement(annotated, factory, params);
     }
     String getName(HasAnnotations annotated) {
       return ((MetaClassMember) annotated).getName();
@@ -156,14 +158,16 @@ public class Decorable {
   private final DecorableType decorableType;
   private final InjectionContext injectionContext;
   private final Context context;
+  private final BuildMetaClass factory;
 
   public Decorable(final HasAnnotations annotated, final Annotation annotation, final DecorableType decorableType,
-          final InjectionContext injectionContext, final Context context) {
+          final InjectionContext injectionContext, final Context context, final BuildMetaClass factory) {
     this.annotated = annotated;
     this.annotation = annotation;
     this.decorableType = decorableType;
     this.injectionContext = injectionContext;
     this.context = context;
+    this.factory = factory;
   }
 
   public Annotation getAnnotation() {
@@ -179,7 +183,7 @@ public class Decorable {
   }
 
   public Statement getAccessStatement(Statement... params) {
-    return decorableType().getAccessStatement(annotated, params);
+    return decorableType().getAccessStatement(annotated, factory, params);
   }
 
   public HasAnnotations get() {
@@ -215,7 +219,7 @@ public class Decorable {
    * where the method is called.
    */
   public Statement callOrBind(final Statement... values) {
-    return decorableType().callOrBind(annotated, values);
+    return decorableType().callOrBind(annotated, factory, values);
   }
 
   public String getName() {
