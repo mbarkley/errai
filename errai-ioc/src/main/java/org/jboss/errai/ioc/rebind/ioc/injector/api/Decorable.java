@@ -19,6 +19,7 @@ import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.codegen.util.Stmt;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 
 public class Decorable {
 
@@ -93,7 +94,7 @@ public class Decorable {
       }
 
       @Override
-      Statement callOrBind(final HasAnnotations annotated, final BuildMetaClass factory, final Statement... params) {
+      Statement call(final HasAnnotations annotated, final BuildMetaClass factory, final Statement... params) {
         return METHOD.getAccessStatement(((MetaParameter) annotated).getDeclaringMember(), factory, params);
       }
 
@@ -130,7 +131,7 @@ public class Decorable {
       return getAccessStatement(annotated, factory);
     }
     abstract Statement getAccessStatement(HasAnnotations annotated, BuildMetaClass factory);
-    Statement callOrBind(HasAnnotations annotated, final BuildMetaClass factory, Statement... params) {
+    Statement call(HasAnnotations annotated, final BuildMetaClass factory, Statement... params) {
       return getAccessStatement(annotated, factory, params);
     }
     String getName(HasAnnotations annotated) {
@@ -159,15 +160,17 @@ public class Decorable {
   private final InjectionContext injectionContext;
   private final Context context;
   private final BuildMetaClass factory;
+  private final Injectable injectable;
 
   public Decorable(final HasAnnotations annotated, final Annotation annotation, final DecorableType decorableType,
-          final InjectionContext injectionContext, final Context context, final BuildMetaClass factory) {
+          final InjectionContext injectionContext, final Context context, final BuildMetaClass factory, final Injectable injectable) {
     this.annotated = annotated;
     this.annotation = annotation;
     this.decorableType = decorableType;
     this.injectionContext = injectionContext;
     this.context = context;
     this.factory = factory;
+    this.injectable = injectable;
   }
 
   public Annotation getAnnotation() {
@@ -218,12 +221,16 @@ public class Decorable {
    * Behaves differently than getAccessStatement for parameters,
    * where the method is called.
    */
-  public Statement callOrBind(final Statement... values) {
-    return decorableType().callOrBind(annotated, factory, values);
+  public Statement call(final Statement... values) {
+    return decorableType().call(annotated, factory, values);
   }
 
   public String getName() {
     return decorableType().getName(annotated);
+  }
+
+  public Injectable getEnclosingInjectable() {
+    return injectable;
   }
 
 }

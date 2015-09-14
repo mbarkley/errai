@@ -71,7 +71,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     return separated;
   }
 
-  protected final FactoryController controller = new FactoryController();
+  protected FactoryController controller;
 
   protected void implementCreateProxy(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable) {
     final MetaClass proxyImpl = maybeCreateProxyImplementation(injectable, bodyBlockBuilder);
@@ -272,7 +272,12 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
           Injectable injectable, DependencyGraph graph, InjectionContext injectionContext);
 
   @Override
-  public void generate(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable, final DependencyGraph graph, InjectionContext injectionContext, final TreeLogger logger, final GeneratorContext context) {
+  public void generate(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable,
+          final DependencyGraph graph, InjectionContext injectionContext, final TreeLogger logger,
+          final GeneratorContext context) {
+    controller = new FactoryController(injectable.getInjectedType(), injectable.getFactoryName());
+    preGenerationHook(bodyBlockBuilder, injectable, graph, injectionContext);
+
     final List<Statement> factoryInitStatements = generateFactoryInitStatements(bodyBlockBuilder, injectable, graph, injectionContext);
     final List<Statement> createInstanceStatements = generateCreateInstanceStatements(bodyBlockBuilder, injectable, graph, injectionContext);
     final List<Statement> destroyInstanceStatements = generateDestroyInstanceStatements(bodyBlockBuilder, injectable, graph, injectionContext);
@@ -284,6 +289,10 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     implementInvokePostConstructs(bodyBlockBuilder, injectable, invokePostConstructStatements);
     implementCreateProxy(bodyBlockBuilder, injectable);
     implementGetHandle(bodyBlockBuilder, injectable);
+  }
+
+  protected void preGenerationHook(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable,
+          final DependencyGraph graph, final InjectionContext injectionContext) {
   }
 
   protected List<Statement> generateFactoryInitStatements(ClassStructureBuilder<?> bodyBlockBuilder,

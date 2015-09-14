@@ -37,6 +37,13 @@ public class FactoryController {
   private final Set<MetaField> exposedFields = new HashSet<MetaField>();
   private final Set<MetaMethod> exposedMethods = new HashSet<MetaMethod>();
   private final List<Statement> factoryInitializationStatements = new ArrayList<Statement>();
+  private final MetaClass producedType;
+  private final String factoryName;
+
+  public FactoryController(final MetaClass producedType, final String factoryName) {
+    this.producedType = producedType;
+    this.factoryName = factoryName;
+  }
 
   public void addInvokeBefore(final MetaMethod method, Statement statement) {
     invokeBefore.put(method, statement);
@@ -130,8 +137,12 @@ public class FactoryController {
     return loadVariable("this").invoke(getPrivateMethodName(method), loadVariable("instance"));
   }
 
-  public Statement contextGetInstanceStmt(final String factoryName, final Class<?> producedType) {
+  public Statement contextGetInstanceStmt() {
     return castTo(producedType, loadVariable("context").invoke("getInstance", factoryName));
+  }
+
+  public Statement contextDestroyInstanceStmt() {
+    return loadVariable("context").invoke("destroyInstance", loadVariable("instance"));
   }
 
 }

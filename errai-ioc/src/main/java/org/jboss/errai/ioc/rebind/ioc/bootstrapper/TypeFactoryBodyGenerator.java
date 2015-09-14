@@ -52,16 +52,13 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 import com.google.common.collect.Multimap;
-import com.google.gwt.core.ext.GeneratorContext;
-import com.google.gwt.core.ext.TreeLogger;
 
 class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
 
   @Override
-  public void generate(ClassStructureBuilder<?> bodyBlockBuilder, Injectable injectable, DependencyGraph graph,
-          InjectionContext injectionContext, TreeLogger logger, GeneratorContext context) {
+  protected void preGenerationHook(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable,
+          final DependencyGraph graph, final InjectionContext injectionContext) {
     runDecorators(injectable, injectionContext, bodyBlockBuilder);
-    super.generate(bodyBlockBuilder, injectable, graph, injectionContext, logger, context);
   }
 
   @Override
@@ -84,7 +81,6 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
     constructInstance(injectable, constructorDependencies, createInstanceStatements);
     injectFieldDependencies(injectable, fieldDependencies, createInstanceStatements, bodyBlockBuilder);
     injectSetterMethodDependencies(injectable, setterDependencies, createInstanceStatements, bodyBlockBuilder);
-    runDecorators(injectable, injectionContext, bodyBlockBuilder);
     addInitializationStatements(createInstanceStatements);
     addReturnStatement(createInstanceStatements);
 
@@ -128,16 +124,16 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
           final ClassStructureBuilder<?> bodyBlockBuilder) {
     final MetaClass type = injectable.getInjectedType();
     final Set<HasAnnotations> createdAccessors = new HashSet<HasAnnotations>();
-    runDecoratorsForElementType(injectionContext, type, ElementType.TYPE, bodyBlockBuilder, createdAccessors);
-    runDecoratorsForElementType(injectionContext, type, ElementType.FIELD, bodyBlockBuilder, createdAccessors);
-    runDecoratorsForElementType(injectionContext, type, ElementType.METHOD, bodyBlockBuilder, createdAccessors);
-    runDecoratorsForElementType(injectionContext, type, ElementType.PARAMETER, bodyBlockBuilder, createdAccessors);
+    runDecoratorsForElementType(injectionContext, type, ElementType.TYPE, bodyBlockBuilder, createdAccessors, injectable);
+    runDecoratorsForElementType(injectionContext, type, ElementType.FIELD, bodyBlockBuilder, createdAccessors, injectable);
+    runDecoratorsForElementType(injectionContext, type, ElementType.METHOD, bodyBlockBuilder, createdAccessors, injectable);
+    runDecoratorsForElementType(injectionContext, type, ElementType.PARAMETER, bodyBlockBuilder, createdAccessors, injectable);
   }
 
   @SuppressWarnings({ "rawtypes" })
   private void runDecoratorsForElementType(final InjectionContext injectionContext,
           final MetaClass type, final ElementType elemType,
-          final ClassStructureBuilder<?> builder, final Set<HasAnnotations> createdAccessors) {
+          final ClassStructureBuilder<?> builder, final Set<HasAnnotations> createdAccessors, final Injectable injectable) {
     final Collection<Class<? extends Annotation>> decoratorAnnos = injectionContext
             .getDecoratorAnnotationsBy(elemType);
     for (final Class<? extends Annotation> annoType : decoratorAnnos) {
@@ -147,7 +143,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
       for (final IOCDecoratorExtension decorator : decorators) {
         for (final HasAnnotations annotated : annotatedItems) {
           final Decorable decorable = new Decorable(annotated, annotated.getAnnotation(annoType), Decorable.DecorableType.fromElementType(elemType),
-                  injectionContext, builder.getClassDefinition().getContext(), builder.getClassDefinition());
+                  injectionContext, builder.getClassDefinition().getContext(), builder.getClassDefinition(), injectable);
           if (isNonPublicField(annotated) && !createdAccessors.contains(annotated)) {
             addPrivateAccessStubs(PrivateAccessType.Both, "jsni", builder, (MetaField) annotated);
             createdAccessors.add(type);

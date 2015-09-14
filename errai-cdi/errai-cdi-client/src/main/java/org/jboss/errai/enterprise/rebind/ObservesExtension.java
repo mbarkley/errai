@@ -17,6 +17,7 @@ package org.jboss.errai.enterprise.rebind;
 
 import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
 import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
+import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
@@ -25,18 +26,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import javax.enterprise.context.Dependent;
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.Any;
 
 import org.jboss.errai.bus.client.ErraiBus;
-import org.jboss.errai.bus.client.api.Subscription;
 import org.jboss.errai.codegen.Context;
 import org.jboss.errai.codegen.Parameter;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.AnonymousClassStructureBuilder;
 import org.jboss.errai.codegen.builder.BlockBuilder;
 import org.jboss.errai.codegen.meta.MetaClass;
-import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
@@ -56,6 +56,7 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
  * @author Heiko Braun <hbraun@redhat.com>
  * @author Mike Brock <cbrock@redhat.com>
  * @author Christian Sadilek <csadilek@redhat.com>
+ * @author Max Barkley <mbarkley@redhat.com>
  */
 @CodeDecorator
 public class ObservesExtension extends IOCDecoratorExtension<Observes> {
@@ -67,7 +68,6 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
   public void generateDecorator(final Decorable decorable, final FactoryController controller) {
     final Context ctx = decorable.getCodegenContext();
     final MetaParameter parm = decorable.getAsParameter();
-    final MetaMethod method = (MetaMethod) parm.getDeclaringMember();
 
     final String parmClassName = parm.getType().getFullyQualifiedName();
     final List<Annotation> annotations = InjectUtil.extractQualifiers(parm);
@@ -92,17 +92,20 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
       callBack = callBackBlock.finish();
     }
 
+    final List<Statement> callbackStatements = new ArrayList<Statement>();
+    callbackStatements.add(declareFinalVariable("instance", decorable.getEnclosingType(), controller.contextGetInstanceStmt()));
+    callbackStatements.add(decorable.call(Refs.get("event")));
+    if (enclosingTypeIsDependentScoped(decorable)) {
+      callbackStatements.add(controller.contextDestroyInstanceStmt());
+    }
+
     callBackBlock = callBack.publicOverridesMethod("fireEvent", Parameter.finalOf(parm, "event"))
-        ._(decorable.callOrBind(Refs.get("event")))
+        .appendAll(callbackStatements)
         .finish()
         .publicOverridesMethod("toString")
         ._(Stmt.load("Observer: " + parmClassName + " " + Arrays.toString(qualifiers)).returnValue());
 
-    final List<Statement> initStatements = new ArrayList<Statement>();
-    final List<Statement> destroyStatements = new ArrayList<Statement>();
-
-    // create the destruction callback to deregister the service when the bean is destroyed.
-    final String subscrVar = method.getName() + "Subscription";
+    final List<Statement> factoryInitStatements = new ArrayList<Statement>();
 
     final String subscribeMethod;
     if (EnvUtil.isPortableType(parm.getType().asClass()) && !EnvUtil.isLocalEventType(parm.getType().asClass())) {
@@ -115,23 +118,19 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
     final Statement subscribeStatement = Stmt.create(ctx).invokeStatic(CDI.class, subscribeMethod, parmClassName,
             callBackBlock.finish().finish());
 
-    initStatements.add(controller.setReferenceStmt(subscrVar, subscribeStatement));
-    destroyStatements.add(controller.getReferenceStmt(subscrVar, Subscription.class).invoke("remove"));
+    factoryInitStatements.add(subscribeStatement);
 
     for (final Class<?> cls : EnvUtil.getAllPortableConcreteSubtypes(parm.getType().asClass())) {
       if (!EnvUtil.isLocalEventType(cls)) {
-        final String subscrHandle = subscrVar + "For" + cls.getSimpleName();
-        initStatements
-                .add(controller.setReferenceStmt(subscrHandle,
-                        Stmt.invokeStatic(ErraiBus.class, "get").invoke("subscribe",
-                                CDI.getSubjectNameByType(cls.getName()),
-                                Stmt.loadStatic(CDI.class, "ROUTING_CALLBACK"))));
-        destroyStatements.add(
-                Stmt.nestedCall(controller.getReferenceStmt(subscrHandle, Subscription.class)).invoke("remove"));
+        factoryInitStatements.add(Stmt.invokeStatic(ErraiBus.class, "get").invoke("subscribe",
+                CDI.getSubjectNameByType(cls.getName()), Stmt.loadStatic(CDI.class, "ROUTING_CALLBACK")));
       }
     }
 
-    controller.addInitializationStatements(initStatements);
-    controller.addDestructionStatements(destroyStatements);
+    controller.addFactoryInitializationStatements(factoryInitStatements);
+  }
+
+  private boolean enclosingTypeIsDependentScoped(final Decorable decorable) {
+    return decorable.getEnclosingInjectable().getScope().equals(Dependent.class);
   }
 }

@@ -87,7 +87,7 @@ public class UncaughtExceptionDecorator extends IOCDecoratorExtension<UncaughtEx
         Stmt.declareFinalVariable("handler", UncaughtExceptionHandler.class,
             Stmt.newObject(UncaughtExceptionHandler.class).extend()
                 .publicMethod(void.class, "onUncaughtException", Parameter.of(Throwable.class, "t"))
-                .append(decorable.callOrBind(Refs.get("t")))
+                .append(decorable.call(Refs.get("t")))
                 .finish()
                 .finish());
 
