@@ -2,6 +2,7 @@ package org.jboss.errai.ioc.rebind.ioc.injector.api;
 
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateFieldAccessorName;
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateMethodName;
+import static org.jboss.errai.codegen.util.Stmt.castTo;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 
 import java.util.ArrayList;
@@ -35,6 +36,7 @@ public class FactoryController {
   private final Map<String, Object> attributes = new HashMap<String, Object>();
   private final Set<MetaField> exposedFields = new HashSet<MetaField>();
   private final Set<MetaMethod> exposedMethods = new HashSet<MetaMethod>();
+  private final List<Statement> factoryInitializationStatements = new ArrayList<Statement>();
 
   public void addInvokeBefore(final MetaMethod method, Statement statement) {
     invokeBefore.put(method, statement);
@@ -72,6 +74,14 @@ public class FactoryController {
     return proxyProperties.entrySet();
   }
 
+  public void addFactoryInitializationStatements(final List<Statement> factoryInitializationStatements) {
+    this.factoryInitializationStatements.addAll(factoryInitializationStatements);
+  }
+
+  public List<Statement> getFactoryInitializaionStatements() {
+    return factoryInitializationStatements;
+  }
+
   public void addInitializationStatements(final List<Statement> callbackBodyStatements) {
     initializationStatements.addAll(callbackBodyStatements);
   }
@@ -100,24 +110,28 @@ public class FactoryController {
     return attributes.get(name);
   }
 
-  public ContextualStatementBuilder constructGetReference(final String name, final Class<?> refType) {
+  public ContextualStatementBuilder getReferenceStmt(final String name, final Class<?> refType) {
     return InjectUtil.constructGetReference(name, refType);
   }
 
-  public ContextualStatementBuilder constructSetReference(final String name, final Statement value) {
+  public ContextualStatementBuilder setReferenceStmt(final String name, final Statement value) {
     return InjectUtil.constructSetReference(name, value);
   }
 
-  public ContextualStatementBuilder getExposedFieldStmt(final MetaField field) {
+  public ContextualStatementBuilder exposedFieldStmt(final MetaField field) {
     exposedFields.add(field);
 
     return loadVariable("this").invoke(getPrivateFieldAccessorName(field), loadVariable("instance"));
   }
 
-  public Statement getExposedMethodStmt(final MetaMethod method, final Statement... params) {
+  public Statement exposedMethodStmt(final MetaMethod method, final Statement... params) {
     exposedMethods.add(method);
 
     return loadVariable("this").invoke(getPrivateMethodName(method), loadVariable("instance"));
+  }
+
+  public Statement contextGetInstanceStmt(final String factoryName, final Class<?> producedType) {
+    return castTo(producedType, loadVariable("context").invoke("getInstance", factoryName));
   }
 
 }

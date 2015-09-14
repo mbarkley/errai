@@ -215,7 +215,7 @@ public class Decorable {
   }
 
   /*
-   * Behaves differently for than getAccessStatement for parameters,
+   * Behaves differently than getAccessStatement for parameters,
    * where the method is called.
    */
   public Statement callOrBind(final Statement... values) {

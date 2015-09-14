@@ -17,7 +17,6 @@
 package org.jboss.errai.ioc.rebind.ioc.builtin;
 
 import java.util.Collections;
-import java.util.List;
 
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.util.Stmt;
@@ -38,13 +37,13 @@ public class AfterInitializationExtension extends IOCDecoratorExtension<AfterIni
   }
 
   @Override
-  public List<?> generateDecorator(final Decorable decorable, final FactoryController controller) {
+  public void generateDecorator(final Decorable decorable, final FactoryController controller) {
     final Statement callbackStmt = Stmt.newObject(Runnable.class).extend()
             .publicOverridesMethod("run")
             .append(decorable.getAccessStatement())
             .finish()
             .finish();
 
-    return Collections.singletonList(Stmt.invokeStatic(InitVotes.class, "registerOneTimeInitCallback", callbackStmt));
+    controller.addInitializationStatements(Collections.<Statement>singletonList(Stmt.invokeStatic(InitVotes.class, "registerOneTimeInitCallback", callbackStmt)));
   }
 }

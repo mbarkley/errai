@@ -67,7 +67,7 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(final Decorable decorable, final FactoryController controller) {
+  public void generateDecorator(final Decorable decorable, final FactoryController controller) {
     final MetaClass targetClass = decorable.getEnclosingType();
     final List<Statement> statements = new ArrayList<Statement>();
     BlockBuilder<AnonymousClassStructureBuilder> initBlock = initBlockCache.get(targetClass);
@@ -143,8 +143,6 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
     else {
       initBlock.appendAll(statements);
     }
-
-    return Collections.emptyList();
   }
 
   /**

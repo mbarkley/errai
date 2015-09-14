@@ -15,9 +15,7 @@
  */
 package org.jboss.errai.ui.rebind;
 
-import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import javax.inject.Inject;
@@ -52,7 +50,7 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(final Decorable decorable, final FactoryController controller) {
+  public void generateDecorator(final Decorable decorable, final FactoryController controller) {
     Statement instance = decorable.getAccessStatement();
     String name = getTemplateDataFieldName((DataField) decorable.getAnnotation(), decorable.getName());
     if (decorable.getType().isAssignableTo(Element.class)) {
@@ -65,8 +63,6 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
       instance = Stmt.invokeStatic(ElementWrapperWidget.class, "getWidget", instance);
     }
     saveDataField(decorable, decorable.getType(), name, decorable.getName(), instance);
-
-    return Collections.emptyList();
   }
 
   private void saveDataField(Decorable decorable, MetaClass type, String name, String fieldName, Statement instance) {

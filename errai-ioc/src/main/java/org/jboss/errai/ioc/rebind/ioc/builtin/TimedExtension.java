@@ -17,7 +17,6 @@
 package org.jboss.errai.ioc.rebind.ioc.builtin;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import org.jboss.errai.codegen.Statement;
@@ -40,7 +39,7 @@ public class TimedExtension extends IOCDecoratorExtension<Timed> {
   }
 
   @Override
-  public List<?> generateDecorator(Decorable decorable, FactoryController controller) {
+  public void generateDecorator(Decorable decorable, FactoryController controller) {
     try {
       final Timed timed = (Timed) decorable.getAnnotation();
 
@@ -58,12 +57,12 @@ public class TimedExtension extends IOCDecoratorExtension<Timed> {
           .finish().finish());
 
       final String timerVarName = decorable.getAsMethod().getName() + "Timer";
-      final Statement timerVar = controller.constructGetReference(timerVarName, Timer.class);
+      final Statement timerVar = controller.getReferenceStmt(timerVarName, Timer.class);
 
       final List<Statement> initStmts = new ArrayList<Statement>();
       final List<Statement> destructionStmts = new ArrayList<Statement>();
 
-      initStmts.add(controller.constructSetReference(timerVarName, timerDecl));
+      initStmts.add(controller.setReferenceStmt(timerVarName, timerDecl));
 
       final Statement timerExec;
       switch (timed.type()) {
@@ -81,8 +80,6 @@ public class TimedExtension extends IOCDecoratorExtension<Timed> {
 
       controller.addInitializationStatements(initStmts);
       controller.addDestructionStatements(destructionStmts);
-
-      return Collections.emptyList();
     }
 
     catch (Exception e) {

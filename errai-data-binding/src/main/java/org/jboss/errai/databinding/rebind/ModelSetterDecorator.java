@@ -1,8 +1,5 @@
 package org.jboss.errai.databinding.rebind;
 
-import java.util.Collections;
-import java.util.List;
-
 import org.jboss.errai.codegen.Cast;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.exception.GenerationException;
@@ -33,7 +30,7 @@ public class ModelSetterDecorator extends IOCDecoratorExtension<ModelSetter> {
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(final Decorable decorable, final FactoryController controller) {
+  public void generateDecorator(final Decorable decorable, final FactoryController controller) {
     if (decorable.getAsMethod().getParameters() == null || decorable.getAsMethod().getParameters().length != 1)
       throw new GenerationException("@ModelSetter method needs to have exactly one parameter: " + decorable.getAsMethod());
 
@@ -43,7 +40,7 @@ public class ModelSetterDecorator extends IOCDecoratorExtension<ModelSetter> {
       throw new GenerationException("@ModelSetter method parameter must be of type: " + modelType);
     }
 
-    final Statement dataBinder = controller.constructGetReference(DataBindingUtil.BINDER_VAR_NAME, DataBinder.class);
+    final Statement dataBinder = controller.getReferenceStmt(DataBindingUtil.BINDER_VAR_NAME, DataBinder.class);
     final Statement proxyProperty =
           controller.addProxyProperty("dataBinder", DataBinder.class, dataBinder);
 
@@ -56,7 +53,5 @@ public class ModelSetterDecorator extends IOCDecoratorExtension<ModelSetter> {
           Stmt.loadVariable("a0").assignValue(
               Cast.to(decorable.getAsMethod().getParameters()[0].getType(), Stmt.nestedCall(
                   proxyProperty).invoke("getModel"))));
-
-    return Collections.emptyList();
   }
 }

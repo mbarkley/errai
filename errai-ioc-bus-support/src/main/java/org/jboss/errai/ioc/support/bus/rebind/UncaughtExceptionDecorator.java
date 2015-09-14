@@ -17,7 +17,6 @@
 package org.jboss.errai.ioc.support.bus.rebind;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import org.jboss.errai.bus.client.ErraiBus;
@@ -54,7 +53,7 @@ public class UncaughtExceptionDecorator extends IOCDecoratorExtension<UncaughtEx
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(final Decorable decorable, final FactoryController controller) {
+  public void generateDecorator(final Decorable decorable, final FactoryController controller) {
     // Ensure that method has exactly one parameter of type Throwable
     final MetaMethod method = decorable.getAsMethod();
     MetaParameter[] parms = method.getParameters();
@@ -66,7 +65,7 @@ public class UncaughtExceptionDecorator extends IOCDecoratorExtension<UncaughtEx
     }
 
     final String handlerVar = method.getName() + "Handler";
-    final Statement setRefStmt = controller.constructSetReference(handlerVar, Refs.get("handler"));
+    final Statement setRefStmt = controller.setReferenceStmt(handlerVar, Refs.get("handler"));
 
     final List<Statement> initStatements = Arrays.asList(
             generateExceptionHandler(decorable),
@@ -74,15 +73,13 @@ public class UncaughtExceptionDecorator extends IOCDecoratorExtension<UncaughtEx
             Stmt.castTo(ClientMessageBusImpl.class, Stmt.invokeStatic(ErraiBus.class, "get")
                     .invoke("addUncaughtExceptionHandler", Refs.get("handler"))));
 
-    final Statement getRefStmt = controller.constructGetReference(handlerVar, UncaughtExceptionHandler.class);
+    final Statement getRefStmt = controller.getReferenceStmt(handlerVar, UncaughtExceptionHandler.class);
     final List<Statement> destStatements = Arrays.<Statement>asList(
             Stmt.castTo(ClientMessageBusImpl.class, Stmt.invokeStatic(ErraiBus.class, "get"))
                     .invoke("removeUncaughtExceptionHandler", getRefStmt));
 
     controller.addInitializationStatements(initStatements);
     controller.addDestructionStatements(destStatements);
-
-    return Collections.emptyList();
   }
 
   private Statement generateExceptionHandler(final Decorable decorable) {

@@ -52,7 +52,7 @@ public class ShadowServiceIOCExtension extends IOCDecoratorExtension<ShadowServi
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(final Decorable decorable, final FactoryController controller) {
+  public void generateDecorator(final Decorable decorable, final FactoryController controller) {
     final ShadowService shadowService = (ShadowService) decorable.getAnnotation();
     String serviceName = null;
 
@@ -79,7 +79,7 @@ public class ShadowServiceIOCExtension extends IOCDecoratorExtension<ShadowServi
               Stmt.invokeStatic(ErraiBus.class, "get")).invoke("subscribeShadow", serviceName, decorable.getAccessStatement());
     }
 
-    return Collections.singletonList(subscribeShadowStatement);
+    controller.addInitializationStatements(Collections.singletonList(subscribeShadowStatement));
   }
 
 

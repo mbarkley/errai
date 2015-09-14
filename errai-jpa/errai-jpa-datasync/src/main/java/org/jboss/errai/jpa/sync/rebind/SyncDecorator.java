@@ -46,7 +46,7 @@ public class SyncDecorator extends IOCDecoratorExtension<Sync> {
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(final Decorable decorable, final FactoryController controller) {
+  public void generateDecorator(final Decorable decorable, final FactoryController controller) {
 
     MetaMethod method = decorable.getAsMethod();
     MetaParameter[] params = method.getParameters();
@@ -62,12 +62,9 @@ public class SyncDecorator extends IOCDecoratorExtension<Sync> {
 
     controller.addInitializationStatements(createInitStatements(decorable.getEnclosingType(), "obj", syncAnnotation, decorable, controller));
 
-    final Statement syncWorker = controller.constructGetReference("syncWorker", ClientSyncWorker.class);
+    final Statement syncWorker = controller.getReferenceStmt("syncWorker", ClientSyncWorker.class);
     final Statement destruction = Stmt.nestedCall(syncWorker).invoke("stop");
     controller.addDestructionStatements(Collections.singletonList(destruction));
-
-    return Collections.emptyList();
-
   }
 
   /**
@@ -113,10 +110,10 @@ public class SyncDecorator extends IOCDecoratorExtension<Sync> {
     statements.add(Stmt.declareFinalVariable("paramsCallback",
         QueryParamInitCallback.class, queryParamCallback.finish().finish()));
 
-    statements.add(controller.constructSetReference("syncWorker", Stmt.invokeStatic(ClientSyncWorker.class, "create",
+    statements.add(controller.setReferenceStmt("syncWorker", Stmt.invokeStatic(ClientSyncWorker.class, "create",
             syncAnnotation.query(), Stmt.loadVariable("objectClass"), null)));
 
-    final Statement syncWorkerRef = controller.constructGetReference("syncWorker", ClientSyncWorker.class);
+    final Statement syncWorkerRef = controller.getReferenceStmt("syncWorker", ClientSyncWorker.class);
     statements.add(
         Stmt.nestedCall(syncWorkerRef).invoke("addSyncCallback", createSyncCallback(decorable)));
     statements.add(

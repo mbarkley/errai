@@ -20,7 +20,7 @@ public class InjectUtil {
     if (method.isPublic()) {
       return Stmt.loadVariable("instance").invoke(method, (Object[]) params);
     } else {
-      return controller.getExposedMethodStmt(method, params);
+      return controller.exposedMethodStmt(method, params);
     }
   }
 
@@ -39,7 +39,7 @@ public class InjectUtil {
     if (field.isPublic()) {
       return Stmt.loadVariable("instance").loadField(field);
     } else {
-      return controller.getExposedFieldStmt(field);
+      return controller.exposedFieldStmt(field);
     }
   }
 

@@ -17,7 +17,6 @@
 package org.jboss.errai.ioc.rebind.ioc.extension;
 
 import java.lang.annotation.Annotation;
-import java.util.List;
 
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
@@ -33,6 +32,6 @@ public abstract class IOCDecoratorExtension<T extends Annotation> {
     return decoratesWith;
   }
 
-  public abstract List<?> generateDecorator(Decorable decorable, FactoryController controller);
+  public abstract void generateDecorator(Decorable decorable, FactoryController controller);
 
 }

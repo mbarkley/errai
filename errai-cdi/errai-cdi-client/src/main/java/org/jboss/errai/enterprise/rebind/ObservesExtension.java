@@ -21,7 +21,6 @@ import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -65,7 +64,7 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(final Decorable decorable, final FactoryController controller) {
+  public void generateDecorator(final Decorable decorable, final FactoryController controller) {
     final Context ctx = decorable.getCodegenContext();
     final MetaParameter parm = decorable.getAsParameter();
     final MetaMethod method = (MetaMethod) parm.getDeclaringMember();
@@ -116,25 +115,23 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
     final Statement subscribeStatement = Stmt.create(ctx).invokeStatic(CDI.class, subscribeMethod, parmClassName,
             callBackBlock.finish().finish());
 
-    initStatements.add(controller.constructSetReference(subscrVar, subscribeStatement));
-    destroyStatements.add(controller.constructGetReference(subscrVar, Subscription.class).invoke("remove"));
+    initStatements.add(controller.setReferenceStmt(subscrVar, subscribeStatement));
+    destroyStatements.add(controller.getReferenceStmt(subscrVar, Subscription.class).invoke("remove"));
 
     for (final Class<?> cls : EnvUtil.getAllPortableConcreteSubtypes(parm.getType().asClass())) {
       if (!EnvUtil.isLocalEventType(cls)) {
         final String subscrHandle = subscrVar + "For" + cls.getSimpleName();
         initStatements
-                .add(controller.constructSetReference(subscrHandle,
+                .add(controller.setReferenceStmt(subscrHandle,
                         Stmt.invokeStatic(ErraiBus.class, "get").invoke("subscribe",
                                 CDI.getSubjectNameByType(cls.getName()),
                                 Stmt.loadStatic(CDI.class, "ROUTING_CALLBACK"))));
         destroyStatements.add(
-                Stmt.nestedCall(controller.constructGetReference(subscrHandle, Subscription.class)).invoke("remove"));
+                Stmt.nestedCall(controller.getReferenceStmt(subscrHandle, Subscription.class)).invoke("remove"));
       }
     }
 
     controller.addInitializationStatements(initStatements);
     controller.addDestructionStatements(destroyStatements);
-
-    return Collections.emptyList();
   }
 }

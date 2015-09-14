@@ -18,7 +18,6 @@ package org.jboss.errai.ioc.support.bus.rebind;
 
 import java.lang.annotation.Annotation;
 import java.util.Collections;
-import java.util.List;
 
 import org.jboss.errai.bus.client.ErraiBus;
 import org.jboss.errai.bus.client.api.Local;
@@ -39,7 +38,7 @@ public class ServiceCodeDecorator extends IOCDecoratorExtension<Service> {
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(final Decorable decorable, final FactoryController controller) {
+  public void generateDecorator(final Decorable decorable, final FactoryController controller) {
     Service serviceAnno = (Service) decorable.getAnnotation();
     /**
      * Figure out the service name;
@@ -66,10 +65,8 @@ public class ServiceCodeDecorator extends IOCDecoratorExtension<Service> {
               .invoke("subscribe", svcName, decorable.getAccessStatement());
     }
 
-    controller.addInitializationStatements(Collections.<Statement>singletonList(controller.constructSetReference(varName, subscribeStatement)));
+    controller.addInitializationStatements(Collections.<Statement>singletonList(controller.setReferenceStmt(varName, subscribeStatement)));
     controller.addDestructionStatements(Collections.<Statement> singletonList(
-            Stmt.nestedCall(controller.constructGetReference(varName, Subscription.class)).invoke("remove")));
-
-    return Collections.emptyList();
+            Stmt.nestedCall(controller.getReferenceStmt(varName, Subscription.class)).invoke("remove")));
   }
 }

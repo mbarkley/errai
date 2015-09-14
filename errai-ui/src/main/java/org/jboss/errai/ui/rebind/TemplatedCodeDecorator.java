@@ -100,7 +100,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(final Decorable decorable, final FactoryController controller) {
+  public void generateDecorator(final Decorable decorable, final FactoryController controller) {
     final MetaClass declaringClass = decorable.getEnclosingType();
 
     Class<?> templateProvider = declaringClass.getAnnotation(Templated.class).provider();
@@ -151,8 +151,6 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
 //    }
 
     controller.addDestructionStatements(generateTemplateDestruction(decorable));
-
-    return Collections.emptyList();
   }
 
   /**

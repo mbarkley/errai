@@ -145,7 +145,7 @@ public class DataBindingUtil {
 
           dataModelType = mp.getType();
           assertTypeIsBindable(dataModelType);
-          dataBinderRef = controller.constructGetReference(BINDER_VAR_NAME, DataBinder.class);
+          dataBinderRef = controller.getReferenceStmt(BINDER_VAR_NAME, DataBinder.class);
         }
         else {
           final MetaField field = (MetaField) allAnnotated.iterator().next();
@@ -153,8 +153,8 @@ public class DataBindingUtil {
           dataModelType = field.getType();
           assertTypeIsBindable(dataModelType);
 
-          dataBinderRef = controller.constructGetReference(BINDER_VAR_NAME, DataBinder.class);
-          controller.getExposedFieldStmt(field);
+          dataBinderRef = controller.getReferenceStmt(BINDER_VAR_NAME, DataBinder.class);
+          controller.exposedFieldStmt(field);
         }
         return new DataBinderRef(dataModelType, dataBinderRef);
       }
@@ -251,7 +251,7 @@ public class DataBindingUtil {
         dataBinderRef = Stmt.invokeStatic(decorable.getInjectionContext().getProcessingContext().getBootstrapClass(),
                 PrivateAccessUtil.getPrivateFieldAccessorName(field),
                 Variable.get("instance"));
-        controller.getExposedFieldStmt(field);
+        controller.exposedFieldStmt(field);
       }
     }
     else {
@@ -263,7 +263,7 @@ public class DataBindingUtil {
           dataBinderRef = Stmt.invokeStatic(decorable.getInjectionContext().getProcessingContext().getBootstrapClass(),
                   PrivateAccessUtil.getPrivateFieldAccessorName(field),
                   Variable.get("instance"));
-          controller.getExposedFieldStmt(field);
+          controller.exposedFieldStmt(field);
           break;
         }
       }

@@ -52,8 +52,23 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 import com.google.common.collect.Multimap;
+import com.google.gwt.core.ext.GeneratorContext;
+import com.google.gwt.core.ext.TreeLogger;
 
 class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
+
+  @Override
+  public void generate(ClassStructureBuilder<?> bodyBlockBuilder, Injectable injectable, DependencyGraph graph,
+          InjectionContext injectionContext, TreeLogger logger, GeneratorContext context) {
+    runDecorators(injectable, injectionContext, bodyBlockBuilder);
+    super.generate(bodyBlockBuilder, injectable, graph, injectionContext, logger, context);
+  }
+
+  @Override
+  protected List<Statement> generateFactoryInitStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
+          final Injectable injectable, final DependencyGraph graph, final InjectionContext injectionContext) {
+    return controller.getFactoryInitializaionStatements();
+  }
 
   @Override
   protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
@@ -69,7 +84,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
     constructInstance(injectable, constructorDependencies, createInstanceStatements);
     injectFieldDependencies(injectable, fieldDependencies, createInstanceStatements, bodyBlockBuilder);
     injectSetterMethodDependencies(injectable, setterDependencies, createInstanceStatements, bodyBlockBuilder);
-    runDecorators(injectable, injectionContext, createInstanceStatements, bodyBlockBuilder);
+    runDecorators(injectable, injectionContext, bodyBlockBuilder);
     addInitializationStatements(createInstanceStatements);
     addReturnStatement(createInstanceStatements);
 
@@ -110,18 +125,18 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
   }
 
   private void runDecorators(final Injectable injectable, final InjectionContext injectionContext,
-          final List<Statement> createInstanceStatements, final ClassStructureBuilder<?> bodyBlockBuilder) {
+          final ClassStructureBuilder<?> bodyBlockBuilder) {
     final MetaClass type = injectable.getInjectedType();
     final Set<HasAnnotations> createdAccessors = new HashSet<HasAnnotations>();
-    runDecoratorsForElementType(injectionContext, createInstanceStatements, type, ElementType.TYPE, bodyBlockBuilder, createdAccessors);
-    runDecoratorsForElementType(injectionContext, createInstanceStatements, type, ElementType.FIELD, bodyBlockBuilder, createdAccessors);
-    runDecoratorsForElementType(injectionContext, createInstanceStatements, type, ElementType.METHOD, bodyBlockBuilder, createdAccessors);
-    runDecoratorsForElementType(injectionContext, createInstanceStatements, type, ElementType.PARAMETER, bodyBlockBuilder, createdAccessors);
+    runDecoratorsForElementType(injectionContext, type, ElementType.TYPE, bodyBlockBuilder, createdAccessors);
+    runDecoratorsForElementType(injectionContext, type, ElementType.FIELD, bodyBlockBuilder, createdAccessors);
+    runDecoratorsForElementType(injectionContext, type, ElementType.METHOD, bodyBlockBuilder, createdAccessors);
+    runDecoratorsForElementType(injectionContext, type, ElementType.PARAMETER, bodyBlockBuilder, createdAccessors);
   }
 
-  @SuppressWarnings({ "unchecked", "rawtypes" })
+  @SuppressWarnings({ "rawtypes" })
   private void runDecoratorsForElementType(final InjectionContext injectionContext,
-          final List<Statement> createInstanceStatements, final MetaClass type, final ElementType elemType,
+          final MetaClass type, final ElementType elemType,
           final ClassStructureBuilder<?> builder, final Set<HasAnnotations> createdAccessors) {
     final Collection<Class<? extends Annotation>> decoratorAnnos = injectionContext
             .getDecoratorAnnotationsBy(elemType);
@@ -145,7 +160,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
             addPrivateAccessStubs("jsni", builder, declaringMethod);
             createdAccessors.add(declaringMethod);
           }
-          createInstanceStatements.addAll(decorator.generateDecorator(decorable, controller));
+          decorator.generateDecorator(decorable, controller);
         }
       }
     }

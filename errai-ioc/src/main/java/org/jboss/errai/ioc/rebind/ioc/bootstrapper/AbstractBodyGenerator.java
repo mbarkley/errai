@@ -273,10 +273,12 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
 
   @Override
   public void generate(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable, final DependencyGraph graph, InjectionContext injectionContext, final TreeLogger logger, final GeneratorContext context) {
+    final List<Statement> factoryInitStatements = generateFactoryInitStatements(bodyBlockBuilder, injectable, graph, injectionContext);
     final List<Statement> createInstanceStatements = generateCreateInstanceStatements(bodyBlockBuilder, injectable, graph, injectionContext);
     final List<Statement> destroyInstanceStatements = generateDestroyInstanceStatements(bodyBlockBuilder, injectable, graph, injectionContext);
     final List<Statement> invokePostConstructStatements = generateInovkePostConstructsStatements(bodyBlockBuilder, injectable, graph, injectionContext);
 
+    implementFactoryInit(bodyBlockBuilder, injectable, factoryInitStatements);
     implementCreateInstance(bodyBlockBuilder, injectable, createInstanceStatements);
     implementDestroyInstance(bodyBlockBuilder, injectable, destroyInstanceStatements);
     implementInvokePostConstructs(bodyBlockBuilder, injectable, invokePostConstructStatements);
@@ -284,9 +286,19 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     implementGetHandle(bodyBlockBuilder, injectable);
   }
 
+  protected List<Statement> generateFactoryInitStatements(ClassStructureBuilder<?> bodyBlockBuilder,
+          Injectable injectable, DependencyGraph graph, InjectionContext injectionContext) {
+    return Collections.emptyList();
+  }
+
   protected List<Statement> generateInovkePostConstructsStatements(ClassStructureBuilder<?> bodyBlockBuilder,
           Injectable injectable, DependencyGraph graph, InjectionContext injectionContext) {
     return Collections.emptyList();
+  }
+
+  private void implementFactoryInit(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable,
+          final List<Statement> factoryInitStatements) {
+    bodyBlockBuilder.publicMethod(void.class, "init", finalOf(Context.class, "context")).appendAll(factoryInitStatements).finish();
   }
 
   private void implementInvokePostConstructs(final ClassStructureBuilder<?> bodyBlockBuilder,

@@ -24,6 +24,8 @@ public abstract class Factory<T> {
 
   private T incompleteInstance;
 
+  public abstract void init(Context context);
+
   public abstract T createInstance(ContextManager contextManager);
 
   public abstract void invokePostConstructs(T instance);

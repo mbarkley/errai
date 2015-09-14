@@ -54,7 +54,7 @@ public class StyleBindingCodeDecorator extends IOCDecoratorExtension<StyleBindin
     super(decoratesWith);
   }
 
-  private static List<? extends Statement> bindHandlingMethod(final Decorable decorable,
+  private static List<Statement> bindHandlingMethod(final Decorable decorable,
           final FactoryController controller, final MetaParameter parameter) {
     final Statement elementAccessor;
     if (MetaClassFactory.get(Element.class).isAssignableFrom(parameter.getType())) {
@@ -101,7 +101,7 @@ public class StyleBindingCodeDecorator extends IOCDecoratorExtension<StyleBindin
   }
 
   @Override
-  public List<?> generateDecorator(Decorable decorable, FactoryController controller) {
+  public void generateDecorator(Decorable decorable, FactoryController controller) {
     final Statement valueAccessor;
 
     switch (decorable.decorableType()) {
@@ -113,7 +113,8 @@ public class StyleBindingCodeDecorator extends IOCDecoratorExtension<StyleBindin
       }
       else if (method.getReturnType().isVoid() && parameters.length == 1) {
         // this method returns void and accepts exactly one parm. assume it's a handler method.
-        return bindHandlingMethod(decorable, controller, parameters[0]);
+        controller.addInitializationStatements(bindHandlingMethod(decorable, controller, parameters[0]));
+        return;
       }
       else {
         throw new RuntimeException("problem with style binding. method is not a valid binding " + method);
@@ -127,7 +128,7 @@ public class StyleBindingCodeDecorator extends IOCDecoratorExtension<StyleBindin
     case TYPE:
       // for api annotations being on a type is allowed.
       if (decorable.getAnnotation().annotationType().getPackage().getName().startsWith("org.jboss.errai")) {
-        return new ArrayList<Statement>();
+        return;
       }
     default:
       throw new RuntimeException("problem with style binding. element target type is invalid: " + decorable.decorableType());
@@ -144,10 +145,10 @@ public class StyleBindingCodeDecorator extends IOCDecoratorExtension<StyleBindin
         final String handlerVarName = "bindingChangeHandler";
         controller.setAttribute(DATA_BINDING_CONFIG_ATTR, Boolean.TRUE);
 
-        initStmts.add(controller.constructSetReference(handlerVarName, Stmt.newObject(StyleBindingChangeHandler.class)));
+        initStmts.add(controller.setReferenceStmt(handlerVarName, Stmt.newObject(StyleBindingChangeHandler.class)));
         // ERRAI-817 deferred initialization
         initStmts.add(Stmt.nestedCall(dataBinder.getValueAccessor()).invoke("addPropertyChangeHandler",
-                controller.constructGetReference(handlerVarName, StyleBindingChangeHandler.class)));
+                controller.getReferenceStmt(handlerVarName, StyleBindingChangeHandler.class)));
       }
     }
     // ERRAI-821 deferred initialization
@@ -160,7 +161,5 @@ public class StyleBindingCodeDecorator extends IOCDecoratorExtension<StyleBindin
 
     controller.addInitializationStatements(initStmts);
     controller.addDestructionStatements(destructionStmts);
-
-    return Collections.emptyList();
   }
 }

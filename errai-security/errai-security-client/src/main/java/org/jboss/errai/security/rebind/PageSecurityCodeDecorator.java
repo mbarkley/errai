@@ -46,18 +46,18 @@ public class PageSecurityCodeDecorator extends IOCDecoratorExtension<Page> {
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(final Decorable decorable, final FactoryController controller) {
+  public void generateDecorator(final Decorable decorable, final FactoryController controller) {
     final List<Statement> statements = new ArrayList<Statement>();
 
     if (decorable.getEnclosingType().isAnnotationPresent(RestrictedAccess.class)) {
       final RestrictedAccess annotation = decorable.getEnclosingType().getAnnotation(RestrictedAccess.class);
       final String roleListenerVar = "roleListener";
 
-      statements.add(controller.constructSetReference(roleListenerVar,
+      statements.add(controller.setReferenceStmt(roleListenerVar,
               Stmt.newObject(PageRoleLifecycleListener.class, annotation,
                       Stmt.newObject(ClientRequiredRolesExtractorImpl.class))));
 
-      Statement roleListenerRef = controller.constructGetReference(roleListenerVar, PageRoleLifecycleListener.class);
+      Statement roleListenerRef = controller.getReferenceStmt(roleListenerVar, PageRoleLifecycleListener.class);
       statements.add(Stmt.invokeStatic(IOC.class, "registerLifecycleListener", Refs.get("instance"),
               roleListenerRef));
 
@@ -66,8 +66,6 @@ public class PageSecurityCodeDecorator extends IOCDecoratorExtension<Page> {
       controller.addDestructionStatements(Collections.<Statement> singletonList(Stmt.invokeStatic(IOC.class,
               "unregisterLifecycleListener", Refs.get("instance"), roleListenerRef)));
     }
-
-    return Collections.emptyList();
   }
 
 }

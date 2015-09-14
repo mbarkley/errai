@@ -1,8 +1,6 @@
 package org.jboss.errai.ioc.tests.decorator.rebind;
 
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.util.Refs;
@@ -25,7 +23,7 @@ public class LogCallDecorator extends IOCDecoratorExtension<LogCall> {
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(Decorable decorable, FactoryController controller) {
+  public void generateDecorator(Decorable decorable, FactoryController controller) {
     controller.addInvokeBefore(decorable.getAsMethod(),
         Stmt.invokeStatic(TestDataCollector.class, "beforeInvoke", Refs.get("text"), Refs.get("blah")));
 
@@ -41,7 +39,5 @@ public class LogCallDecorator extends IOCDecoratorExtension<LogCall> {
 
     controller.addInitializationStatements(Arrays.<Statement>asList(Stmt.loadVariable("instance").invoke("setFlag", true)));
     controller.addDestructionStatements(Arrays.<Statement>asList(Stmt.loadVariable("instance").invoke("setFlag", false)));
-
-    return Collections.emptyList();
   }
 }
