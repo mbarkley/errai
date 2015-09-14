@@ -74,7 +74,7 @@ public abstract class Factory<T> {
   protected abstract void generatedDestroyInstance(Object instance, ContextManager contextManager);
 
   @SuppressWarnings("unchecked")
-  protected <P> P maybeUnwrapProxy(P instance) {
+  protected static <P> P maybeUnwrapProxy(P instance) {
     if (instance instanceof Proxy) {
       return ((Proxy<P>) instance).unwrappedInstance();
     } else {

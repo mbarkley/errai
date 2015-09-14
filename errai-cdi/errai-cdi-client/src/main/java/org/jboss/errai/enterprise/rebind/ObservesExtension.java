@@ -17,7 +17,9 @@ package org.jboss.errai.enterprise.rebind;
 
 import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
 import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
+import static org.jboss.errai.codegen.util.Stmt.castTo;
 import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
+import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
@@ -31,12 +33,15 @@ import javax.enterprise.event.Observes;
 import javax.enterprise.inject.Any;
 
 import org.jboss.errai.bus.client.ErraiBus;
+import org.jboss.errai.bus.client.api.Subscription;
 import org.jboss.errai.codegen.Context;
 import org.jboss.errai.codegen.Parameter;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.AnonymousClassStructureBuilder;
 import org.jboss.errai.codegen.builder.BlockBuilder;
+import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
@@ -44,6 +49,7 @@ import org.jboss.errai.config.rebind.EnvUtil;
 import org.jboss.errai.enterprise.client.cdi.AbstractCDIEventCallback;
 import org.jboss.errai.enterprise.client.cdi.api.CDI;
 import org.jboss.errai.ioc.client.api.CodeDecorator;
+import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
@@ -68,11 +74,13 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
   public void generateDecorator(final Decorable decorable, final FactoryController controller) {
     final Context ctx = decorable.getCodegenContext();
     final MetaParameter parm = decorable.getAsParameter();
+    final MetaMethod method = (MetaMethod) parm.getDeclaringMember();
 
     final String parmClassName = parm.getType().getFullyQualifiedName();
     final List<Annotation> annotations = InjectUtil.extractQualifiers(parm);
     final Annotation[] qualifiers = annotations.toArray(new Annotation[annotations.size()]);
     final Set<String> qualifierNames = new HashSet<String>(CDI.getQualifiersPart(qualifiers));
+    final boolean isEnclosingTypeDependent = enclosingTypeIsDependentScoped(decorable);
 
     if (qualifierNames.contains(Any.class.getName())) {
       qualifierNames.remove(Any.class.getName());
@@ -93,11 +101,12 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
     }
 
     final List<Statement> callbackStatements = new ArrayList<Statement>();
-    callbackStatements.add(declareFinalVariable("instance", decorable.getEnclosingType(), controller.contextGetInstanceStmt()));
-    callbackStatements.add(decorable.call(Refs.get("event")));
-    if (enclosingTypeIsDependentScoped(decorable)) {
-      callbackStatements.add(controller.contextDestroyInstanceStmt());
+    if (!isEnclosingTypeDependent) {
+      callbackStatements
+              .add(declareFinalVariable("instance", decorable.getEnclosingType(), castTo(decorable.getEnclosingType(),
+                      invokeStatic(Factory.class, "maybeUnwrapProxy", controller.contextGetInstanceStmt()))));
     }
+    callbackStatements.add(decorable.call(Refs.get("event")));
 
     callBackBlock = callBack.publicOverridesMethod("fireEvent", Parameter.finalOf(parm, "event"))
         .appendAll(callbackStatements)
@@ -105,7 +114,9 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
         .publicOverridesMethod("toString")
         ._(Stmt.load("Observer: " + parmClassName + " " + Arrays.toString(qualifiers)).returnValue());
 
-    final List<Statement> factoryInitStatements = new ArrayList<Statement>();
+    final List<Statement> initStatements = new ArrayList<Statement>();
+    final List<Statement> destroyStatements = new ArrayList<Statement>();
+    final String subscrVar = method.getName() + "Subscription";
 
     final String subscribeMethod;
     if (EnvUtil.isPortableType(parm.getType().asClass()) && !EnvUtil.isLocalEventType(parm.getType().asClass())) {
@@ -118,16 +129,34 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
     final Statement subscribeStatement = Stmt.create(ctx).invokeStatic(CDI.class, subscribeMethod, parmClassName,
             callBackBlock.finish().finish());
 
-    factoryInitStatements.add(subscribeStatement);
+    if (isEnclosingTypeDependent) {
+      initStatements.add(controller.setReferenceStmt(subscrVar, subscribeStatement));
+      destroyStatements.add(controller.getReferenceStmt(subscrVar, Subscription.class).invoke("remove"));
+    } else {
+      initStatements.add(subscribeStatement);
+    }
 
     for (final Class<?> cls : EnvUtil.getAllPortableConcreteSubtypes(parm.getType().asClass())) {
       if (!EnvUtil.isLocalEventType(cls)) {
-        factoryInitStatements.add(Stmt.invokeStatic(ErraiBus.class, "get").invoke("subscribe",
-                CDI.getSubjectNameByType(cls.getName()), Stmt.loadStatic(CDI.class, "ROUTING_CALLBACK")));
+        final ContextualStatementBuilder routingSubStmt = Stmt.invokeStatic(ErraiBus.class, "get").invoke("subscribe",
+                CDI.getSubjectNameByType(cls.getName()), Stmt.loadStatic(CDI.class, "ROUTING_CALLBACK"));
+        if (isEnclosingTypeDependent) {
+          final String subscrHandle = subscrVar + "For" + cls.getSimpleName();
+          initStatements.add(controller.setReferenceStmt(subscrHandle, routingSubStmt));
+          destroyStatements.add(
+                  Stmt.nestedCall(controller.getReferenceStmt(subscrHandle, Subscription.class)).invoke("remove"));
+        } else {
+          initStatements.add(routingSubStmt);
+        }
       }
     }
 
-    controller.addFactoryInitializationStatements(factoryInitStatements);
+    if (isEnclosingTypeDependent) {
+      controller.addInitializationStatements(initStatements);
+      controller.addDestructionStatements(destroyStatements);
+    } else {
+      controller.addFactoryInitializationStatements(initStatements);
+    }
   }
 
   private boolean enclosingTypeIsDependentScoped(final Decorable decorable) {
