@@ -6,9 +6,12 @@ import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.addPrivateAccessStubs;
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateMethodName;
 import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
+import static org.jboss.errai.codegen.util.Stmt.if_;
 import static org.jboss.errai.codegen.util.Stmt.loadLiteral;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
+import static org.jboss.errai.codegen.util.Stmt.nestedCall;
 import static org.jboss.errai.codegen.util.Stmt.newObject;
+import static org.jboss.errai.codegen.util.Stmt.throw_;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
@@ -20,6 +23,7 @@ import java.util.Map.Entry;
 import javax.enterprise.context.Dependent;
 import javax.inject.Qualifier;
 
+import org.jboss.errai.codegen.BooleanOperator;
 import org.jboss.errai.codegen.InnerClass;
 import org.jboss.errai.codegen.Modifier;
 import org.jboss.errai.codegen.Parameter;
@@ -28,6 +32,8 @@ import org.jboss.errai.codegen.builder.BlockBuilder;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.ConstructorBlockBuilder;
 import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
+import org.jboss.errai.codegen.builder.ElseBlockBuilder;
+import org.jboss.errai.codegen.builder.impl.BooleanExpressionBuilder;
 import org.jboss.errai.codegen.builder.impl.ClassBuilder;
 import org.jboss.errai.codegen.literal.LiteralFactory;
 import org.jboss.errai.codegen.meta.HasAnnotations;
@@ -157,8 +163,8 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
   }
 
   private void implementAccessibleMethods(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {
-    final MetaClass injectableType = injectable.getInjectedType();
-    for (final MetaMethod method : injectableType.getMethods()) {
+    final MetaClass injectedType = injectable.getInjectedType();
+    for (final MetaMethod method : injectedType.getMethods()) {
       // TODO clean this up and maybe proxy package private and proetected methods?
       if (!method.isStatic() && method.isPublic() && !method.isFinal() && (method.asMethod() == null || method.asMethod().getDeclaringClass() == null
               || !method.asMethod().getDeclaringClass().equals(Object.class))) {
@@ -171,15 +177,30 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
                   }
                 })
                 .throws_(method.getCheckedExceptions()).body();
-        body.appendAll(controller.getInvokeBeforeStatements(method));
-        final ContextualStatementBuilder invocation = loadVariable("proxyHelper").invoke("getInstance").invoke(method.getName(), getParametersForInvocation(method));
-        if (method.getReturnType().isVoid()) {
-          body._(invocation);
-          body.appendAll(controller.getInvokeAfterStatements(method));
+        final ContextualStatementBuilder proxyHelperInvocation = loadVariable("proxyHelper").invoke("getInstance")
+                .invoke(method.getName(), getParametersForInvocation(method));
+        final Statement nonInitializedCase;
+        if (injectedType.isInterface()) {
+          nonInitializedCase = throw_(RuntimeException.class, "Cannot invoke public method on proxied interface before constructor completes.");
         } else {
-          body._(declareFinalVariable("retVal", method.getReturnType(), invocation));
-          body.appendAll(controller.getInvokeAfterStatements(method));
-          body._(loadVariable("retVal").returnValue());
+          nonInitializedCase = loadVariable("super").invoke(method.getName(), getParametersForInvocation(method));
+        }
+        final BlockBuilder<ElseBlockBuilder> ifBlock = if_(
+                BooleanExpressionBuilder.create(loadVariable("proxyHelper"), BooleanOperator.NotEquals, null))
+                        .appendAll(controller.getInvokeBeforeStatements(method));
+        if (method.getReturnType().isVoid()) {
+          ifBlock._(proxyHelperInvocation);
+          ifBlock.appendAll(controller.getInvokeAfterStatements(method));
+          body._(ifBlock.finish().else_()._(nonInitializedCase).finish());
+        } else {
+          ifBlock._(declareFinalVariable("retVal", method.getReturnType(), proxyHelperInvocation));
+          ifBlock.appendAll(controller.getInvokeAfterStatements(method));
+          ifBlock._(loadVariable("retVal").returnValue());
+          if (injectedType.isInterface()) {
+            body._(ifBlock.finish().else_()._(nonInitializedCase).finish());
+          } else {
+            body._(ifBlock.finish().else_()._(nestedCall(nonInitializedCase).returnValue()).finish());
+          }
         }
 
         body.finish();

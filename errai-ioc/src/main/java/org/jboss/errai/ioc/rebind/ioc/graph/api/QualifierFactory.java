@@ -17,4 +17,6 @@ public interface QualifierFactory {
 
   Qualifier combine(Qualifier qualifier, Qualifier qualifier2);
 
+  Qualifier forDefault();
+
 }

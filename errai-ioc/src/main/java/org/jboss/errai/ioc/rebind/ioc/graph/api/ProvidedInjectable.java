@@ -4,6 +4,8 @@ import java.lang.annotation.Annotation;
 
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaField;
+import org.jboss.errai.codegen.meta.MetaParameter;
 
 public interface ProvidedInjectable extends Injectable {
 
@@ -36,6 +38,16 @@ public interface ProvidedInjectable extends Injectable {
     @Override
     public <A extends Annotation> A getAnnotation(final Class<A> annotation) {
       return annotated.getAnnotation(annotation);
+    }
+
+    public MetaClass getExactType() {
+      if (annotated instanceof MetaField) {
+        return ((MetaField) annotated).getType();
+      } else if (annotated instanceof MetaParameter) {
+        return ((MetaParameter) annotated).getType();
+      } else {
+        throw new RuntimeException("Not yet implemented for annotated of type " + annotated.getClass().getName());
+      }
     }
 
   }

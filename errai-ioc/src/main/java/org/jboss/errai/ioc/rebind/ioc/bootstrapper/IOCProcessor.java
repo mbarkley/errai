@@ -86,7 +86,6 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableProvider;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
-import com.google.common.collect.Multimap;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.js.JsType;
 
@@ -125,9 +124,11 @@ public class IOCProcessor {
   }
 
   private void addAllInjectableProviders(final DependencyGraphBuilder graphBuilder) {
-    final Multimap<InjectableHandle, InjectableProvider> providerMap = injectionContext.getRegisteredInjectableProviders();
-    for (final InjectableHandle handle : providerMap.keySet()) {
+    for (final InjectableHandle handle : injectionContext.getInjectableProviders().keySet()) {
       graphBuilder.addTransientInjectable(handle.getType(), handle.getQualifier(), Dependent.class);
+    }
+    for (final InjectableHandle handle : injectionContext.getSubTypeMatchingInjectableProviders().keySet()) {
+      graphBuilder.addTransientInjectable(handle.getType(), handle.getQualifier(), Dependent.class, WiringElementType.SubTypeMatching);
     }
   }
 
@@ -172,7 +173,9 @@ public class IOCProcessor {
   }
 
   private void registerFactoryBodyGeneratorForInjectionSite(final Injectable injectable) {
-    final Collection<InjectableProvider> providers = injectionContext.getRegisteredInjectableProviders().get(injectable.getHandle());
+    final Collection<InjectableProvider> providers = new ArrayList<InjectableProvider>();
+    providers.addAll(injectionContext.getInjectableProviders().get(injectable.getHandle()));
+    providers.addAll(injectionContext.getSubTypeMatchingInjectableProviders().get(injectable.getHandle()));
     if (providers.size() > 1) {
       throw new RuntimeException("Multiple providers for " + injectable.getHandle() + ". An error should have been thrown in the graph builder.");
     } else if (providers.isEmpty()) {

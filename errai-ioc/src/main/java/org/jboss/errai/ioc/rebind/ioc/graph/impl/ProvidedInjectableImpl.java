@@ -1,8 +1,8 @@
 package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 
-import org.jboss.errai.ioc.rebind.ioc.graph.api.ProvidedInjectable;
+import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
-import org.jboss.errai.ioc.rebind.ioc.graph.api.ProvidedInjectable.InjectionSite;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.ProvidedInjectable;
 
 class ProvidedInjectableImpl extends ConcreteInjectable implements ProvidedInjectable {
 
@@ -23,6 +23,11 @@ class ProvidedInjectableImpl extends ConcreteInjectable implements ProvidedInjec
   @Override
   public InjectionSite getInjectionSite() {
     return site;
+  }
+
+  @Override
+  public MetaClass getInjectedType() {
+    return site.getExactType();
   }
 
 }

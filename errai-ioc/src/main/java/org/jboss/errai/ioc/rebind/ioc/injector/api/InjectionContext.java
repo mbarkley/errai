@@ -62,6 +62,7 @@ public class InjectionContext {
 
   private final Multimap<WiringElementType, Class<? extends Annotation>> elementBindings = HashMultimap.create();
   private final Multimap<InjectableHandle, InjectableProvider> injectableProviders = HashMultimap.create();
+  private final Multimap<InjectableHandle, InjectableProvider> subTypeMatchingInjectableProviders = HashMultimap.create();
 
   private final boolean async;
 
@@ -147,8 +148,16 @@ public class InjectionContext {
     injectableProviders.put(handle, provider);
   }
 
-  public Multimap<InjectableHandle, InjectableProvider> getRegisteredInjectableProviders() {
+  public void registerSubTypeMatchingInjectableProvider(final InjectableHandle handle, final InjectableProvider provider) {
+    subTypeMatchingInjectableProviders.put(handle, provider);
+  }
+
+  public Multimap<InjectableHandle, InjectableProvider> getInjectableProviders() {
     return Multimaps.unmodifiableMultimap(injectableProviders);
+  }
+
+  public Multimap<InjectableHandle, InjectableProvider> getSubTypeMatchingInjectableProviders() {
+    return Multimaps.unmodifiableMultimap(subTypeMatchingInjectableProviders);
   }
 
   public QualifierFactory getQualifierFactory() {

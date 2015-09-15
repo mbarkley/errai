@@ -1,6 +1,7 @@
 package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 
 import java.lang.annotation.Annotation;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -169,6 +170,11 @@ public class DefaultQualifierFactory implements QualifierFactory {
   @Override
   public Qualifier forUnqualified() {
     return qualifiers.get(Collections.emptySet());
+  }
+
+  @Override
+  public Qualifier forDefault() {
+    return getOrCreateQualifier(new TreeSet<AnnotationWrapper>(Arrays.asList(DEFAULT_WRAPPER, ANY_WRAPPER)));
   }
 
   @Override
