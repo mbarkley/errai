@@ -141,4 +141,11 @@ public abstract class AbstractContext implements Context {
     return factoriesByCreatedInstances.containsKey(maybeUnwrap(ref));
   }
 
+  @SuppressWarnings("unchecked")
+  @Override
+  public <P> P getInstanceProperty(final Object instance, final String propertyName, final Class<P> type) {
+    final Object unwrapped = maybeUnwrap(instance);
+    return ((Factory<Object>) factoriesByCreatedInstances.get(unwrapped)).getReferenceAs(unwrapped, propertyName, type);
+  }
+
 }

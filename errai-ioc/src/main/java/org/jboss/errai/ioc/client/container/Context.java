@@ -29,4 +29,6 @@ public interface Context {
 
   boolean addDestructionCallback(Object instance, DestructionCallback<?> callback);
 
+  <P> P getInstanceProperty(Object instance, String propertyName, Class<P> type);
+
 }

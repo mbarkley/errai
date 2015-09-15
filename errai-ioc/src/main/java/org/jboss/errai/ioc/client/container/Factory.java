@@ -46,7 +46,7 @@ public abstract class Factory<T> {
   }
 
   @SuppressWarnings("unchecked")
-  protected <P> P getReferenceAs(final T instance, final String referenceName, final Class<P> type) {
+  public <P> P getReferenceAs(final T instance, final String referenceName, final Class<P> type) {
     return (P) getInstanceRefMap(maybeUnwrapProxy(instance)).get(referenceName);
   }
 

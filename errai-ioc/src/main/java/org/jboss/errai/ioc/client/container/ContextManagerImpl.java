@@ -85,4 +85,15 @@ public class ContextManagerImpl implements ContextManager {
     return success;
   }
 
+  @Override
+  public <P> P getInstanceProperty(final Object instance, final String propertyName, final Class<P> type) {
+    for (final Context context : contexts) {
+      if (context.isManaged(instance)) {
+        return context.getInstanceProperty(instance, propertyName, type);
+      }
+    }
+
+    throw new RuntimeException("The given instance, " + instance + ", is not managed.");
+  }
+
 }
