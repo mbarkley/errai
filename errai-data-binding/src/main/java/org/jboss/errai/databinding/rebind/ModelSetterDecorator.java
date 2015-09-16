@@ -1,5 +1,6 @@
 package org.jboss.errai.databinding.rebind;
 
+import static org.jboss.errai.codegen.util.Stmt.loadStatic;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 import static org.jboss.errai.codegen.util.Stmt.nestedCall;
 
@@ -8,7 +9,6 @@ import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.exception.GenerationException;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.util.Refs;
-import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.databinding.client.api.DataBinder;
 import org.jboss.errai.databinding.client.api.InitialState;
 import org.jboss.errai.ioc.client.api.CodeDecorator;
@@ -49,8 +49,8 @@ public class ModelSetterDecorator extends IOCDecoratorExtension<ModelSetter> {
 
     final String modelParamName = decorable.getAsMethod().getParameters()[0].getName();
     controller.addInvokeBefore(decorable.getAsMethod(),
-          Stmt.nestedCall(proxyProperty)
-              .invoke("setModel", Refs.get(modelParamName), Stmt.loadStatic(InitialState.class, "FROM_MODEL")));
+          nestedCall(proxyProperty)
+              .invoke("setModel", Refs.get(modelParamName), loadStatic(InitialState.class, "FROM_MODEL")));
 
     controller.addInvokeBefore(
           decorable.getAsMethod(),

@@ -4,7 +4,7 @@ public interface ProxyHelper<T> {
 
   void setInstance(T instance);
 
-  T getInstance();
+  T getInstance(Proxy<T> proxy);
 
   void clearInstance();
 

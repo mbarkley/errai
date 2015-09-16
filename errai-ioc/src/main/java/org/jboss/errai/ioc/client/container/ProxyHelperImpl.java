@@ -17,9 +17,10 @@ public class ProxyHelperImpl<T> implements ProxyHelper<T> {
   }
 
   @Override
-  public T getInstance() {
+  public T getInstance(final Proxy<T> proxy) {
     if (instance == null) {
       trySettingInstance();
+      proxy.initProxyProperties(instance);
     }
 
     return instance;

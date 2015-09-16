@@ -12,4 +12,6 @@ public interface Proxy<T> {
 
   T unwrappedInstance();
 
+  void initProxyProperties(final T instance);
+
 }

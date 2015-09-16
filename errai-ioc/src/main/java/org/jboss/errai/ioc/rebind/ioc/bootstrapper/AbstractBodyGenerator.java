@@ -130,10 +130,6 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
       }
     }
 
-    for (final Entry<String, Statement> prop : controller.getProxyProperties()) {
-      proxyImpl.privateField(prop.getKey(), prop.getValue().getType()).initializesWith(prop.getValue()).finish();
-    }
-
     implementProxyMethods(proxyImpl, injectable);
     implementAccessibleMethods(proxyImpl, injectable);
 
@@ -178,7 +174,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
                   }
                 })
                 .throws_(method.getCheckedExceptions()).body();
-        final ContextualStatementBuilder proxyHelperInvocation = loadVariable("proxyHelper").invoke("getInstance")
+        final ContextualStatementBuilder proxyHelperInvocation = loadVariable("proxyHelper").invoke("getInstance", loadVariable("this"))
                 .invoke(method.getName(), getParametersForInvocation(method));
         final Statement nonInitializedCase;
         if (injectedType.isInterface()) {
@@ -224,13 +220,14 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     final Parameter[] params = new Parameter[metaParams.length];
 
     for (int i = 0; i < params.length; i++) {
-      params[i] = finalOf(metaParams[i].getType().getErased(), metaParams[i].getName());
+      params[i] = Parameter.of(metaParams[i].getType().getErased(), metaParams[i].getName());
     }
 
     return params;
   }
 
   private void implementProxyMethods(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {
+    implementInitProxyProperties(proxyImpl, injectable);
     implementAsBeanType(proxyImpl, injectable);
     implementSetInstance(proxyImpl, injectable);
     implementClearInstance(proxyImpl, injectable);
@@ -238,10 +235,22 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     implementUnwrappedInstance(proxyImpl, injectable);
   }
 
+  private void implementInitProxyProperties(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {
+    final BlockBuilder<?> initBody = proxyImpl
+            .publicMethod(void.class, "initProxyProperties", finalOf(injectable.getInjectedType(), "instance")).body();
+
+    for (final Entry<String, Statement> prop : controller.getProxyProperties()) {
+      proxyImpl.privateField(prop.getKey(), prop.getValue().getType()).finish();
+      initBody._(loadVariable(prop.getKey()).assignValue(prop.getValue()));
+    }
+
+    initBody.finish();
+  }
+
   private void implementUnwrappedInstance(ClassStructureBuilder<?> proxyImpl, Injectable injectable) {
     proxyImpl.publicMethod(injectable.getInjectedType(), "unwrappedInstance")
              .body()
-             ._(loadVariable("proxyHelper").invoke("getInstance").returnValue())
+             ._(loadVariable("proxyHelper").invoke("getInstance", loadVariable("this")).returnValue())
              .finish();
   }
 
