@@ -35,6 +35,7 @@ import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.builder.ElseBlockBuilder;
 import org.jboss.errai.codegen.builder.impl.BooleanExpressionBuilder;
 import org.jboss.errai.codegen.builder.impl.ClassBuilder;
+import org.jboss.errai.codegen.builder.impl.StatementBuilder;
 import org.jboss.errai.codegen.literal.LiteralFactory;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
@@ -162,7 +163,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
   private void implementAccessibleMethods(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {
     final MetaClass injectedType = injectable.getInjectedType();
     for (final MetaMethod method : injectedType.getMethods()) {
-      // TODO clean this up and maybe proxy package private and proetected methods?
+      // TODO clean this up and maybe proxy package private and protected methods?
       if (!method.isStatic() && method.isPublic() && !method.isFinal() && (method.asMethod() == null || method.asMethod().getDeclaringClass() == null
               || !method.asMethod().getDeclaringClass().equals(Object.class))) {
         final BlockBuilder<?> body = proxyImpl
@@ -174,8 +175,9 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
                   }
                 })
                 .throws_(method.getCheckedExceptions()).body();
-        final ContextualStatementBuilder proxyHelperInvocation = loadVariable("proxyHelper").invoke("getInstance", loadVariable("this"))
-                .invoke(method.getName(), getParametersForInvocation(method));
+        final StatementBuilder proxiedInstanceDeclaration = declareFinalVariable("proxiedInstance",
+                injectable.getInjectedType(), loadVariable("proxyHelper").invoke("getInstance", loadVariable("this")));
+        final ContextualStatementBuilder proxyHelperInvocation = loadVariable("proxiedInstance").invoke(method.getName(), getParametersForInvocation(method));
         final Statement nonInitializedCase;
         if (injectedType.isInterface()) {
           nonInitializedCase = throw_(RuntimeException.class, "Cannot invoke public method on proxied interface before constructor completes.");
@@ -184,6 +186,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
         }
         final BlockBuilder<ElseBlockBuilder> ifBlock = if_(
                 BooleanExpressionBuilder.create(loadVariable("proxyHelper"), BooleanOperator.NotEquals, null))
+                        .append(proxiedInstanceDeclaration)
                         .appendAll(controller.getInvokeBeforeStatements(method));
         if (method.getReturnType().isVoid()) {
           ifBlock._(proxyHelperInvocation);

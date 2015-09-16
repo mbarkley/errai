@@ -16,22 +16,20 @@
 
 package org.jboss.errai.databinding.rebind;
 
-import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
-import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
+import static org.jboss.errai.codegen.util.Stmt.declareVariable;
+import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 import static org.jboss.errai.codegen.util.Stmt.nestedCall;
+import static org.jboss.errai.codegen.util.Stmt.throw_;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.inject.Inject;
 
-import org.jboss.errai.codegen.Parameter;
 import org.jboss.errai.codegen.Statement;
-import org.jboss.errai.codegen.builder.AnonymousClassStructureBuilder;
-import org.jboss.errai.codegen.builder.BlockBuilder;
 import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
 import org.jboss.errai.codegen.exception.GenerationException;
 import org.jboss.errai.codegen.meta.MetaClass;
@@ -60,8 +58,7 @@ import com.google.gwt.user.client.ui.Widget;
 @CodeDecorator
 public class BoundDecorator extends IOCDecoratorExtension<Bound> {
 
-  final Map<MetaClass, BlockBuilder<AnonymousClassStructureBuilder>> initBlockCache =
-      new ConcurrentHashMap<MetaClass, BlockBuilder<AnonymousClassStructureBuilder>>();
+  final Set<MetaClass> processedTypes = Collections.newSetFromMap(new ConcurrentHashMap<MetaClass, Boolean>());
 
   public BoundDecorator(Class<Bound> decoratesWith) {
     super(decoratesWith);
@@ -71,17 +68,18 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
   public void generateDecorator(final Decorable decorable, final FactoryController controller) {
     final MetaClass targetClass = decorable.getEnclosingInjectable().getInjectedType();
     final List<Statement> statements = new ArrayList<Statement>();
-    BlockBuilder<AnonymousClassStructureBuilder> initBlock = initBlockCache.get(targetClass);
+    final boolean hasRunForType =  processedTypes.contains(targetClass);
 
     final DataBindingUtil.DataBinderRef binderLookup = DataBindingUtil.lookupDataBinderRef(decorable, controller);
     if (binderLookup != null) {
       // Generate a reference to the bean's @AutoBound data binder
-      if (initBlock == null) {
-        statements.add(Stmt.declareVariable("binder", DataBinder.class, binderLookup.getValueAccessor()));
+      if (!hasRunForType) {
+        statements.add(declareVariable("binder", DataBinder.class, binderLookup.getValueAccessor()));
         statements.add(If.isNull(Refs.get("binder")).append(
-                Stmt.throw_(RuntimeException.class, "@AutoBound data binder for class "
+                throw_(RuntimeException.class, "@AutoBound data binder for class "
                     + targetClass
                     + " has not been initialized. Either initialize or add @Inject!")).finish());
+        statements.add(controller.setReferenceStmt(DataBindingUtil.BINDER_VAR_NAME, loadVariable("binder")));
       }
 
       // Check if the bound property exists in data model type
@@ -96,16 +94,7 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
       }
 
       Statement widget = decorable.getAccessStatement();
-      switch (decorable.decorableType()) {
-      case FIELD:
-        controller.addExposedField(decorable.getAsField());
-        break;
-      case METHOD:
-        controller.addExposedMethod(decorable.getAsMethod());
-        break;
-      default:
-        break;
-      }
+      controller.ensureMemberExposed(decorable.get());
 
       // Ensure the @Bound field or method provides a widget or DOM element
       MetaClass widgetType = decorable.getType();
@@ -141,32 +130,11 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
           + decorable.getName() + " in class " + targetClass);
     }
 
-    // The first decorator to run will generate the initialization callback, the subsequent
-    // decorators (for other bound widgets of the same class) will just amend the block.
-    if (initBlock == null) {
-      initBlock = createInitCallback(decorable.getDecorableDeclaringType(), "obj");
-      initBlockCache.put(targetClass, initBlock);
+    processedTypes.add(targetClass);
 
-      controller.setAttribute(DataBindingUtil.BINDER_MODEL_TYPE_VALUE, binderLookup.getDataModelType());
-      controller.addInitializationStatements(statements);
-
-      controller.addDestructionStatements(Collections.<Statement>singletonList(nestedCall(binderLookup.getValueAccessor()).invoke("unbind")));
-    }
-    else {
-      initBlock.appendAll(statements);
-    }
-  }
-
-  /**
-   * Generates an anonymous {@link InitializationCallback} that will contain the auto binding logic.
-   */
-  private BlockBuilder<AnonymousClassStructureBuilder> createInitCallback(final MetaClass type, final String initVar) {
-    BlockBuilder<AnonymousClassStructureBuilder> block =
-        Stmt.newObject(parameterizedAs(InitializationCallback.class, typeParametersOf(type)))
-            .extend()
-            .publicOverridesMethod("init", Parameter.of(type, initVar, true));
-
-    return block;
+    controller.setAttribute(DataBindingUtil.BINDER_MODEL_TYPE_VALUE, binderLookup.getDataModelType());
+    controller.addInitializationStatements(statements);
+    controller.addDestructionStatements(Collections.<Statement>singletonList(nestedCall(binderLookup.getValueAccessor()).invoke("unbind")));
   }
 
 }

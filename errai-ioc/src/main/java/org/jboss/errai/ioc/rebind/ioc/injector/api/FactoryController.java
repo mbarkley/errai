@@ -21,10 +21,13 @@ import java.util.Set;
 import org.jboss.errai.codegen.Context;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
+import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
+import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
+import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -139,6 +142,22 @@ public class FactoryController {
     addExposedField(field);
 
     return invokeStatic(factory, getPrivateFieldAccessorName(field), loadVariable("instance"));
+  }
+
+  public void ensureMemberExposed(final HasAnnotations annotated) {
+    final MetaClassMember member;
+    if (annotated instanceof MetaParameter) {
+      member = ((MetaParameter) annotated).getDeclaringMember();
+    } else {
+      member = (MetaClassMember) annotated;
+    }
+    if (!member.isPublic()) {
+      if (member instanceof MetaField) {
+        addExposedField((MetaField) member);
+      } else if (member instanceof MetaMethod) {
+        addExposedMethod((MetaMethod) member);
+      }
+    }
   }
 
   public void addExposedField(final MetaField field) {
