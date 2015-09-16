@@ -16,6 +16,8 @@
 
 package org.jboss.errai.databinding.rebind;
 
+import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
@@ -25,6 +27,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.PropertyResourceBundle;
@@ -42,7 +45,6 @@ import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.util.PrivateAccessUtil;
-import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.common.metadata.RebindUtils;
 import org.jboss.errai.config.rebind.EnvUtil;
 import org.jboss.errai.config.util.ClassScanner;
@@ -261,7 +263,10 @@ public class DataBindingUtil {
 
         assertTypeIsDataBinder(field.getType());
         dataModelType = (MetaClass) field.getType().getParameterizedType().getTypeParameters()[0];
-        dataBinderRef = controller.exposedFieldStmt(field);
+        dataBinderRef = DecorableType.FIELD.getAccessStatement(field, decorable.getFactoryMetaClass());
+        if (!field.isPublic()) {
+          controller.addExposedField(field);
+        }
       }
     }
     else {
@@ -269,7 +274,7 @@ public class DataBindingUtil {
         if (field.isAnnotationPresent(AutoBound.class)) {
           assertTypeIsDataBinder(field.getType());
           dataModelType = (MetaClass) field.getType().getParameterizedType().getTypeParameters()[0];
-          dataBinderRef = Stmt.invokeStatic(decorable.getInjectionContext().getProcessingContext().getBootstrapClass(),
+          dataBinderRef = invokeStatic(decorable.getInjectionContext().getProcessingContext().getBootstrapClass(),
                   PrivateAccessUtil.getPrivateFieldAccessorName(field),
                   Variable.get("instance"));
           controller.exposedFieldStmt(field);
@@ -292,7 +297,9 @@ public class DataBindingUtil {
         }
         final ParamDependency paramDep = (ParamDependency) dep;
         if (paramDep.getParameter().isAnnotationPresent(AutoBound.class)) {
-          return DecorableType.PARAM.getAccessStatement(paramDep.getParameter(), decorable.getFactoryMetaClass());
+          final Statement creationAccessStatement = DecorableType.PARAM.getAccessStatement(paramDep.getParameter(), decorable.getFactoryMetaClass());
+          controller.addInitializationStatements(Collections.<Statement>singletonList(controller.setReferenceStmt(BINDER_VAR_NAME, creationAccessStatement)));
+          return controller.getReferenceStmt(BINDER_VAR_NAME, DataBinder.class);
         } else {
           break;
         }

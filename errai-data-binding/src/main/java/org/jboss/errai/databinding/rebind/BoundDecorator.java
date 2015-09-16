@@ -18,6 +18,7 @@ package org.jboss.errai.databinding.rebind;
 
 import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
 import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
+import static org.jboss.errai.codegen.util.Stmt.nestedCall;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -149,7 +150,7 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
       controller.setAttribute(DataBindingUtil.BINDER_MODEL_TYPE_VALUE, binderLookup.getDataModelType());
       controller.addInitializationStatements(statements);
 
-      controller.addDestructionStatements(Collections.<Statement>singletonList(Stmt.nestedCall(binderLookup.getValueAccessor()).invoke("unbind")));
+      controller.addDestructionStatements(Collections.<Statement>singletonList(nestedCall(binderLookup.getValueAccessor()).invoke("unbind")));
     }
     else {
       initBlock.appendAll(statements);
