@@ -1,6 +1,5 @@
 package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
 
-import static org.jboss.errai.codegen.util.PrivateAccessUtil.addPrivateAccessStubs;
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateFieldAccessorName;
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateMethodName;
 import static org.jboss.errai.codegen.util.Stmt.castTo;
@@ -37,7 +36,6 @@ import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.MetaParameterizedType;
 import org.jboss.errai.codegen.meta.MetaType;
-import org.jboss.errai.codegen.util.PrivateAccessType;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
@@ -123,11 +121,19 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
   private void runDecorators(final Injectable injectable, final InjectionContext injectionContext,
           final ClassStructureBuilder<?> bodyBlockBuilder) {
     final MetaClass type = injectable.getInjectedType();
-    final Set<HasAnnotations> createdAccessors = new HashSet<HasAnnotations>();
-    runDecoratorsForElementType(injectionContext, type, ElementType.TYPE, bodyBlockBuilder, createdAccessors, injectable);
-    runDecoratorsForElementType(injectionContext, type, ElementType.FIELD, bodyBlockBuilder, createdAccessors, injectable);
-    runDecoratorsForElementType(injectionContext, type, ElementType.METHOD, bodyBlockBuilder, createdAccessors, injectable);
-    runDecoratorsForElementType(injectionContext, type, ElementType.PARAMETER, bodyBlockBuilder, createdAccessors, injectable);
+    final Set<HasAnnotations> privateAccessors = new HashSet<HasAnnotations>();
+    runDecoratorsForElementType(injectionContext, type, ElementType.TYPE, bodyBlockBuilder, privateAccessors, injectable);
+    runDecoratorsForElementType(injectionContext, type, ElementType.FIELD, bodyBlockBuilder, privateAccessors, injectable);
+    runDecoratorsForElementType(injectionContext, type, ElementType.METHOD, bodyBlockBuilder, privateAccessors, injectable);
+    runDecoratorsForElementType(injectionContext, type, ElementType.PARAMETER, bodyBlockBuilder, privateAccessors, injectable);
+
+    for (final HasAnnotations annotated : privateAccessors) {
+      if (annotated instanceof MetaField) {
+        controller.addExposedField((MetaField) annotated);
+      } else if (annotated instanceof MetaMethod) {
+        controller.addExposedMethod((MetaMethod) annotated);
+      }
+    }
   }
 
   @SuppressWarnings({ "rawtypes" })
@@ -145,15 +151,12 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
           final Decorable decorable = new Decorable(annotated, annotated.getAnnotation(annoType), Decorable.DecorableType.fromElementType(elemType),
                   injectionContext, builder.getClassDefinition().getContext(), builder.getClassDefinition(), injectable);
           if (isNonPublicField(annotated) && !createdAccessors.contains(annotated)) {
-            addPrivateAccessStubs(PrivateAccessType.Both, "jsni", builder, (MetaField) annotated);
             createdAccessors.add(type);
           }
           else if (isNonPublicMethod(annotated) && !createdAccessors.contains(annotated)) {
-            addPrivateAccessStubs("jsni", builder, (MetaMethod) annotated);
             createdAccessors.add(annotated);
           } else if (isParamOfNonPublicMethod(annotated) && !createdAccessors.contains(((MetaParameter) annotated).getDeclaringMember())) {
             final MetaMethod declaringMethod = (MetaMethod) ((MetaParameter) annotated).getDeclaringMember();
-            addPrivateAccessStubs("jsni", builder, declaringMethod);
             createdAccessors.add(declaringMethod);
           }
           decorator.generateDecorator(decorable, controller);
@@ -300,7 +303,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
       }
 
       if (!field.isPublic()) {
-        addPrivateAccessStubs(PrivateAccessType.Write, "jsni", bodyBlockBuilder, field);
+        controller.addExposedField(field);
         final String privateFieldInjectorName = getPrivateFieldAccessorName(field);
         createInstanceStatements.add(loadVariable("this").invoke(privateFieldInjectorName, loadVariable("instance"), loadVariable(fieldDepVarName)));
       } else {
@@ -362,7 +365,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
       }
 
       if (!setter.isPublic()) {
-        addPrivateAccessStubs("jsni", bodyBlockBuilder, setter);
+        controller.addExposedMethod(setter);
         final String privateFieldInjectorName = getPrivateMethodName(setter);
         createInstanceStatements.add(loadVariable("this").invoke(privateFieldInjectorName, loadVariable("instance"), loadVariable(paramLocalVarName)));
       } else {

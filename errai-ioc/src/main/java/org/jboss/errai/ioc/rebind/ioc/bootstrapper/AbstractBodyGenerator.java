@@ -39,6 +39,7 @@ import org.jboss.errai.codegen.literal.LiteralFactory;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
+import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.util.Stmt;
@@ -296,7 +297,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
   public void generate(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable,
           final DependencyGraph graph, InjectionContext injectionContext, final TreeLogger logger,
           final GeneratorContext context) {
-    controller = new FactoryController(injectable.getInjectedType(), injectable.getFactoryName());
+    controller = new FactoryController(injectable.getInjectedType(), injectable.getFactoryName(), bodyBlockBuilder.getClassDefinition());
     preGenerationHook(bodyBlockBuilder, injectable, graph, injectionContext);
 
     final List<Statement> factoryInitStatements = generateFactoryInitStatements(bodyBlockBuilder, injectable, graph, injectionContext);
@@ -310,6 +311,17 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     implementInvokePostConstructs(bodyBlockBuilder, injectable, invokePostConstructStatements);
     implementCreateProxy(bodyBlockBuilder, injectable);
     implementGetHandle(bodyBlockBuilder, injectable);
+
+    addPrivateAccessors(bodyBlockBuilder);
+  }
+
+  private void addPrivateAccessors(final ClassStructureBuilder<?> bodyBlockBuilder) {
+    for (final MetaField field : controller.getExposedFields()) {
+      addPrivateAccessStubs("jsni", bodyBlockBuilder, field);
+    }
+    for (final MetaMethod method : controller.getExposedMethods()) {
+      addPrivateAccessStubs("jsni", bodyBlockBuilder, method);
+    }
   }
 
   protected void preGenerationHook(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable,

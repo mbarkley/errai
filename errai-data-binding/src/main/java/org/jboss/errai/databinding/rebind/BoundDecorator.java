@@ -68,7 +68,7 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
 
   @Override
   public void generateDecorator(final Decorable decorable, final FactoryController controller) {
-    final MetaClass targetClass = decorable.getEnclosingType();
+    final MetaClass targetClass = decorable.getEnclosingInjectable().getInjectedType();
     final List<Statement> statements = new ArrayList<Statement>();
     BlockBuilder<AnonymousClassStructureBuilder> initBlock = initBlockCache.get(targetClass);
 
@@ -95,6 +95,17 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
       }
 
       Statement widget = decorable.getAccessStatement();
+      switch (decorable.decorableType()) {
+      case FIELD:
+        controller.addExposedField(decorable.getAsField());
+        break;
+      case METHOD:
+        controller.addExposedMethod(decorable.getAsMethod());
+        break;
+      default:
+        break;
+      }
+
       // Ensure the @Bound field or method provides a widget or DOM element
       MetaClass widgetType = decorable.getType();
       if (widgetType.isAssignableTo(Widget.class)) {
@@ -132,7 +143,7 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
     // The first decorator to run will generate the initialization callback, the subsequent
     // decorators (for other bound widgets of the same class) will just amend the block.
     if (initBlock == null) {
-      initBlock = createInitCallback(decorable.getEnclosingType(), "obj");
+      initBlock = createInitCallback(decorable.getDecorableDeclaringType(), "obj");
       initBlockCache.put(targetClass, initBlock);
 
       controller.setAttribute(DataBindingUtil.BINDER_MODEL_TYPE_VALUE, binderLookup.getDataModelType());

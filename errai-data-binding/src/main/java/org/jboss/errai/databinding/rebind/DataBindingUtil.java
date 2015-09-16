@@ -48,7 +48,12 @@ import org.jboss.errai.config.rebind.EnvUtil;
 import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.databinding.client.api.Bindable;
 import org.jboss.errai.databinding.client.api.DataBinder;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.FieldDependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ParamDependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable.DecorableType;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 import org.jboss.errai.ui.shared.api.annotations.AutoBound;
 import org.jboss.errai.ui.shared.api.annotations.Model;
@@ -131,11 +136,12 @@ public class DataBindingUtil {
     Statement dataBinderRef;
     MetaClass dataModelType;
 
-    final Collection<HasAnnotations> allAnnotated = getMembersAndParamsAnnotatedWith(decorable.getEnclosingType(), Model.class);
+    MetaClass enclosingType = decorable.getEnclosingInjectable().getInjectedType();
+    final Collection<HasAnnotations> allAnnotated = getMembersAndParamsAnnotatedWith(enclosingType, Model.class);
 
     if (!allAnnotated.isEmpty()) {
       if (allAnnotated.size() > 1) {
-        throw new GenerationException("Multiple @Models injected in " + decorable.getEnclosingType());
+        throw new GenerationException("Multiple @Models injected in " + enclosingType);
       }
       else if (allAnnotated.size() == 1) {
         final HasAnnotations annotated = allAnnotated.iterator().next();
@@ -145,7 +151,9 @@ public class DataBindingUtil {
 
           dataModelType = mp.getType();
           assertTypeIsBindable(dataModelType);
-          dataBinderRef = controller.getReferenceStmt(BINDER_VAR_NAME, DataBinder.class);
+          dataBinderRef = controller.getInstancePropertyStmt(
+                  DecorableType.PARAM.getAccessStatement(mp, decorable.getFactoryMetaClass()),
+                  DataBindingUtil.BINDER_VAR_NAME, DataBinder.class);
         }
         else {
           final MetaField field = (MetaField) allAnnotated.iterator().next();
@@ -153,20 +161,24 @@ public class DataBindingUtil {
           dataModelType = field.getType();
           assertTypeIsBindable(dataModelType);
 
-          dataBinderRef = controller.getReferenceStmt(BINDER_VAR_NAME, DataBinder.class);
-          controller.exposedFieldStmt(field);
+          if (!field.isPublic()) {
+            controller.exposedFieldStmt(field);
+          }
+          dataBinderRef = controller.getInstancePropertyStmt(
+                  DecorableType.FIELD.getAccessStatement(field, decorable.getFactoryMetaClass()), BINDER_VAR_NAME,
+                  DataBinder.class);
         }
         return new DataBinderRef(dataModelType, dataBinderRef);
       }
     }
     else {
-      List<MetaField> modelFields = decorable.getEnclosingType().getFieldsAnnotatedWith(Model.class);
+      List<MetaField> modelFields = decorable.getDecorableDeclaringType().getFieldsAnnotatedWith(Model.class);
       if (!modelFields.isEmpty()) {
         throw new GenerationException("Found one or more fields annotated with @Model but missing @Inject "
                 + modelFields.toString());
       }
 
-      List<MetaParameter> modelParameters = decorable.getEnclosingType().getParametersAnnotatedWith(Model.class);
+      List<MetaParameter> modelParameters = decorable.getDecorableDeclaringType().getParametersAnnotatedWith(Model.class);
       if (!modelParameters.isEmpty()) {
         throw new GenerationException(
                 "Found one or more constructor or method parameters annotated with @Model but missing @Inject "
@@ -228,10 +240,11 @@ public class DataBindingUtil {
     Statement dataBinderRef = null;
     MetaClass dataModelType = null;
 
-    final Collection<HasAnnotations> allAnnotated = getMembersAndParamsAnnotatedWith(decorable.getEnclosingType(), AutoBound.class);
+    final MetaClass enclosingType = decorable.getEnclosingInjectable().getInjectedType();
+    final Collection<HasAnnotations> allAnnotated = getMembersAndParamsAnnotatedWith(enclosingType, AutoBound.class);
 
     if (allAnnotated.size() > 1) {
-      throw new GenerationException("Multiple @AutoBound data binders injected in " + decorable.getEnclosingType());
+      throw new GenerationException("Multiple @AutoBound data binders injected in " + enclosingType);
     }
     else if (allAnnotated.size() == 1) {
       final HasAnnotations annotated = allAnnotated.iterator().next();
@@ -241,22 +254,18 @@ public class DataBindingUtil {
 
         assertTypeIsDataBinder(mp.getType());
         dataModelType = (MetaClass) mp.getType().getParameterizedType().getTypeParameters()[0];
-        dataBinderRef = decorable.getInjectionContext().getInlineBeanReference(mp);
+        dataBinderRef = getAccessStatementForAutoBoundDataBinder(decorable, controller);
       }
       else {
         final MetaField field = (MetaField) allAnnotated.iterator().next();
 
         assertTypeIsDataBinder(field.getType());
         dataModelType = (MetaClass) field.getType().getParameterizedType().getTypeParameters()[0];
-        dataBinderRef = Stmt.invokeStatic(decorable.getInjectionContext().getProcessingContext().getBootstrapClass(),
-                PrivateAccessUtil.getPrivateFieldAccessorName(field),
-                Variable.get("instance"));
-        controller.exposedFieldStmt(field);
+        dataBinderRef = controller.exposedFieldStmt(field);
       }
     }
     else {
-      final MetaClass declaringClass = decorable.getEnclosingType();
-      for (final MetaField field : declaringClass.getFields()) {
+      for (final MetaField field : enclosingType.getFields()) {
         if (field.isAnnotationPresent(AutoBound.class)) {
           assertTypeIsDataBinder(field.getType());
           dataModelType = (MetaClass) field.getType().getParameterizedType().getTypeParameters()[0];
@@ -270,6 +279,40 @@ public class DataBindingUtil {
     }
 
     return (dataBinderRef != null) ? new DataBinderRef(dataModelType, dataBinderRef) : null;
+  }
+
+  private static Statement getAccessStatementForAutoBoundDataBinder(final Decorable decorable, final FactoryController controller) {
+    final Injectable enclosingInjectable = decorable.getEnclosingInjectable();
+    for (final Dependency dep : enclosingInjectable.getDependencies()) {
+      switch (dep.getDependencyType()) {
+      case Constructor:
+      case SetterParameter:
+        if (!(dep instanceof ParamDependency)) {
+          throw new RuntimeException("Found " + dep.getDependencyType() + " dependency that was not of type " + ParamDependency.class.getName());
+        }
+        final ParamDependency paramDep = (ParamDependency) dep;
+        if (paramDep.getParameter().isAnnotationPresent(AutoBound.class)) {
+          return DecorableType.PARAM.getAccessStatement(paramDep.getParameter(), decorable.getFactoryMetaClass());
+        } else {
+          break;
+        }
+      case Field:
+        if (!(dep instanceof FieldDependency)) {
+          throw new RuntimeException("Found " + dep.getDependencyType() + " dependency that was not of type " + FieldDependency.class.getName());
+        }
+        final FieldDependency fieldDep = (FieldDependency) dep;
+        if (fieldDep.getField().isAnnotationPresent(AutoBound.class)) {
+          if (!fieldDep.getField().isPublic()) {
+            controller.exposedFieldStmt(fieldDep.getField());
+          }
+          return DecorableType.FIELD.getAccessStatement(fieldDep.getField(), decorable.getFactoryMetaClass());
+        }
+      default:
+        break;
+      }
+    }
+
+    return null;
   }
 
   /**

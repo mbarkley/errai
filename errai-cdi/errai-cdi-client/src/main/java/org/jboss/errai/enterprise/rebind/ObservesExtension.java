@@ -103,7 +103,7 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
     final List<Statement> callbackStatements = new ArrayList<Statement>();
     if (!isEnclosingTypeDependent) {
       callbackStatements
-              .add(declareFinalVariable("instance", decorable.getEnclosingType(), castTo(decorable.getEnclosingType(),
+              .add(declareFinalVariable("instance", decorable.getDecorableDeclaringType(), castTo(decorable.getDecorableDeclaringType(),
                       invokeStatic(Factory.class, "maybeUnwrapProxy", controller.contextGetInstanceStmt()))));
     }
     callbackStatements.add(decorable.call(Refs.get("event")));

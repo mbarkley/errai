@@ -56,7 +56,7 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
     if (decorable.getType().isAssignableTo(Element.class)) {
       if (decorable.get().isAnnotationPresent(Inject.class)) {
         throw new GenerationException("@DataField [" + name + "] in class ["
-            + decorable.getEnclosingType().getFullyQualifiedName() + "] is of type ["
+            + decorable.getDecorableDeclaringType().getFullyQualifiedName() + "] is of type ["
             + decorable.getType().getFullyQualifiedName()
             + "] which does not support @Inject; this instance must be created manually.");
       }
@@ -66,8 +66,8 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
   }
 
   private void saveDataField(Decorable decorable, MetaClass type, String name, String fieldName, Statement instance) {
-    dataFieldMap(decorable, decorable.getEnclosingType()).put(name, instance);
-    dataFieldTypeMap(decorable, decorable.getEnclosingType()).put(name, type);
+    dataFieldMap(decorable, decorable.getDecorableDeclaringType()).put(name, instance);
+    dataFieldTypeMap(decorable, decorable.getDecorableDeclaringType()).put(name, type);
   }
 
   private String getTemplateDataFieldName(DataField annotation, String deflt) {

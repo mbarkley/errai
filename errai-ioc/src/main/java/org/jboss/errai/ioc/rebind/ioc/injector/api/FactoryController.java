@@ -3,10 +3,14 @@ package org.jboss.errai.ioc.rebind.ioc.injector.api;
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateFieldAccessorName;
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateMethodName;
 import static org.jboss.errai.codegen.util.Stmt.castTo;
+import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
+import static org.jboss.errai.ioc.rebind.ioc.bootstrapper.InjectUtil.constructGetReference;
+import static org.jboss.errai.ioc.rebind.ioc.bootstrapper.InjectUtil.constructSetReference;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -21,7 +25,7 @@ import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
-import org.jboss.errai.ioc.rebind.ioc.bootstrapper.InjectUtil;
+import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
@@ -39,10 +43,12 @@ public class FactoryController {
   private final List<Statement> factoryInitializationStatements = new ArrayList<Statement>();
   private final MetaClass producedType;
   private final String factoryName;
+  private final BuildMetaClass factory;
 
-  public FactoryController(final MetaClass producedType, final String factoryName) {
+  public FactoryController(final MetaClass producedType, final String factoryName, final BuildMetaClass factory) {
     this.producedType = producedType;
     this.factoryName = factoryName;
+    this.factory = factory;
   }
 
   public void addInvokeBefore(final MetaMethod method, Statement statement) {
@@ -117,24 +123,36 @@ public class FactoryController {
     return attributes.get(name);
   }
 
+  public ContextualStatementBuilder getInstancePropertyStmt(final Statement instanceStmt, final String name, final Class<?> refType) {
+    return loadVariable("contextManager").invoke("getInstanceProperty", instanceStmt, name, refType);
+  }
+
   public ContextualStatementBuilder getReferenceStmt(final String name, final Class<?> refType) {
-    return InjectUtil.constructGetReference(name, refType);
+    return constructGetReference(name, refType);
   }
 
   public ContextualStatementBuilder setReferenceStmt(final String name, final Statement value) {
-    return InjectUtil.constructSetReference(name, value);
+    return constructSetReference(name, value);
   }
 
   public ContextualStatementBuilder exposedFieldStmt(final MetaField field) {
-    exposedFields.add(field);
+    addExposedField(field);
 
-    return loadVariable("this").invoke(getPrivateFieldAccessorName(field), loadVariable("instance"));
+    return invokeStatic(factory, getPrivateFieldAccessorName(field), loadVariable("instance"));
+  }
+
+  public void addExposedField(final MetaField field) {
+    exposedFields.add(field);
   }
 
   public Statement exposedMethodStmt(final MetaMethod method, final Statement... params) {
-    exposedMethods.add(method);
+    addExposedMethod(method);
 
-    return loadVariable("this").invoke(getPrivateMethodName(method), loadVariable("instance"));
+    return invokeStatic(factory, getPrivateMethodName(method), loadVariable("instance"));
+  }
+
+  public void addExposedMethod(final MetaMethod method) {
+    exposedMethods.add(method);
   }
 
   public Statement contextGetInstanceStmt() {
@@ -143,6 +161,14 @@ public class FactoryController {
 
   public Statement contextDestroyInstanceStmt() {
     return loadVariable("context").invoke("destroyInstance", loadVariable("instance"));
+  }
+
+  public Collection<MetaField> getExposedFields() {
+    return Collections.unmodifiableCollection(exposedFields);
+  }
+
+  public Collection<MetaMethod> getExposedMethods() {
+    return Collections.unmodifiableCollection(exposedMethods);
   }
 
 }

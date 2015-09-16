@@ -1,5 +1,7 @@
 package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
 
+import static org.jboss.errai.codegen.util.Stmt.loadVariable;
+
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +20,7 @@ public class InjectUtil {
 
   public static Statement invokePublicOrPrivateMethod(final FactoryController controller, final MetaMethod method, final Statement... params) {
     if (method.isPublic()) {
-      return Stmt.loadVariable("instance").invoke(method, (Object[]) params);
+      return loadVariable("instance").invoke(method, (Object[]) params);
     } else {
       return controller.exposedMethodStmt(method, params);
     }
@@ -37,18 +39,18 @@ public class InjectUtil {
 
   public static ContextualStatementBuilder getPublicOrPrivateFieldValue(final FactoryController controller, final MetaField field) {
     if (field.isPublic()) {
-      return Stmt.loadVariable("instance").loadField(field);
+      return loadVariable("instance").loadField(field);
     } else {
       return controller.exposedFieldStmt(field);
     }
   }
 
   public static ContextualStatementBuilder constructGetReference(final String name, final Class<?> refType) {
-    return Stmt.castTo(refType, Stmt.loadVariable("this").invoke("getReferenceAs", Stmt.loadVariable("instance"), name, refType));
+    return loadVariable("thisInstance").invoke("getReferenceAs", loadVariable("instance"), name, refType);
   }
 
   public static ContextualStatementBuilder constructSetReference(final String name, final Statement value) {
-    return Stmt.loadVariable("this").invoke("setReference", Stmt.loadVariable("instance"), name, value);
+    return loadVariable("thisInstance").invoke("setReference", Stmt.loadVariable("instance"), name, value);
   }
 
 }

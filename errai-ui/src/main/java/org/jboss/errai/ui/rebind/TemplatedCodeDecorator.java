@@ -101,7 +101,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
 
   @Override
   public void generateDecorator(final Decorable decorable, final FactoryController controller) {
-    final MetaClass declaringClass = decorable.getEnclosingType();
+    final MetaClass declaringClass = decorable.getDecorableDeclaringType();
 
     Class<?> templateProvider = declaringClass.getAnnotation(Templated.class).provider();
     boolean customProvider = templateProvider != Templated.DEFAULT_PROVIDER.class;
@@ -160,9 +160,9 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
    */
   private List<Statement> generateTemplateDestruction(final Decorable decorable) {
     List<Statement> destructionStatements = new ArrayList<Statement>();
-    final Map<String, Statement> dataFields = DataFieldCodeDecorator.aggregateDataFieldMap(decorable, decorable.getEnclosingType());
+    final Map<String, Statement> dataFields = DataFieldCodeDecorator.aggregateDataFieldMap(decorable, decorable.getDecorableDeclaringType());
     final Map<String, MetaClass> dataFieldTypes =
-      DataFieldCodeDecorator.aggregateDataFieldTypeMap(decorable, decorable.getEnclosingType());
+      DataFieldCodeDecorator.aggregateDataFieldTypeMap(decorable, decorable.getDecorableDeclaringType());
 
     for (final String fieldName : dataFields.keySet()) {
       Statement field = dataFields.get(fieldName);
@@ -186,10 +186,10 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
                                                boolean customProvider) {
 
     final Map<MetaClass, BuildMetaClass> constructed = getConstructedTemplateTypes(decorable);
-    final MetaClass declaringClass = decorable.getEnclosingType();
+    final MetaClass declaringClass = decorable.getDecorableDeclaringType();
 
     if (!constructed.containsKey(declaringClass)) {
-      final String templateVarName = "templateFor" + decorable.getEnclosingType().getName();
+      final String templateVarName = "templateFor" + decorable.getDecorableDeclaringType().getName();
 
       /*
        * Generate this component's ClientBundle resource if necessary
@@ -210,7 +210,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
       /*
        * Get root Template Element
        */
-      final String rootTemplateElementVarName = "templateFor" + decorable.getEnclosingType().getName();
+      final String rootTemplateElementVarName = "templateFor" + decorable.getDecorableDeclaringType().getName();
       initStmts.add(Stmt
           .declareVariable(Element.class)
           .named(rootTemplateElementVarName)
@@ -269,10 +269,10 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
           final List<Statement> initStmts, final String dataFieldElementsVarName, final Statement fieldsMap) {
 
     final Statement instance = Refs.get("instance");
-    final Map<String, MetaClass> dataFieldTypes = DataFieldCodeDecorator.aggregateDataFieldTypeMap(decorable, decorable.getEnclosingType());
-    dataFieldTypes.put("this", decorable.getEnclosingType());
+    final Map<String, MetaClass> dataFieldTypes = DataFieldCodeDecorator.aggregateDataFieldTypeMap(decorable, decorable.getDecorableDeclaringType());
+    dataFieldTypes.put("this", decorable.getDecorableDeclaringType());
 
-    final MetaClass declaringClass = decorable.getEnclosingType();
+    final MetaClass declaringClass = decorable.getDecorableDeclaringType();
 
     /* Ensure that no @DataFields are handled more than once when used in combination with @SyncNative */
     final Set<String> processedNativeHandlers = new HashSet<String>();
@@ -524,7 +524,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
             Stmt.invokeStatic(
                     TemplateUtil.class,
                     "translateTemplate",
-                    getTemplateFileName(decorable.getEnclosingType()),
+                    getTemplateFileName(decorable.getDecorableDeclaringType()),
                     rootTemplateElement
                     ));
   }
@@ -540,10 +540,10 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
      * Merge each field's Widget Element into the DOM in place of the
      * corresponding data-field
      */
-    final Map<String, Statement> dataFields = DataFieldCodeDecorator.aggregateDataFieldMap(decorable, decorable.getEnclosingType());
+    final Map<String, Statement> dataFields = DataFieldCodeDecorator.aggregateDataFieldMap(decorable, decorable.getDecorableDeclaringType());
     for (final Entry<String, Statement> field : dataFields.entrySet()) {
-      initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "compositeComponentReplace", decorable.getEnclosingType()
-          .getFullyQualifiedName(), getTemplateFileName(decorable.getEnclosingType()), Cast.to(Widget.class, field.getValue()),
+      initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "compositeComponentReplace", decorable.getDecorableDeclaringType()
+          .getFullyQualifiedName(), getTemplateFileName(decorable.getDecorableDeclaringType()), Cast.to(Widget.class, field.getValue()),
           dataFieldElements, field.getKey()));
     }
 

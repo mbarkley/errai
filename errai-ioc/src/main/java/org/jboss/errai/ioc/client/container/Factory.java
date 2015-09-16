@@ -13,6 +13,11 @@ import com.google.common.collect.SetMultimap;
 
 public abstract class Factory<T> {
 
+  /*
+   * Do not remove! Used in generated code.
+   */
+  protected final Factory<T> thisInstance = this;
+
   private final Map<T, Map<String, Object>> referenceMaps = new HashMap<T, Map<String,Object>>();
   private final SetMultimap<T, Object> dependentScopedDependencies = Multimaps
           .newSetMultimap(new IdentityHashMap<T, Collection<Object>>(), new Supplier<Set<Object>>() {

@@ -60,7 +60,7 @@ public class SyncDecorator extends IOCDecoratorExtension<Sync> {
 
     Sync syncAnnotation = (Sync) decorable.getAnnotation();
 
-    controller.addInitializationStatements(createInitStatements(decorable.getEnclosingType(), "obj", syncAnnotation, decorable, controller));
+    controller.addInitializationStatements(createInitStatements(decorable.getDecorableDeclaringType(), "obj", syncAnnotation, decorable, controller));
 
     final Statement syncWorker = controller.getReferenceStmt("syncWorker", ClientSyncWorker.class);
     final Statement destruction = Stmt.nestedCall(syncWorker).invoke("stop");
@@ -96,7 +96,7 @@ public class SyncDecorator extends IOCDecoratorExtension<Sync> {
       String val = param.val().trim();
       if (val.startsWith("{") && val.endsWith("}")) {
         String fieldName = val.substring(1, val.length() - 1);
-        MetaField field = decorable.getEnclosingType().getInheritedField(fieldName);
+        MetaField field = decorable.getDecorableDeclaringType().getInheritedField(fieldName);
         fieldValueStmt =
             InjectUtil.getPublicOrPrivateFieldValue(controller, field);
       }

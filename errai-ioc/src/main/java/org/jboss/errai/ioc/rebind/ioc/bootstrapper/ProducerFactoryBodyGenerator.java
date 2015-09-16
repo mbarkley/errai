@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import javax.enterprise.context.Dependent;
 import javax.enterprise.inject.Disposes;
 
 import org.jboss.errai.codegen.Statement;
@@ -26,15 +25,16 @@ import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
+import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.codegen.util.PrivateAccessType;
 import org.jboss.errai.ioc.client.container.Proxy;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
-import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DisposerMethodDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ParamDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ProducerInstanceDependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
@@ -182,13 +182,13 @@ public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
 
       addPrivateAccessStubs("jsni", bodyBlockBuilder, disposer);
       destroyInstanceStmts.add(loadVariable("this").invoke(getPrivateMethodName(disposer),
-              getDisposerParams(disposer, depsByType.get(DependencyType.DisposerParameter))));
+              getDisposerParams(disposer, depsByType.get(DependencyType.DisposerParameter), bodyBlockBuilder.getClassDefinition())));
     }
 
     return destroyInstanceStmts;
   }
 
-  private Object[] getDisposerParams(final MetaMethod disposer, final Collection<Dependency> disposerParams) {
+  private Object[] getDisposerParams(final MetaMethod disposer, final Collection<Dependency> disposerParams, final BuildMetaClass factory) {
     final int offset;
     final Object[] params;
     if (disposer.isStatic()) {

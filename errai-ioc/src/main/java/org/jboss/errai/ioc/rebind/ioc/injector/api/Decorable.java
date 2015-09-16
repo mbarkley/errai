@@ -1,7 +1,9 @@
 package org.jboss.errai.ioc.rebind.ioc.injector.api;
 
+import static org.apache.commons.lang3.Validate.notNull;
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateFieldAccessorName;
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateMethodName;
+import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
 import static org.jboss.errai.codegen.util.Stmt.loadClassMember;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 import static org.jboss.errai.ioc.rebind.ioc.bootstrapper.FactoryGenerator.getLocalVariableName;
@@ -18,7 +20,6 @@ import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
-import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 
 public class Decorable {
@@ -26,38 +27,38 @@ public class Decorable {
   public enum DecorableType {
     FIELD  {
       @Override
-      MetaClass getType(final HasAnnotations annotated) {
+      public MetaClass getType(final HasAnnotations annotated) {
         return ((MetaField) annotated).getType();
       }
 
       @Override
-      MetaClass getEnclosingType(final HasAnnotations annotated) {
+      public MetaClass getEnclosingType(final HasAnnotations annotated) {
         return ((MetaField) annotated).getDeclaringClass();
       }
 
       @Override
-      Statement getAccessStatement(final HasAnnotations annotated, BuildMetaClass factory) {
+      public Statement getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory) {
         final MetaField field = (MetaField) annotated;
         if (field.isPublic()) {
           return loadClassMember(field.getName());
         } else {
-          return loadVariable("this").invoke(getPrivateFieldAccessorName(field), loadVariable("instance"));
+          return invokeStatic(notNull(factory), getPrivateFieldAccessorName(field), loadVariable("instance"));
         }
       }
     },
     METHOD  {
       @Override
-      MetaClass getType(final HasAnnotations annotated) {
+      public MetaClass getType(final HasAnnotations annotated) {
         return ((MetaMethod) annotated).getReturnType();
       }
 
       @Override
-      MetaClass getEnclosingType(final HasAnnotations annotated) {
+      public MetaClass getEnclosingType(final HasAnnotations annotated) {
         return ((MetaMethod) annotated).getDeclaringClass();
       }
 
       @Override
-      Statement getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory, final Statement[] statement) {
+      public Statement getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory, final Statement[] statement) {
         final MetaMethod method = (MetaMethod) annotated;
         if (method.isPublic()) {
           return loadVariable("instance").invoke(method, (Object[]) statement);
@@ -67,74 +68,74 @@ public class Decorable {
             params[i+1] = statement[i];
           }
           params[0] = loadVariable("instance");
-          return Stmt.invokeStatic(factory, getPrivateMethodName(method), params);
+          return invokeStatic(notNull(factory), getPrivateMethodName(method), params);
         }
       }
 
       @Override
-      Statement getAccessStatement(final HasAnnotations annotated, BuildMetaClass factory) {
+      public Statement getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory) {
         return getAccessStatement(annotated, factory, new Statement[0]);
       }
     },
     PARAM {
       @Override
-      MetaClass getType(final HasAnnotations annotated) {
+      public MetaClass getType(final HasAnnotations annotated) {
         return ((MetaParameter) annotated).getType();
       }
 
       @Override
-      MetaClass getEnclosingType(final HasAnnotations annotated) {
+      public MetaClass getEnclosingType(final HasAnnotations annotated) {
         return ((MetaParameter) annotated).getDeclaringMember().getDeclaringClass();
       }
 
       @Override
-      Statement getAccessStatement(final HasAnnotations annotated, BuildMetaClass factory) {
+      public Statement getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory) {
         final MetaParameter param = (MetaParameter) annotated;
         return loadVariable(getLocalVariableName(param));
       }
 
       @Override
-      Statement call(final HasAnnotations annotated, final BuildMetaClass factory, final Statement... params) {
+      public Statement call(final HasAnnotations annotated, final BuildMetaClass factory, final Statement... params) {
         return METHOD.getAccessStatement(((MetaParameter) annotated).getDeclaringMember(), factory, params);
       }
 
       @Override
-      String getName(HasAnnotations annotated) {
+      public String getName(final HasAnnotations annotated) {
         return ((MetaParameter) annotated).getName();
       }
     },
     TYPE {
       @Override
-      MetaClass getType(HasAnnotations annotated) {
+      public MetaClass getType(final HasAnnotations annotated) {
         return ((MetaClass) annotated);
       }
 
       @Override
-      MetaClass getEnclosingType(HasAnnotations annotated) {
+      public MetaClass getEnclosingType(final HasAnnotations annotated) {
         return ((MetaClass) annotated);
       }
 
       @Override
-      Statement getAccessStatement(HasAnnotations annotated, BuildMetaClass factory) {
+      public Statement getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory) {
         return loadVariable("instance");
       }
 
       @Override
-      String getName(HasAnnotations annotated) {
+      public String getName(final HasAnnotations annotated) {
         return ((MetaClass) annotated).getName();
       }
     };
 
-    abstract MetaClass getType(HasAnnotations annotated);
-    abstract MetaClass getEnclosingType(HasAnnotations annotated);
-    Statement getAccessStatement(HasAnnotations annotated, final BuildMetaClass factory, Statement[] params) {
+    public abstract MetaClass getType(HasAnnotations annotated);
+    public abstract MetaClass getEnclosingType(HasAnnotations annotated);
+    public Statement getAccessStatement(HasAnnotations annotated, final BuildMetaClass factory, final Statement[] params) {
       return getAccessStatement(annotated, factory);
     }
-    abstract Statement getAccessStatement(HasAnnotations annotated, BuildMetaClass factory);
-    Statement call(HasAnnotations annotated, final BuildMetaClass factory, Statement... params) {
+    public abstract Statement getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory);
+    public Statement call(final HasAnnotations annotated, final BuildMetaClass factory, Statement... params) {
       return getAccessStatement(annotated, factory, params);
     }
-    String getName(HasAnnotations annotated) {
+    public String getName(HasAnnotations annotated) {
       return ((MetaClassMember) annotated).getName();
     }
 
@@ -177,7 +178,7 @@ public class Decorable {
     return annotation;
   }
 
-  public MetaClass getEnclosingType() {
+  public MetaClass getDecorableDeclaringType() {
     return decorableType().getEnclosingType(annotated);
   }
 
@@ -231,6 +232,10 @@ public class Decorable {
 
   public Injectable getEnclosingInjectable() {
     return injectable;
+  }
+
+  public BuildMetaClass getFactoryMetaClass() {
+    return factory;
   }
 
 }
