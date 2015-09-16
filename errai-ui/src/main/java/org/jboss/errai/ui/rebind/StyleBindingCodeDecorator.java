@@ -95,7 +95,7 @@ public class StyleBindingCodeDecorator extends IOCDecoratorExtension<StyleBindin
       destructionStmts.add(
               Stmt.invokeStatic(StyleBindingsRegistry.class, "get").invoke("cleanAllForBean", Refs.get("instance")));
       destructionStmts.add((dataBinder != null) ? Stmt.nestedCall(dataBinder.getValueAccessor()).invoke(
-              "removePropertyChangeHandler", Stmt.loadVariable("bindingChangeHandler")) : EmptyStatement.INSTANCE);
+              "removePropertyChangeHandler", controller.getReferenceStmt("bindingChangeHandler", StyleBindingChangeHandler.class)) : EmptyStatement.INSTANCE);
       controller.setAttribute(STYLE_BINDING_HOUSEKEEPING_ATTR, Boolean.TRUE);
     }
   }

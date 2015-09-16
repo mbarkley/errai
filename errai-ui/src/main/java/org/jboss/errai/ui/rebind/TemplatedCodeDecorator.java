@@ -204,13 +204,13 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
           .declareVariable(getConstructedTemplateTypes(decorable).get(declaringClass))
           .named(templateVarName)
           .initializeWith(
-              Stmt.invokeStatic(GWT.class, "create", getConstructedTemplateTypes(decorable).get(declaringClass))));
+              Stmt.invokeStatic(GWT.class, "create", constructed.get(declaringClass))));
       }
 
       /*
        * Get root Template Element
        */
-      final String rootTemplateElementVarName = "templateFor" + decorable.getDecorableDeclaringType().getName();
+      final String rootTemplateElementVarName = "elementForTemplateOf" + decorable.getDecorableDeclaringType().getName();
       initStmts.add(Stmt
           .declareVariable(Element.class)
           .named(rootTemplateElementVarName)
@@ -585,8 +585,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
 
         }).finish();
 
-    decorable.getInjectionContext().getProcessingContext().getBootstrapClass()
-        .addInnerClass(new InnerClass(componentTemplateResource.getClassDefinition()));
+    decorable.getFactoryMetaClass().addInnerClass(new InnerClass(componentTemplateResource.getClassDefinition()));
 
     getConstructedTemplateTypes(decorable).put(type, componentTemplateResource.getClassDefinition());
   }
