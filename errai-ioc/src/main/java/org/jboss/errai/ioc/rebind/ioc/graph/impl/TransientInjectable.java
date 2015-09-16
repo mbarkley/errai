@@ -26,7 +26,7 @@ class TransientInjectable extends ConcreteInjectable {
   }
 
   public String getFactoryNameForInjectionSite(final InjectionSite site) {
-    return getFactoryName() + "__within__" + site.getEnclosingType().getName();
+    return getFactoryName() + "__for__" + site.getUniqueName();
   }
 
   @Override

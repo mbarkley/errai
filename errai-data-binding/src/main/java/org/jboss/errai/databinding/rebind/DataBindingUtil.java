@@ -75,6 +75,7 @@ import com.google.gwt.core.ext.GeneratorContext;
 public class DataBindingUtil {
   private static final Logger log = LoggerFactory.getLogger(DataBindingUtil.class);
   public static final String BINDER_VAR_NAME = "DataModelBinder";
+  public static final String MODEL_VAR_NAME = "DataModel";
   public static final String BINDER_MODEL_TYPE_VALUE = "DataBinderModelType";
 
   public static final Annotation[] MODEL_QUALIFICATION = new Annotation[] {
@@ -153,9 +154,12 @@ public class DataBindingUtil {
 
           dataModelType = mp.getType();
           assertTypeIsBindable(dataModelType);
+          controller.addInitializationStatements(
+                  Collections.<Statement>singletonList(
+                          controller.setReferenceStmt(MODEL_VAR_NAME, DecorableType.PARAM.getAccessStatement(mp, decorable.getFactoryMetaClass()))));
           dataBinderRef = controller.getInstancePropertyStmt(
-                  DecorableType.PARAM.getAccessStatement(mp, decorable.getFactoryMetaClass()),
-                  DataBindingUtil.BINDER_VAR_NAME, DataBinder.class);
+                  controller.getReferenceStmt(MODEL_VAR_NAME, dataModelType.asClass()), BINDER_VAR_NAME,
+                  DataBinder.class);
         }
         else {
           final MetaField field = (MetaField) allAnnotated.iterator().next();

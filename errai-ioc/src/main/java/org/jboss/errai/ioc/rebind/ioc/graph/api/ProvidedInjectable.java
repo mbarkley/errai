@@ -4,6 +4,7 @@ import java.lang.annotation.Annotation;
 
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaParameter;
 
@@ -19,6 +20,20 @@ public interface ProvidedInjectable extends Injectable {
     public InjectionSite(final MetaClass enclosingType, final HasAnnotations annotated) {
       this.enclosingType = enclosingType;
       this.annotated = annotated;
+    }
+
+    private String annotatedName() {
+      if (annotated instanceof MetaClassMember) {
+        return ((MetaClassMember) annotated).getName();
+      } else if (annotated instanceof MetaParameter) {
+        return ((MetaParameter) annotated).getDeclaringMember().getName() + "_" + ((MetaParameter) annotated).getName();
+      } else {
+        throw new RuntimeException("Not yet implemented!");
+      }
+    }
+
+    public String getUniqueName() {
+      return enclosingType.getName() + "_" + annotatedName();
     }
 
     public MetaClass getEnclosingType() {
