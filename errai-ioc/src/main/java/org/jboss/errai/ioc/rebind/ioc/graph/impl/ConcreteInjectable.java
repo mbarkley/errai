@@ -6,13 +6,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import javax.enterprise.context.Dependent;
-
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.ioc.client.api.EntryPoint;
-import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 class ConcreteInjectable extends BaseInjectable {
@@ -68,7 +66,7 @@ class ConcreteInjectable extends BaseInjectable {
       return false;
     case Producer:
     case Type:
-      return requiresProxy || !(literalScope.equals(Dependent.class) || literalScope.equals(EntryPoint.class));
+      return requiresProxy || !(wiringTypes.contains(WiringElementType.DependentBean) || literalScope.equals(EntryPoint.class));
     default:
       throw new RuntimeException("Not yet implemented!");
     }

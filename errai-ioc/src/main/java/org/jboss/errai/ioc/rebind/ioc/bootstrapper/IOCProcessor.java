@@ -321,7 +321,7 @@ public class IOCProcessor {
         builder.addConcreteInjectable(type, qualFactory.forSource(type), Dependent.class, InjectableType.Type,
                 WiringElementType.DependentBean, WiringElementType.Simpleton);
       } else if (isTypeInjectable(type)) {
-        final Class<? extends Annotation> directScope = getDirectScope(type);
+        final Class<? extends Annotation> directScope = getScope(type);
         final Injectable typeInjectable = builder.addConcreteInjectable(type, qualFactory.forSource(type),
                 directScope, InjectableType.Type, getWiringTypes(type, directScope));
         processInjectionPoints(typeInjectable, builder);
@@ -351,8 +351,7 @@ public class IOCProcessor {
             || hasEnablingProperty(type)) {
       return false;
     }
-    final Class<? extends Annotation> scope = getDirectScope(type);
-    if (!(scope.equals(Dependent.class) && !type.isAnnotationPresent(Dependent.class))) {
+    if (getDirectScope(type) != null) {
       return false;
     }
     if (!getInjectableConstructors(type).isEmpty()) {
@@ -429,12 +428,13 @@ public class IOCProcessor {
     builder.addProducerMemberDependency(providedInjectable, providerImplInjectable.getInjectedType(), providerImplInjectable.getQualifier(), providerMethod);
   }
 
-  private Class<? extends Annotation> getDirectScope(final HasAnnotations annotated) {
-    final Class<? extends Annotation> foundScope = getDirectScopeHelper(annotated);
-    return (foundScope != null) ? foundScope : Dependent.class;
+  private Class<? extends Annotation> getScope(final HasAnnotations annotated) {
+    final Class<? extends Annotation> foundScope = getDirectScope(annotated);
+    return (foundScope != null && !injectionContext.isElementType(WiringElementType.DependentBean, foundScope))
+            ? foundScope : Dependent.class;
   }
 
-  private Class<? extends Annotation> getDirectScopeHelper(final HasAnnotations annotated) {
+  private Class<? extends Annotation> getDirectScope(final HasAnnotations annotated) {
     // TODO validate that there's only one scope?
     final Set<Class<? extends Annotation>> scopeAnnoTypes = new HashSet<Class<? extends Annotation>>();
     scopeAnnoTypes.addAll(injectionContext.getAnnotationsForElementType(WiringElementType.DependentBean));
@@ -444,7 +444,7 @@ public class IOCProcessor {
       if (scopeAnnoTypes.contains(annoType)) {
         return annoType;
       } else if (annoType.isAnnotationPresent(Stereotype.class)) {
-        final Class<? extends Annotation> stereotypeScope = getDirectScopeHelper(MetaClassFactory.get(annoType));
+        final Class<? extends Annotation> stereotypeScope = getDirectScope(MetaClassFactory.get(annoType));
         if (stereotypeScope != null) {
           return stereotypeScope;
         }
@@ -460,7 +460,7 @@ public class IOCProcessor {
     for (final Class<? extends Annotation> anno : producerAnnos) {
       final List<MetaMethod> methods = type.getDeclaredMethodsAnnotatedWith(anno);
       for (final MetaMethod method : methods) {
-        final Class<? extends Annotation> directScope = getDirectScope(method);
+        final Class<? extends Annotation> directScope = getScope(method);
         final WiringElementType[] wiringTypes;
         if (method.isAnnotationPresent(Specializes.class)) {
           wiringTypes = new WiringElementType[] { getWiringTypesForScopeAnnotation(directScope), WiringElementType.Specialization };
@@ -551,12 +551,13 @@ public class IOCProcessor {
   private void processProducerFields(final Injectable concreteInjectable, final DependencyGraphBuilder builder, final Collection<MetaMethod> disposesMethods) {
     final MetaClass type = concreteInjectable.getInjectedType();
     final Collection<Class<? extends Annotation>> producerAnnos = injectionContext.getAnnotationsForElementType(WiringElementType.ProducerElement);
-    for (final Class<? extends Annotation> anno : producerAnnos) {
-      final List<MetaField> fields = type.getFieldsAnnotatedWith(anno);
+    for (final Class<? extends Annotation> producerAnno : producerAnnos) {
+      final List<MetaField> fields = type.getFieldsAnnotatedWith(producerAnno);
       for (final MetaField field : fields) {
+        final Class<? extends Annotation> scopeAnno = getScope(field);
         final Injectable producedInjectable = builder.addConcreteInjectable(field.getType(),
-                qualFactory.forSource(field), getDirectScope(field), InjectableType.Producer,
-                getWiringTypesForScopeAnnotation(anno));
+                qualFactory.forSource(field), scopeAnno, InjectableType.Producer,
+                getWiringTypesForScopeAnnotation(scopeAnno));
         builder.addProducerMemberDependency(producedInjectable, concreteInjectable.getInjectedType(), concreteInjectable.getQualifier(), field);
 
         final Collection<MetaMethod> matchingDisposers = getMatchingMethods(field, disposesMethods);
@@ -650,7 +651,7 @@ public class IOCProcessor {
   }
 
   private boolean scopeDoesNotRequireProxy(final MetaClass type) {
-    final Class<? extends Annotation> scope = getDirectScope(type);
+    final Class<? extends Annotation> scope = getScope(type);
 
     return scope.equals(EntryPoint.class) || injectionContext.getAnnotationsForElementType(WiringElementType.DependentBean).contains(scope);
   }
