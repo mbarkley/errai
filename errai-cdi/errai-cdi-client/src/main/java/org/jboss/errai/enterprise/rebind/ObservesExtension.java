@@ -28,7 +28,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.enterprise.context.Dependent;
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.Any;
 
@@ -103,7 +102,7 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
     final List<Statement> callbackStatements = new ArrayList<Statement>();
     if (!isEnclosingTypeDependent) {
       callbackStatements
-              .add(declareFinalVariable("instance", decorable.getDecorableDeclaringType(), castTo(decorable.getDecorableDeclaringType(),
+              .add(declareFinalVariable("instance", decorable.getDecorableDeclaringType(), castTo(decorable.getEnclosingInjectable().getInjectedType(),
                       invokeStatic(Factory.class, "maybeUnwrapProxy", controller.contextGetInstanceStmt()))));
     }
     callbackStatements.add(decorable.call(Refs.get("event")));
@@ -160,6 +159,6 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
   }
 
   private boolean enclosingTypeIsDependentScoped(final Decorable decorable) {
-    return decorable.getEnclosingInjectable().getScope().equals(Dependent.class);
+    return decorable.isEnclosingTypeDependent();
   }
 }

@@ -238,4 +238,8 @@ public class Decorable {
     return factory;
   }
 
+  public boolean isEnclosingTypeDependent() {
+    return injectable.getWiringElementTypes().contains(WiringElementType.DependentBean);
+  }
+
 }

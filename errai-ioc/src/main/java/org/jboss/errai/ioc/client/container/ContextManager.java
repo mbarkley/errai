@@ -22,4 +22,6 @@ public interface ContextManager {
 
   <P> P getInstanceProperty(Object instance, String propertyName, Class<P> type);
 
+  void finishInit();
+
 }

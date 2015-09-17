@@ -29,7 +29,7 @@ enum ResolutionPriority {
       return matchingTypes.contains(injectable.getInjectableType()) && !injectable.getWiringElementTypes().contains(WiringElementType.Simpleton);
     }
   }, TransientOrExtension {
-    private final Collection<InjectableType> extensionTypes = Arrays.asList(InjectableType.Transient, InjectableType.Extension);
+    private final Collection<InjectableType> extensionTypes = Arrays.asList(InjectableType.Extension, InjectableType.ExtensionProvided);
     @Override
     public boolean matches(Injectable injectable) {
       return extensionTypes.contains(injectable.getInjectableType());

@@ -16,8 +16,16 @@
 
 package org.jboss.errai.ui.rebind;
 
+import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
+import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
+import static org.jboss.errai.codegen.util.Stmt.castTo;
+import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
+import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
+import static org.jboss.errai.codegen.util.Stmt.loadVariable;
+import static org.jboss.errai.codegen.util.Stmt.nestedCall;
+import static org.jboss.errai.codegen.util.Stmt.newObject;
+
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import org.jboss.errai.codegen.Parameter;
@@ -31,10 +39,13 @@ import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.databinding.rebind.DataBindingUtil;
 import org.jboss.errai.ioc.client.api.CodeDecorator;
+import org.jboss.errai.ioc.client.container.Factory;
+import org.jboss.errai.ioc.client.container.RefHolder;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 import org.jboss.errai.ui.shared.api.annotations.style.StyleBinding;
+import org.jboss.errai.ui.shared.api.style.BindingRegistrationHandle;
 import org.jboss.errai.ui.shared.api.style.StyleBindingChangeHandler;
 import org.jboss.errai.ui.shared.api.style.StyleBindingExecutor;
 import org.jboss.errai.ui.shared.api.style.StyleBindingsRegistry;
@@ -46,6 +57,7 @@ import com.google.gwt.user.client.Element;
  * @author Mike Brock
  */
 @CodeDecorator
+@SuppressWarnings("deprecation")
 public class StyleBindingCodeDecorator extends IOCDecoratorExtension<StyleBinding> {
   private static final String DATA_BINDING_CONFIG_ATTR = "StyleBinding:DataBinderConfigured";
   private static final String STYLE_BINDING_HOUSEKEEPING_ATTR = "StyleBinding:HousekeepingReg";
@@ -54,7 +66,7 @@ public class StyleBindingCodeDecorator extends IOCDecoratorExtension<StyleBindin
     super(decoratesWith);
   }
 
-  private static List<Statement> bindHandlingMethod(final Decorable decorable,
+  private static void bindHandlingMethod(final Decorable decorable,
           final FactoryController controller, final MetaParameter parameter) {
     final Statement elementAccessor;
     if (MetaClassFactory.get(Element.class).isAssignableFrom(parameter.getType())) {
@@ -68,24 +80,42 @@ public class StyleBindingCodeDecorator extends IOCDecoratorExtension<StyleBindin
           "; expected Element or Style");
     }
 
-    final ObjectBuilder bindExec = Stmt.newObject(StyleBindingExecutor.class)
+    final String registrationHandleVar = "handleFor" + decorable.getName();
+    final List<Statement> bindExecStmts = new ArrayList<Statement>();
+    final boolean enclosingTypeIsDependent = decorable.isEnclosingTypeDependent();
+    if (!enclosingTypeIsDependent) {
+      bindExecStmts.add(declareFinalVariable("instance", decorable.getEnclosingInjectable().getInjectedType(),
+              castTo(decorable.getEnclosingInjectable().getInjectedType(),
+                      invokeStatic(Factory.class, "maybeUnwrapProxy", controller.contextGetInstanceStmt()))));
+    }
+    String hanldeVarName = registrationHandleVar;
+    bindExecStmts.add(controller.setReferenceStmt(registrationHandleVar, loadVariable(hanldeVarName)));
+    bindExecStmts.add(decorable.getAccessStatement(elementAccessor));
+
+    final ObjectBuilder bindExec = newObject(StyleBindingExecutor.class)
         .extend()
         .publicOverridesMethod("invokeBinding", Parameter.of(Element.class, "element"))
-        .append(decorable.getAccessStatement(elementAccessor))
+        .appendAll(bindExecStmts)
         .finish()
         .finish();
 
     final List<Statement> initStmts = new ArrayList<Statement>();
     final List<Statement> destructionStmts = new ArrayList<Statement>();
-    initStmts.add(Stmt.invokeStatic(StyleBindingsRegistry.class, "get")
-            .invoke("addStyleBinding", Refs.get("instance"),
-                decorable.getAnnotation().annotationType(), bindExec));
-    addCleanup(decorable, controller, destructionStmts);
+    initStmts.add(declareFinalVariable(hanldeVarName, parameterizedAs(RefHolder.class, typeParametersOf(BindingRegistrationHandle.class)), newObject(RefHolder.class)));
+    initStmts.add(loadVariable(hanldeVarName).invoke("set", invokeStatic(StyleBindingsRegistry.class, "get")
+            .invoke("addStyleBinding", decorable.getAnnotation().annotationType(), bindExec)));
 
-    controller.addInitializationStatements(initStmts);
+    destructionStmts.add(Stmt
+            .castTo(BindingRegistrationHandle.class,
+                    controller.getReferenceStmt(registrationHandleVar, RefHolder.class).invoke("get"))
+            .invoke("cleanup"));
+    if (enclosingTypeIsDependent) {
+      addCleanup(decorable, controller, destructionStmts);
+      controller.addInitializationStatements(initStmts);
+    } else {
+      controller.addFactoryInitializationStatements(initStmts);
+    }
     controller.addDestructionStatements(destructionStmts);
-
-    return Collections.emptyList();
   }
 
   private static void addCleanup(final Decorable decorable, final FactoryController controller, final List<Statement> destructionStmts) {
@@ -113,7 +143,7 @@ public class StyleBindingCodeDecorator extends IOCDecoratorExtension<StyleBindin
       }
       else if (method.getReturnType().isVoid() && parameters.length == 1) {
         // this method returns void and accepts exactly one parm. assume it's a handler method.
-        controller.addInitializationStatements(bindHandlingMethod(decorable, controller, parameters[0]));
+        bindHandlingMethod(decorable, controller, parameters[0]);
         return;
       }
       else {
@@ -145,17 +175,17 @@ public class StyleBindingCodeDecorator extends IOCDecoratorExtension<StyleBindin
         final String handlerVarName = "bindingChangeHandler";
         controller.setAttribute(DATA_BINDING_CONFIG_ATTR, Boolean.TRUE);
 
-        initStmts.add(controller.setReferenceStmt(handlerVarName, Stmt.newObject(StyleBindingChangeHandler.class)));
+        initStmts.add(controller.setReferenceStmt(handlerVarName, newObject(StyleBindingChangeHandler.class)));
         // ERRAI-817 deferred initialization
-        initStmts.add(Stmt.nestedCall(dataBinder.getValueAccessor()).invoke("addPropertyChangeHandler",
+        initStmts.add(nestedCall(dataBinder.getValueAccessor()).invoke("addPropertyChangeHandler",
                 controller.getReferenceStmt(handlerVarName, StyleBindingChangeHandler.class)));
       }
     }
     // ERRAI-821 deferred initialization
-    initStmts.add(Stmt.invokeStatic(StyleBindingsRegistry.class, "get")
+    initStmts.add(invokeStatic(StyleBindingsRegistry.class, "get")
         .invoke("addElementBinding", Refs.get("instance"),
             decorable.getAnnotation(),
-            Stmt.nestedCall(valueAccessor).invoke("getElement")));
+            nestedCall(valueAccessor).invoke("getElement")));
 
     addCleanup(decorable, controller, destructionStmts);
 

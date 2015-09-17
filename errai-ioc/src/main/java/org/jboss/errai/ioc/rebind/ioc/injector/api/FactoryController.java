@@ -39,6 +39,7 @@ public class FactoryController {
   private final ListMultimap<MetaMethod, Statement> invokeAfter = ArrayListMultimap.create();
   private final Map<String, Statement> proxyProperties = new HashMap<String, Statement>();
   private final List<Statement> initializationStatements = new ArrayList<Statement>();
+  private final List<Statement> endInitializationStatements = new ArrayList<Statement>();
   private final List<Statement> destructionStatements = new ArrayList<Statement>();
   private final Map<String, Object> attributes = new HashMap<String, Object>();
   private final Set<MetaField> exposedFields = new HashSet<MetaField>();
@@ -103,7 +104,11 @@ public class FactoryController {
   }
 
   public List<Statement> getInitializationStatements() {
-    return initializationStatements;
+    final List<Statement> stmts = new ArrayList<Statement>();
+    stmts.addAll(initializationStatements);
+    stmts.addAll(endInitializationStatements);
+
+    return stmts;
   }
 
   public void addDestructionStatements(final List<Statement> callbackInstanceStatement) {
@@ -188,6 +193,10 @@ public class FactoryController {
 
   public Collection<MetaMethod> getExposedMethods() {
     return Collections.unmodifiableCollection(exposedMethods);
+  }
+
+  public void addInitializationStatementsToEnd(final List<Statement> statements) {
+    endInitializationStatements.addAll(statements);
   }
 
 }

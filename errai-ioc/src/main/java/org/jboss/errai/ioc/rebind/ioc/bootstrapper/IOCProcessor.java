@@ -117,10 +117,15 @@ public class IOCProcessor {
     final String contextManagerFieldName = declareContextManagerField(processingContext);
     declareWindowInjectionContextField(processingContext);
     addContextsToContextManager(scopeContexts.values(), contextManagerFieldName, registerFactoriesBody);
+    callFinishInitOnContextManager(contextManagerFieldName, registerFactoriesBody);
 
     registerFactoriesBody.finish();
 
     processingContext.getBlockBuilder()._(loadVariable("this").invoke("registerFactories"));
+  }
+
+  private void callFinishInitOnContextManager(final String contextManagerFieldName, final BlockBuilder<?> registerFactoriesBody) {
+    registerFactoriesBody._(loadVariable(contextManagerFieldName).invoke("finishInit"));
   }
 
   private void addAllInjectableProviders(final DependencyGraphBuilder graphBuilder) {
@@ -162,7 +167,7 @@ public class IOCProcessor {
           @SuppressWarnings("rawtypes") final BlockBuilder registerFactoriesBody) {
     for (final Injectable injectable : dependencyGraph) {
       if (!injectable.isContextual()) {
-        if (injectable.getInjectableType().equals(InjectableType.Extension)) {
+        if (injectable.getInjectableType().equals(InjectableType.ExtensionProvided)) {
           declareAndRegisterConcreteInjectable(injectable, processingContext, scopeContexts, registerFactoriesBody);
           registerFactoryBodyGeneratorForInjectionSite(injectable);
         } else {
@@ -368,7 +373,7 @@ public class IOCProcessor {
 
   private WiringElementType[] getWiringTypes(final MetaClass type, final Class<? extends Annotation> directScope) {
     final List<WiringElementType> wiringTypes = new ArrayList<WiringElementType>();
-    if (Dependent.class.equals(directScope)) {
+    if (injectionContext.isElementType(WiringElementType.DependentBean, directScope)) {
       wiringTypes.add(WiringElementType.DependentBean);
     } else {
       wiringTypes.add(WiringElementType.NormalScopedBean);

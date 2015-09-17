@@ -10,7 +10,7 @@ class ProvidedInjectableImpl extends ConcreteInjectable implements ProvidedInjec
   final TransientInjectable injectable;
 
   ProvidedInjectableImpl(final TransientInjectable injectable, final InjectionSite site) {
-    super(injectable.type, injectable.qualifier, injectable.literalScope, InjectableType.Extension, injectable.wiringTypes);
+    super(injectable.type, injectable.qualifier, injectable.literalScope, InjectableType.ExtensionProvided, injectable.wiringTypes);
     this.site = site;
     this.injectable = injectable;
   }

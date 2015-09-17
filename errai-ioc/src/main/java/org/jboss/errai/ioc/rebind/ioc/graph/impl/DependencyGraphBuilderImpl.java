@@ -79,7 +79,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   @Override
   public Injectable addTransientInjectable(final MetaClass injectedType, final Qualifier qualifier,
           final Class<? extends Annotation> literalScope, final WiringElementType... wiringTypes) {
-    final ConcreteInjectable concrete = new TransientInjectable(injectedType, qualifier, literalScope, InjectableType.Transient, Arrays.asList(wiringTypes));
+    final ConcreteInjectable concrete = new TransientInjectable(injectedType, qualifier, literalScope, InjectableType.Extension, Arrays.asList(wiringTypes));
     return registerNewConcreteInjectable(concrete);
   }
 

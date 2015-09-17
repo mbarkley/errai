@@ -111,10 +111,10 @@ public class FactoryGenerator extends IncrementalGenerator {
     case Producer:
       generator = new ProducerFactoryBodyGenerator();
       break;
-    case Extension:
+    case ExtensionProvided:
       final String simpleName = getSimpleName(typeName);
       if (!customBodyGenerators.containsKey(simpleName)) {
-        throw new RuntimeException(simpleName + " has " + InjectableType.class.getSimpleName() + " " + InjectableType.Extension
+        throw new RuntimeException(simpleName + " has " + InjectableType.class.getSimpleName() + " " + InjectableType.ExtensionProvided
                 + " but no custom " + FactoryBodyGenerator.class.getSimpleName() + " has been registered.");
       }
       generator = customBodyGenerators.get(simpleName);

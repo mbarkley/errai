@@ -50,7 +50,6 @@ public abstract class AbstractContext implements Context {
   @Override
   public <T> void registerFactory(final Factory<T> factory) {
     factories.put(factory.getHandle().getFactoryName(), factory);
-    factory.init(this);
   }
 
   /**

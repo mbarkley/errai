@@ -96,4 +96,13 @@ public class ContextManagerImpl implements ContextManager {
     throw new RuntimeException("The given instance, " + instance + ", is not managed.");
   }
 
+  @Override
+  public void finishInit() {
+    for (final Context context : contexts) {
+      for (final Factory<?> factory : context.getAllFactories()) {
+        factory.init(context);
+      }
+    }
+  }
+
 }

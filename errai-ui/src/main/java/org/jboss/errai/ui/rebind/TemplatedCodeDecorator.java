@@ -15,6 +15,8 @@
  */
 package org.jboss.errai.ui.rebind;
 
+import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
+
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -63,6 +65,7 @@ import org.jboss.errai.ui.shared.TemplateUtil;
 import org.jboss.errai.ui.shared.api.annotations.EventHandler;
 import org.jboss.errai.ui.shared.api.annotations.SinkNative;
 import org.jboss.errai.ui.shared.api.annotations.Templated;
+import org.jboss.errai.ui.shared.api.style.StyleBindingsRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -151,6 +154,8 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
 //    }
 
     controller.addDestructionStatements(generateTemplateDestruction(decorable));
+    controller.addInitializationStatementsToEnd(Collections.<Statement>singletonList(invokeStatic(StyleBindingsRegistry.class, "get")
+        .invoke("updateStyles", Refs.get("instance"))));
   }
 
   /**
