@@ -294,7 +294,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
                 loadVariable("contextManager").invoke("getInstance", loadLiteral(depInjectable.getFactoryName())));
       }
 
-      final String fieldDepVarName = injectable.getInjectedType().getName() + "_" + field.getName();
+      final String fieldDepVarName = field.getDeclaringClassName() + "_" + field.getName();
 
       createInstanceStatements.add(declareFinalVariable(fieldDepVarName, depInjectable.getInjectedType(), injectedValue));
       if (depInjectable.getWiringElementTypes().contains(WiringElementType.DependentBean)) {

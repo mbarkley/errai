@@ -24,9 +24,10 @@ public interface ProvidedInjectable extends Injectable {
 
     private String annotatedName() {
       if (annotated instanceof MetaClassMember) {
-        return ((MetaClassMember) annotated).getName();
+        return ((MetaClassMember) annotated).getDeclaringClassName() + "_" + ((MetaClassMember) annotated).getName();
       } else if (annotated instanceof MetaParameter) {
-        return ((MetaParameter) annotated).getDeclaringMember().getName() + "_" + ((MetaParameter) annotated).getName();
+        final MetaClassMember declaringMember = ((MetaParameter) annotated).getDeclaringMember();
+        return declaringMember.getDeclaringClassName() + "_" + declaringMember.getName() + "_" + ((MetaParameter) annotated).getName();
       } else {
         throw new RuntimeException("Not yet implemented!");
       }
