@@ -29,6 +29,7 @@ import org.jboss.errai.ioc.tests.wiring.client.res.ActivatedBeanInterface;
 import org.jboss.errai.ioc.tests.wiring.client.res.AfterTask;
 import org.jboss.errai.ioc.tests.wiring.client.res.BeanManagerDependentBean;
 import org.jboss.errai.ioc.tests.wiring.client.res.BeforeTask;
+import org.jboss.errai.ioc.tests.wiring.client.res.DependentOnInnerType;
 import org.jboss.errai.ioc.tests.wiring.client.res.HappyInspector;
 import org.jboss.errai.ioc.tests.wiring.client.res.QualInspector;
 import org.jboss.errai.ioc.tests.wiring.client.res.SetterInjectionBean;
@@ -209,5 +210,10 @@ public class BasicIOCTest extends IOCClientTestCase {
   public void testBeanActiveByDefault() {
     IOCBeanDef<BeanManagerDependentBean> bean = IOC.getBeanManager().lookupBean(BeanManagerDependentBean.class);
     assertTrue(bean.isActivated());
+  }
+
+  public void testInjectingStaticInnerClass() {
+    DependentOnInnerType instance = IOC.getBeanManager().lookupBean(DependentOnInnerType.class).getInstance();
+    assertNotNull(instance.getInner());
   }
 }

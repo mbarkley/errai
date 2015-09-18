@@ -342,7 +342,7 @@ public class IOCProcessor {
 
   private boolean isTypeInjectableCandidate(MetaClass type) {
     final boolean isMemberClass = (type.asClass() != null && type.asClass().isMemberClass());
-    return type.isPublic() && type.isConcrete() && !isMemberClass;
+    return type.isPublic() && type.isConcrete() && (!isMemberClass || type.isStatic());
   }
 
   private boolean isSimpleton(final MetaClass type) {
