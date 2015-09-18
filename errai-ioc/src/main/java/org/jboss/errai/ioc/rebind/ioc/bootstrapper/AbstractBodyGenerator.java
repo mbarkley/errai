@@ -172,10 +172,16 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
                 injectable.getInjectedType(), loadVariable("proxyHelper").invoke("getInstance", loadVariable("this")));
         final ContextualStatementBuilder proxyHelperInvocation = proxyHelperInvocation(method, factoryClass);
         final Statement nonInitializedCase;
+        final boolean nonInitializedReturns;
         if (injectedType.isInterface()) {
           nonInitializedCase = throw_(RuntimeException.class, "Cannot invoke public method on proxied interface before constructor completes.");
+          nonInitializedReturns = false;
+        } else if (!(method.isPublic() || method.isPrivate() || method.isProtected())) {
+          nonInitializedCase = throw_(RuntimeException.class, "Cannot invoke proxied package private method before constructor completes.");
+          nonInitializedReturns = false;
         } else {
           nonInitializedCase = loadVariable("super").invoke(method.getName(), getParametersForInvocation(method));
+          nonInitializedReturns = true;
         }
         final BlockBuilder<ElseBlockBuilder> ifBlock = if_(
                 BooleanExpressionBuilder.create(loadVariable("proxyHelper"), BooleanOperator.NotEquals, null))
@@ -189,10 +195,10 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
           ifBlock._(declareFinalVariable("retVal", method.getReturnType(), proxyHelperInvocation));
           ifBlock.appendAll(controller.getInvokeAfterStatements(method));
           ifBlock._(loadVariable("retVal").returnValue());
-          if (injectedType.isInterface()) {
-            body._(ifBlock.finish().else_()._(nonInitializedCase).finish());
-          } else {
+          if (nonInitializedReturns) {
             body._(ifBlock.finish().else_()._(nestedCall(nonInitializedCase).returnValue()).finish());
+          } else {
+            body._(ifBlock.finish().else_()._(nonInitializedCase).finish());
           }
         }
 
@@ -209,17 +215,25 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     } else if (method.isProtected()) {
       methodBuilder = proxyImpl.protectedMethod(method.getReturnType().getErased(), method.getName(),
               getParametersForDeclaration(method));
+    } else if (!method.isPrivate()) {
+      methodBuilder = proxyImpl.packageMethod(method.getReturnType().getErased(), method.getName(),
+              getParametersForDeclaration(method));
     } else {
       final String methodType = (method.isProtected()) ? "private" : "package private";
       throw new RuntimeException(
               "Cannot proxy " + methodType + " method from " + method.getDeclaringClassName());
     }
-    return methodBuilder.annotatedWith(new Override() {
-      @Override
-      public Class<? extends Annotation> annotationType() {
-        return Override.class;
-      }
-    }).throws_(method.getCheckedExceptions()).body();
+
+    if (method.isPublic() || method.isProtected()) {
+      return methodBuilder.annotatedWith(new Override() {
+        @Override
+        public Class<? extends Annotation> annotationType() {
+          return Override.class;
+        }
+      }).throws_(method.getCheckedExceptions()).body();
+    } else {
+      return methodBuilder.throws_(method.getCheckedExceptions()).body();
+    }
   }
 
   private ContextualStatementBuilder proxyHelperInvocation(final MetaMethod method, final BuildMetaClass factoryClass) {
@@ -232,7 +246,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
   }
 
   private boolean shouldProxyMethod(final MetaMethod method) {
-    return !method.isStatic() && (method.isPublic() || method.isProtected()) && !method.isFinal()
+    return !method.isStatic() && !method.isPrivate() && !method.isFinal()
             && (method.asMethod() == null || method.asMethod().getDeclaringClass() == null
                     || !method.asMethod().getDeclaringClass().equals(Object.class));
   }
