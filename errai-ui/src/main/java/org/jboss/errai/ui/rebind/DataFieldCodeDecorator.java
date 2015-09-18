@@ -51,6 +51,7 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
 
   @Override
   public void generateDecorator(final Decorable decorable, final FactoryController controller) {
+    controller.ensureMemberExposed(decorable.get());
     Statement instance = decorable.getAccessStatement();
     String name = getTemplateDataFieldName((DataField) decorable.getAnnotation(), decorable.getName());
     if (decorable.getType().isAssignableTo(Element.class)) {

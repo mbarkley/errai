@@ -122,10 +122,10 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
           final ClassStructureBuilder<?> bodyBlockBuilder) {
     final MetaClass type = injectable.getInjectedType();
     final Set<HasAnnotations> privateAccessors = new HashSet<HasAnnotations>();
-    runDecoratorsForElementType(injectionContext, type, ElementType.TYPE, bodyBlockBuilder, privateAccessors, injectable);
     runDecoratorsForElementType(injectionContext, type, ElementType.FIELD, bodyBlockBuilder, privateAccessors, injectable);
-    runDecoratorsForElementType(injectionContext, type, ElementType.METHOD, bodyBlockBuilder, privateAccessors, injectable);
     runDecoratorsForElementType(injectionContext, type, ElementType.PARAMETER, bodyBlockBuilder, privateAccessors, injectable);
+    runDecoratorsForElementType(injectionContext, type, ElementType.METHOD, bodyBlockBuilder, privateAccessors, injectable);
+    runDecoratorsForElementType(injectionContext, type, ElementType.TYPE, bodyBlockBuilder, privateAccessors, injectable);
 
     for (final HasAnnotations annotated : privateAccessors) {
       if (annotated instanceof MetaField) {

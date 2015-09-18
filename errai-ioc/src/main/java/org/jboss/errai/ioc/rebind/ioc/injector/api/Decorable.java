@@ -21,6 +21,7 @@ import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
+import org.jboss.errai.ioc.util.CDIAnnotationUtils;
 
 public class Decorable {
 
@@ -172,6 +173,22 @@ public class Decorable {
     this.context = context;
     this.factory = factory;
     this.injectable = injectable;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof Decorable)) {
+      return false;
+    }
+    final Decorable other = (Decorable) obj;
+
+    return decorableType.equals(other.decorableType) && CDIAnnotationUtils.equals(annotation, other.annotation)
+            && annotated.equals(other.annotated) && injectable.equals(other.injectable);
+  }
+
+  @Override
+  public int hashCode() {
+    return decorableType.hashCode() ^ CDIAnnotationUtils.hashCode(annotation) ^ annotated.hashCode() ^ injectable.hashCode();
   }
 
   public Annotation getAnnotation() {

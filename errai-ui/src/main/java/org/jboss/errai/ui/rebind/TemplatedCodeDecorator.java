@@ -15,7 +15,10 @@
  */
 package org.jboss.errai.ui.rebind;
 
+import static org.jboss.errai.codegen.util.Stmt.declareVariable;
 import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
+import static org.jboss.errai.codegen.util.Stmt.loadVariable;
+import static org.jboss.errai.codegen.util.Stmt.newObject;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
@@ -258,13 +261,13 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
       /*
        * The Map<String, Widget> to store actual component field references.
        */
-      initStmts.add(Stmt.declareVariable(fieldsMapVarName, new TypeLiteral<Map<String, Widget>>() {},
-          Stmt.newObject(new TypeLiteral<LinkedHashMap<String, Widget>>() {}))
+      initStmts.add(declareVariable(fieldsMapVarName, new TypeLiteral<Map<String, Widget>>() {},
+          newObject(new TypeLiteral<LinkedHashMap<String, Widget>>() {}))
       );
       final Statement fieldsMap = Stmt.loadVariable(fieldsMapVarName);
 
       generateComponentCompositions(decorable, initStmts, component, rootTemplateElement,
-          Stmt.loadVariable(dataFieldElementsVarName), fieldsMap);
+          loadVariable(dataFieldElementsVarName), fieldsMap);
 
       generateEventHandlerMethodClasses(decorable, controller, initStmts, dataFieldElementsVarName, fieldsMap);
     }
@@ -545,9 +548,9 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
      * Merge each field's Widget Element into the DOM in place of the
      * corresponding data-field
      */
-    final Map<String, Statement> dataFields = DataFieldCodeDecorator.aggregateDataFieldMap(decorable, decorable.getDecorableDeclaringType());
+    final Map<String, Statement> dataFields = DataFieldCodeDecorator.aggregateDataFieldMap(decorable, decorable.getEnclosingInjectable().getInjectedType());
     for (final Entry<String, Statement> field : dataFields.entrySet()) {
-      initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "compositeComponentReplace", decorable.getDecorableDeclaringType()
+      initStmts.add(invokeStatic(TemplateUtil.class, "compositeComponentReplace", decorable.getDecorableDeclaringType()
           .getFullyQualifiedName(), getTemplateFileName(decorable.getDecorableDeclaringType()), Cast.to(Widget.class, field.getValue()),
           dataFieldElements, field.getKey()));
     }
