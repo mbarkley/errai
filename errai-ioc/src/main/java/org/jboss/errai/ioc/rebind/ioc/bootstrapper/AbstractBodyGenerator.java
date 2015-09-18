@@ -7,6 +7,7 @@ import static org.jboss.errai.codegen.util.PrivateAccessUtil.addPrivateAccessStu
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateMethodName;
 import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
 import static org.jboss.errai.codegen.util.Stmt.if_;
+import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
 import static org.jboss.errai.codegen.util.Stmt.loadLiteral;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 import static org.jboss.errai.codegen.util.Stmt.nestedCall;
@@ -33,6 +34,7 @@ import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.ConstructorBlockBuilder;
 import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.builder.ElseBlockBuilder;
+import org.jboss.errai.codegen.builder.MethodCommentBuilder;
 import org.jboss.errai.codegen.builder.impl.BooleanExpressionBuilder;
 import org.jboss.errai.codegen.builder.impl.ClassBuilder;
 import org.jboss.errai.codegen.builder.impl.StatementBuilder;
@@ -43,6 +45,7 @@ import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
+import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.api.ActivatedBy;
 import org.jboss.errai.ioc.client.api.EntryPoint;
@@ -132,7 +135,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     }
 
     implementProxyMethods(proxyImpl, injectable);
-    implementAccessibleMethods(proxyImpl, injectable);
+    implementAccessibleMethods(proxyImpl, injectable, bodyBlockBuilder.getClassDefinition());
 
     bodyBlockBuilder.declaresInnerClass(new InnerClass(proxyImpl.getClassDefinition()));
 
@@ -160,24 +163,14 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
             injectable.getFactoryName());
   }
 
-  private void implementAccessibleMethods(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {
+  private void implementAccessibleMethods(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable, final BuildMetaClass factoryClass) {
     final MetaClass injectedType = injectable.getInjectedType();
     for (final MetaMethod method : injectedType.getMethods()) {
-      // TODO clean this up and maybe proxy package private and protected methods?
-      if (!method.isStatic() && method.isPublic() && !method.isFinal() && (method.asMethod() == null || method.asMethod().getDeclaringClass() == null
-              || !method.asMethod().getDeclaringClass().equals(Object.class))) {
-        final BlockBuilder<?> body = proxyImpl
-                .publicMethod(method.getReturnType().getErased(), method.getName(), getParametersForDeclaration(method))
-                .annotatedWith(new Override() {
-                  @Override
-                  public Class<? extends Annotation> annotationType() {
-                    return Override.class;
-                  }
-                })
-                .throws_(method.getCheckedExceptions()).body();
+      if (shouldProxyMethod(method)) {
+        final BlockBuilder<?> body = createProxyMethodDeclaration(proxyImpl, method);
         final StatementBuilder proxiedInstanceDeclaration = declareFinalVariable("proxiedInstance",
                 injectable.getInjectedType(), loadVariable("proxyHelper").invoke("getInstance", loadVariable("this")));
-        final ContextualStatementBuilder proxyHelperInvocation = loadVariable("proxiedInstance").invoke(method.getName(), getParametersForInvocation(method));
+        final ContextualStatementBuilder proxyHelperInvocation = proxyHelperInvocation(method, factoryClass);
         final Statement nonInitializedCase;
         if (injectedType.isInterface()) {
           nonInitializedCase = throw_(RuntimeException.class, "Cannot invoke public method on proxied interface before constructor completes.");
@@ -208,11 +201,51 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     }
   }
 
-  private Object[] getParametersForInvocation(final MetaMethod method) {
-    final Object[] params = new Object[method.getParameters().length];
+  private BlockBuilder<?> createProxyMethodDeclaration(final ClassStructureBuilder<?> proxyImpl, final MetaMethod method) {
+    final MethodCommentBuilder<?> methodBuilder;
+    if (method.isPublic()) {
+      methodBuilder = proxyImpl.publicMethod(method.getReturnType().getErased(), method.getName(),
+              getParametersForDeclaration(method));
+    } else if (method.isProtected()) {
+      methodBuilder = proxyImpl.protectedMethod(method.getReturnType().getErased(), method.getName(),
+              getParametersForDeclaration(method));
+    } else {
+      final String methodType = (method.isProtected()) ? "private" : "package private";
+      throw new RuntimeException(
+              "Cannot proxy " + methodType + " method from " + method.getDeclaringClassName());
+    }
+    return methodBuilder.annotatedWith(new Override() {
+      @Override
+      public Class<? extends Annotation> annotationType() {
+        return Override.class;
+      }
+    }).throws_(method.getCheckedExceptions()).body();
+  }
+
+  private ContextualStatementBuilder proxyHelperInvocation(final MetaMethod method, final BuildMetaClass factoryClass) {
+    if (method.isPublic()) {
+      return loadVariable("proxiedInstance").invoke(method.getName(), getParametersForInvocation(method));
+    } else {
+      controller.addExposedMethod(method);
+      return invokeStatic(factoryClass, getPrivateMethodName(method), getParametersForInvocation(method, loadVariable("proxiedInstance")));
+    }
+  }
+
+  private boolean shouldProxyMethod(final MetaMethod method) {
+    return !method.isStatic() && (method.isPublic() || method.isProtected()) && !method.isFinal()
+            && (method.asMethod() == null || method.asMethod().getDeclaringClass() == null
+                    || !method.asMethod().getDeclaringClass().equals(Object.class));
+  }
+
+  private Object[] getParametersForInvocation(final MetaMethod method, Object... prependedParams) {
+    final int paramLength = method.getParameters().length + prependedParams.length;
+    final Object[] params = new Object[paramLength];
+    for (int i = 0; i < prependedParams.length; i++) {
+      params[i] = prependedParams[i];
+    }
     final MetaParameter[] declaredParams = method.getParameters();
     for (int i = 0; i < declaredParams.length; i++) {
-      params[i] = loadVariable(declaredParams[i].getName());
+      params[prependedParams.length+i] = loadVariable(declaredParams[i].getName());
     }
 
     return params;
