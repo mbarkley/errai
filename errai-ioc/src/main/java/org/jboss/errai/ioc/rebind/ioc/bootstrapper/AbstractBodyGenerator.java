@@ -246,9 +246,33 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
   }
 
   private boolean shouldProxyMethod(final MetaMethod method) {
-    return !method.isStatic() && !method.isPrivate() && !method.isFinal()
-            && (method.asMethod() == null || method.asMethod().getDeclaringClass() == null
-                    || !method.asMethod().getDeclaringClass().equals(Object.class));
+    return (method.getDeclaringClass() != null && method.getDeclaringClass().isInterface())
+            || !method.isStatic() && !method.isPrivate() && !method.isFinal()
+                    && (method.asMethod() == null || method.asMethod().getDeclaringClass() == null
+                            || !method.asMethod().getDeclaringClass().equals(Object.class))
+            && typesInSignatureAreVisible(method);
+  }
+
+  private boolean typesInSignatureAreVisible(final MetaMethod method) {
+    if (!isVisibleType(method.getReturnType())) {
+      return false;
+    }
+
+    for (final MetaParameter param : method.getParameters()) {
+      if (!isVisibleType(param.getType())) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private boolean isVisibleType(final MetaClass type) {
+    if (type.isArray()) {
+      return isVisibleType(type.getComponentType());
+    } else {
+      return type.isPublic() || type.isProtected() || type.isPrimitive();
+    }
   }
 
   private Object[] getParametersForInvocation(final MetaMethod method, Object... prependedParams) {
