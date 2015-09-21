@@ -13,6 +13,7 @@ import java.lang.annotation.ElementType;
 
 import org.jboss.errai.codegen.Context;
 import org.jboss.errai.codegen.Statement;
+import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassMember;
@@ -38,7 +39,7 @@ public class Decorable {
       }
 
       @Override
-      public Statement getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory) {
+      public ContextualStatementBuilder getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory) {
         final MetaField field = (MetaField) annotated;
         if (field.isPublic()) {
           return loadClassMember(field.getName());
@@ -59,7 +60,7 @@ public class Decorable {
       }
 
       @Override
-      public Statement getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory, final Statement[] statement) {
+      public ContextualStatementBuilder getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory, final Statement[] statement) {
         final MetaMethod method = (MetaMethod) annotated;
         if (method.isPublic()) {
           return loadVariable("instance").invoke(method, (Object[]) statement);
@@ -74,7 +75,7 @@ public class Decorable {
       }
 
       @Override
-      public Statement getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory) {
+      public ContextualStatementBuilder getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory) {
         return getAccessStatement(annotated, factory, new Statement[0]);
       }
     },
@@ -90,7 +91,7 @@ public class Decorable {
       }
 
       @Override
-      public Statement getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory) {
+      public ContextualStatementBuilder getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory) {
         final MetaParameter param = (MetaParameter) annotated;
         return loadVariable(getLocalVariableName(param));
       }
@@ -117,7 +118,7 @@ public class Decorable {
       }
 
       @Override
-      public Statement getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory) {
+      public ContextualStatementBuilder getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory) {
         return loadVariable("instance");
       }
 
@@ -129,10 +130,10 @@ public class Decorable {
 
     public abstract MetaClass getType(HasAnnotations annotated);
     public abstract MetaClass getEnclosingType(HasAnnotations annotated);
-    public Statement getAccessStatement(HasAnnotations annotated, final BuildMetaClass factory, final Statement[] params) {
+    public ContextualStatementBuilder getAccessStatement(HasAnnotations annotated, final BuildMetaClass factory, final Statement[] params) {
       return getAccessStatement(annotated, factory);
     }
-    public abstract Statement getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory);
+    public abstract ContextualStatementBuilder getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory);
     public Statement call(final HasAnnotations annotated, final BuildMetaClass factory, Statement... params) {
       return getAccessStatement(annotated, factory, params);
     }

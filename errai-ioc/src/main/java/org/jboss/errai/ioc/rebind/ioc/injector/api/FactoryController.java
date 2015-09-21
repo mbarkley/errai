@@ -1,9 +1,6 @@
 package org.jboss.errai.ioc.rebind.ioc.injector.api;
 
-import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateFieldAccessorName;
-import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateMethodName;
 import static org.jboss.errai.codegen.util.Stmt.castTo;
-import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 import static org.jboss.errai.ioc.rebind.ioc.bootstrapper.InjectUtil.constructGetReference;
 import static org.jboss.errai.ioc.rebind.ioc.bootstrapper.InjectUtil.constructSetReference;
@@ -29,6 +26,7 @@ import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable.DecorableType;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
@@ -146,7 +144,7 @@ public class FactoryController {
   public ContextualStatementBuilder exposedFieldStmt(final MetaField field) {
     addExposedField(field);
 
-    return invokeStatic(factory, getPrivateFieldAccessorName(field), loadVariable("instance"));
+    return DecorableType.FIELD.getAccessStatement(field, factory);
   }
 
   public void ensureMemberExposed(final HasAnnotations annotated) {
@@ -169,10 +167,10 @@ public class FactoryController {
     exposedFields.add(field);
   }
 
-  public Statement exposedMethodStmt(final MetaMethod method, final Statement... params) {
+  public ContextualStatementBuilder exposedMethodStmt(final MetaMethod method, final Statement... params) {
     addExposedMethod(method);
 
-    return invokeStatic(factory, getPrivateMethodName(method), loadVariable("instance"));
+    return DecorableType.METHOD.getAccessStatement(method, factory, params);
   }
 
   public void addExposedMethod(final MetaMethod method) {

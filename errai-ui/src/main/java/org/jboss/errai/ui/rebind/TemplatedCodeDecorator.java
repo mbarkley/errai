@@ -122,7 +122,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
     generateTemplatedInitialization(decorable, controller, initStmts, customProvider);
 
     if (declaringClass.isAnnotationPresent(EntryPoint.class)) {
-      initStmts.add(Stmt.invokeStatic(RootPanel.class, "get").invoke("add", Refs.get("obj")));
+      initStmts.add(Stmt.invokeStatic(RootPanel.class, "get").invoke("add", Refs.get("instance")));
     }
 
     if (customProvider) {
@@ -426,7 +426,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
           // Where will the event come from? It could be a @DataField member, or it could be the templated widget itself!
           final Statement eventSource;
           if ("this".equals(name)) {
-            eventSource = Stmt.loadVariable("obj");
+            eventSource = Stmt.loadVariable("instance");
           }
           else {
             eventSource = Stmt.nestedCall(fieldsMap).invoke("get", name);
