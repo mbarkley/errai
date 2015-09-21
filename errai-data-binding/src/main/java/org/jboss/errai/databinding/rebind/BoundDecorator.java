@@ -134,7 +134,9 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
 
     controller.setAttribute(DataBindingUtil.BINDER_MODEL_TYPE_VALUE, binderLookup.getDataModelType());
     controller.addInitializationStatements(statements);
-    controller.addDestructionStatements(Collections.<Statement>singletonList(nestedCall(binderLookup.getValueAccessor()).invoke("unbind")));
+    if (!hasRunForType) {
+      controller.addDestructionStatements(Collections.<Statement>singletonList(nestedCall(binderLookup.getValueAccessor()).invoke("unbind")));
+    }
   }
 
 }
