@@ -4,7 +4,6 @@ import static org.apache.commons.lang3.Validate.notNull;
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateFieldAccessorName;
 import static org.jboss.errai.codegen.util.PrivateAccessUtil.getPrivateMethodName;
 import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
-import static org.jboss.errai.codegen.util.Stmt.loadClassMember;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 import static org.jboss.errai.ioc.rebind.ioc.bootstrapper.FactoryGenerator.getLocalVariableName;
 
@@ -42,7 +41,7 @@ public class Decorable {
       public ContextualStatementBuilder getAccessStatement(final HasAnnotations annotated, final BuildMetaClass factory) {
         final MetaField field = (MetaField) annotated;
         if (field.isPublic()) {
-          return loadClassMember(field.getName());
+          return loadVariable("instance").loadField(field);
         } else {
           return invokeStatic(notNull(factory), getPrivateFieldAccessorName(field), loadVariable("instance"));
         }
