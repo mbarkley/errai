@@ -11,13 +11,7 @@ enum ResolutionPriority {
   /*
    * From highest to lowest priority.
    */
-  Provided {
-    private final Collection<InjectableType> providerTypes = Arrays.<InjectableType>asList(InjectableType.Provider, InjectableType.ContextualProvider);
-    @Override
-    public boolean matches(final Injectable injectable) {
-      return providerTypes.contains(injectable.getInjectableType());
-    }
-  }, EnabledAlternative {
+  EnabledAlternative {
     @Override
     public boolean matches(final Injectable injectable) {
       return injectable.getWiringElementTypes().contains(WiringElementType.AlternativeBean);
@@ -27,6 +21,12 @@ enum ResolutionPriority {
     @Override
     public boolean matches(final Injectable injectable) {
       return matchingTypes.contains(injectable.getInjectableType()) && !injectable.getWiringElementTypes().contains(WiringElementType.Simpleton);
+    }
+  }, Provided {
+    private final Collection<InjectableType> providerTypes = Arrays.<InjectableType>asList(InjectableType.Provider, InjectableType.ContextualProvider);
+    @Override
+    public boolean matches(final Injectable injectable) {
+      return providerTypes.contains(injectable.getInjectableType());
     }
   }, TransientOrExtension {
     private final Collection<InjectableType> extensionTypes = Arrays.asList(InjectableType.Extension, InjectableType.ExtensionProvided);
