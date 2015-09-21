@@ -414,7 +414,10 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       }
       if (!visited.contains(concrete)) {
         for (final BaseDependency dep : concrete.dependencies) {
-          resolveDependency(dep, concrete, customProvideds);
+          final ConcreteInjectable resolved = resolveDependency(dep, concrete, customProvideds);
+          if (dep.dependencyType.equals(DependencyType.Constructor)) {
+            resolved.setRequiresProxyTrue();
+          }
         }
       }
     }

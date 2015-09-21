@@ -63,7 +63,6 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependenc
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
@@ -113,25 +112,24 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
 
     final ClassStructureBuilder<?> proxyImpl;
     final MetaClass injectedType = injectable.getInjectedType();
-    if (injectedType.isInterface()) {
+    final boolean requiresProxy = injectable.requiresProxy();
+    if (requiresProxy && injectedType.isInterface()) {
       proxyImpl = ClassBuilder
               .define(injectable.getFactoryName() + "ProxyImpl")
               .privateScope()
               .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectedType)))
               .implementsInterface(injectedType).body();
       declareAndInitializeProxyHelper(injectable, proxyImpl);
-    } else if (isProxiable(injectable)) {
+    } else if (requiresProxy && isProxiable(injectable)) {
       proxyImpl = ClassBuilder
               .define(injectable.getFactoryName() + "ProxyImpl", injectedType)
               .privateScope()
               .implementsInterface(parameterizedAs(Proxy.class, typeParametersOf(injectedType))).body();
       declareAndInitializeProxyHelper(injectable, proxyImpl);
+    } else if (!requiresProxy) {
+      return null;
     } else {
-      if (!injectable.requiresProxy()) {
-        return null;
-      } else {
-        throw new RuntimeException(injectedType + " must be proxiable but is not default instatiable.");
-      }
+      throw new RuntimeException(injectedType + " must be proxiable but is not.");
     }
 
     implementProxyMethods(proxyImpl, injectable);
@@ -145,7 +143,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
   private boolean isProxiable(final Injectable injectable) {
     final MetaClass type = injectable.getInjectedType();
 
-    return !injectable.getWiringElementTypes().contains(WiringElementType.Simpleton) && type.isDefaultInstantiable() && !type.isFinal();
+    return type.isDefaultInstantiable() && !type.isFinal();
   }
 
   private void declareAndInitializeProxyHelper(final Injectable injectable, final ClassStructureBuilder<?> bodyBlockBuilder) {

@@ -66,7 +66,10 @@ class ConcreteInjectable extends BaseInjectable {
       return false;
     case Producer:
     case Type:
+    case JsType:
+    case ExtensionProvided:
       return requiresProxy || !(wiringTypes.contains(WiringElementType.DependentBean) || literalScope.equals(EntryPoint.class));
+    case Extension:
     default:
       throw new RuntimeException("Not yet implemented!");
     }
