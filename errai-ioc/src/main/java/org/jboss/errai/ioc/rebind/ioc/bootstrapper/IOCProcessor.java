@@ -130,10 +130,11 @@ public class IOCProcessor {
 
   private void addAllInjectableProviders(final DependencyGraphBuilder graphBuilder) {
     for (final InjectableHandle handle : injectionContext.getInjectableProviders().keySet()) {
-      graphBuilder.addTransientInjectable(handle.getType(), handle.getQualifier(), Dependent.class);
+      graphBuilder.addTransientInjectable(handle.getType(), handle.getQualifier(), Dependent.class, WiringElementType.DependentBean);
     }
     for (final InjectableHandle handle : injectionContext.getSubTypeMatchingInjectableProviders().keySet()) {
-      graphBuilder.addTransientInjectable(handle.getType(), handle.getQualifier(), Dependent.class, WiringElementType.SubTypeMatching);
+      graphBuilder.addTransientInjectable(handle.getType(), handle.getQualifier(), Dependent.class,
+              WiringElementType.DependentBean, WiringElementType.SubTypeMatching);
     }
   }
 
@@ -415,7 +416,7 @@ public class IOCProcessor {
     final MetaMethod providerMethod = providerImpl.getMethod("provide", Class[].class, Annotation[].class);
     final MetaClass providedType = providerMethod.getReturnType();
     final Injectable providedInjectable = builder.addConcreteInjectable(providedType, qualFactory.forUniversallyQualified(),
-            Dependent.class, InjectableType.ContextualProvider, WiringElementType.Provider);
+            Dependent.class, InjectableType.ContextualProvider, WiringElementType.Provider, WiringElementType.DependentBean);
     builder.addProducerMemberDependency(providedInjectable, providerImpl, providerInjectable.getQualifier(), providerMethod);
   }
 
@@ -424,7 +425,7 @@ public class IOCProcessor {
     final MetaMethod providerMethod = providerImpl.getMethod("get", new Class[0]);
     final MetaClass providedType = providerMethod.getReturnType();
     final Injectable providedInjectable = builder.addConcreteInjectable(providedType, qualFactory.forUniversallyQualified(),
-            Dependent.class, InjectableType.Provider, WiringElementType.Provider);
+            Dependent.class, InjectableType.Provider, WiringElementType.Provider, WiringElementType.DependentBean);
     builder.addProducerMemberDependency(providedInjectable, providerImplInjectable.getInjectedType(), providerImplInjectable.getQualifier(), providerMethod);
   }
 
