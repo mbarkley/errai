@@ -197,4 +197,8 @@ public class FactoryController {
     endInitializationStatements.addAll(statements);
   }
 
+  public boolean requiresProxy() {
+    return !(proxyProperties.isEmpty() && invokeAfter.isEmpty() && invokeBefore.isEmpty());
+  }
+
 }

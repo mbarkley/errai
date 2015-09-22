@@ -112,7 +112,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
 
     final ClassStructureBuilder<?> proxyImpl;
     final MetaClass injectedType = injectable.getInjectedType();
-    final boolean requiresProxy = injectable.requiresProxy();
+    final boolean requiresProxy = requiresProxy(injectable);
     if (requiresProxy && injectedType.isInterface()) {
       proxyImpl = ClassBuilder
               .define(injectable.getFactoryName() + "ProxyImpl")
@@ -138,6 +138,10 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     bodyBlockBuilder.declaresInnerClass(new InnerClass(proxyImpl.getClassDefinition()));
 
     return proxyImpl.getClassDefinition();
+  }
+
+  private boolean requiresProxy(final Injectable injectable) {
+    return injectable.requiresProxy() || controller.requiresProxy();
   }
 
   private boolean isProxiable(final Injectable injectable) {
