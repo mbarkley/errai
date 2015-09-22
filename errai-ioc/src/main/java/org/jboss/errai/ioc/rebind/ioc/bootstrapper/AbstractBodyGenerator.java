@@ -42,6 +42,7 @@ import org.jboss.errai.codegen.literal.LiteralFactory;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
+import org.jboss.errai.codegen.meta.MetaConstructor;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
@@ -147,7 +148,12 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
   private boolean isProxiable(final Injectable injectable) {
     final MetaClass type = injectable.getInjectedType();
 
-    return type.isDefaultInstantiable() && !type.isFinal();
+    return (type.isDefaultInstantiable() || (type.isAbstract() && hasDefaultConstructor(type))) && !type.isFinal();
+  }
+
+  private boolean hasDefaultConstructor(final MetaClass type) {
+    final MetaConstructor con = type.getConstructor(new Class[0]);
+    return con != null && (con.isPublic() || con.isProtected());
   }
 
   private void declareAndInitializeProxyHelper(final Injectable injectable, final ClassStructureBuilder<?> bodyBlockBuilder) {
@@ -194,7 +200,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
           ifBlock.appendAll(controller.getInvokeAfterStatements(method));
           body._(ifBlock.finish().else_()._(nonInitializedCase).finish());
         } else {
-          ifBlock._(declareFinalVariable("retVal", method.getReturnType(), proxyHelperInvocation));
+          ifBlock._(declareFinalVariable("retVal", method.getReturnType().getErased(), proxyHelperInvocation));
           ifBlock.appendAll(controller.getInvokeAfterStatements(method));
           ifBlock._(loadVariable("retVal").returnValue());
           if (nonInitializedReturns) {

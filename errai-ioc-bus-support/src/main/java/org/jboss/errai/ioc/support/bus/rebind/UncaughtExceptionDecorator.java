@@ -65,13 +65,13 @@ public class UncaughtExceptionDecorator extends IOCDecoratorExtension<UncaughtEx
     }
 
     final String handlerVar = method.getName() + "Handler";
-    final Statement setRefStmt = controller.setReferenceStmt(handlerVar, Refs.get("handler"));
+    final Statement setRefStmt = controller.setReferenceStmt(handlerVar, Refs.get(handlerVar));
 
     final List<Statement> initStatements = Arrays.asList(
-            generateExceptionHandler(decorable),
+            generateExceptionHandler(decorable, handlerVar),
             setRefStmt,
-            Stmt.castTo(ClientMessageBusImpl.class, Stmt.invokeStatic(ErraiBus.class, "get")
-                    .invoke("addUncaughtExceptionHandler", Refs.get("handler"))));
+            Stmt.castTo(ClientMessageBusImpl.class, Stmt.invokeStatic(ErraiBus.class, "get"))
+                    .invoke("addUncaughtExceptionHandler", Refs.get(handlerVar)));
 
     final Statement getRefStmt = controller.getReferenceStmt(handlerVar, UncaughtExceptionHandler.class);
     final List<Statement> destStatements = Arrays.<Statement>asList(
@@ -82,9 +82,9 @@ public class UncaughtExceptionDecorator extends IOCDecoratorExtension<UncaughtEx
     controller.addDestructionStatements(destStatements);
   }
 
-  private Statement generateExceptionHandler(final Decorable decorable) {
+  private Statement generateExceptionHandler(final Decorable decorable, final String name) {
     final Statement handlerStatement =
-        Stmt.declareFinalVariable("handler", UncaughtExceptionHandler.class,
+        Stmt.declareFinalVariable(name, UncaughtExceptionHandler.class,
             Stmt.newObject(UncaughtExceptionHandler.class).extend()
                 .publicMethod(void.class, "onUncaughtException", Parameter.of(Throwable.class, "t"))
                 .append(decorable.call(Refs.get("t")))

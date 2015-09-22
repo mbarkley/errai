@@ -33,13 +33,18 @@ import org.jboss.errai.ui.nav.client.local.api.SecurityError;
  * {@link UnauthenticatedException} is caught, Errai Navigation is directed to
  * the {@link LoginPage}. If an {@link UnauthorizedException} is caught, Errai
  * Navigation is directed to the {@link SecurityError} page.
- * 
+ *
  * @author Max Barkley <mbarkley@redhat.com>
  */
 @ApplicationScoped
 public class DefaultBusSecurityErrorCallback {
-  
+
   private final SecurityContext context;
+
+  // For proxying
+  public DefaultBusSecurityErrorCallback() {
+    context = null;
+  }
 
   @Inject
   public DefaultBusSecurityErrorCallback(final SecurityContext context) {

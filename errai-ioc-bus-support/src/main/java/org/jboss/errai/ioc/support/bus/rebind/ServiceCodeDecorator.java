@@ -52,7 +52,7 @@ public class ServiceCodeDecorator extends IOCDecoratorExtension<Service> {
       }
     }
 
-    final String varName = decorable.getAsMethod().getName() + "ServiceSub";
+    final String varName = decorable.getName() + "ServiceSub";
 
     final Statement subscribeStatement;
 
