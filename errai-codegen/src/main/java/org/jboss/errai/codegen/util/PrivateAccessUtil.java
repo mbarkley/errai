@@ -183,7 +183,7 @@ public class PrivateAccessUtil {
 
   public static String getPrivateFieldAccessorName(final MetaField field) {
     return field.getDeclaringClass().getName()
-        + "_" + field.getType().getName()
+        + "_" + getTypeName(field.getType())
         + "_" + field.getName();
   }
 
@@ -193,11 +193,19 @@ public class PrivateAccessUtil {
 
     if (method.getParameters() != null) {
       for (MetaParameter p : method.getParameters()) {
-       name += "_" + p.getType().getName();
+       name += "_" + getTypeName(p.getType());
       }
     }
 
     return name;
+  }
+
+  private static String getTypeName(final MetaClass type) {
+    if (type.isArray()) {
+      return type.getName().replace("[]", "_array");
+    } else {
+      return type.getName();
+    }
   }
 
   public static String condensify(String name) {

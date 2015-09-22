@@ -16,6 +16,8 @@
 
 package org.jboss.errai.config.rebind;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -72,14 +74,16 @@ public abstract class MetaClassBridgeUtil {
       final Set<String> translatable = new HashSet<String>(RebindUtils.findTranslatablePackages(context));
       final Set<String> reloadable = RebindUtils.getReloadablePackageNames(context);
 
+      final Collection<String> skippableTypes = Arrays.asList("java.lang.Object", "java.lang.Class");
       for (final JClassType type : typeOracle.getTypes()) {
-        if (!translatable.contains(type.getPackage().getName())) {
- //         logger.log(com.google.gwt.core.ext.TreeLogger.Type.DEBUG, "Skipping non-translatable " + type.getQualifiedSourceName());
+        /*
+         * Object and Class must be skipped so that server-side generated code gets the non-emulated versions of these classes.
+         */
+        if (!translatable.contains(type.getPackage().getName()) || skippableTypes.contains(type.getQualifiedSourceName())) {
           continue;
         }
 
         if (type.isAnnotation() != null || type.getQualifiedSourceName().equals("java.lang.annotation.Annotation")) {
-   //       logger.log(com.google.gwt.core.ext.TreeLogger.Type.DEBUG, "Caching annotation type " + type.getQualifiedSourceName());
 
           if (!MetaClassFactory.canLoadClass(type.getQualifiedBinaryName())) {
             throw new RuntimeException("a new annotation has been introduced (" + type.getQualifiedSourceName() + "); "

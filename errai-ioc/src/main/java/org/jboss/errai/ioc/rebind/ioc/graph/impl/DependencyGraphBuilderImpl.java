@@ -580,9 +580,9 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       if (fromType.getFullyQualifiedName().equals(toType.getFullyQualifiedName())) {
         return fromType.getParameterizedType();
       }
-      for (final MetaClass iface : fromType.getInterfaces()) {
-        if (iface.getFullyQualifiedName().equals(toType.getFullyQualifiedName())) {
-          return iface.getParameterizedType();
+      for (final MetaClass type : fromType.getAllSuperTypesAndInterfaces()) {
+        if (type.isInterface() && type.getFullyQualifiedName().equals(toType.getFullyQualifiedName())) {
+          return type.getParameterizedType();
         }
       }
       throw new RuntimeException("Could not find interface " + toType.getFullyQualifiedName() + " through type " + fromType.getFullyQualifiedName());
