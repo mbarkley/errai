@@ -53,6 +53,7 @@ import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.client.container.BeanActivator;
 import org.jboss.errai.ioc.client.container.Context;
 import org.jboss.errai.ioc.client.container.ContextManager;
+import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.client.container.FactoryHandle;
 import org.jboss.errai.ioc.client.container.FactoryHandleImpl;
 import org.jboss.errai.ioc.client.container.Proxy;
@@ -256,9 +257,14 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
   private boolean shouldProxyMethod(final MetaMethod method) {
     return (method.getDeclaringClass() != null && method.getDeclaringClass().isInterface())
             || !method.isStatic() && !method.isPrivate() && !method.isFinal()
-                    && (method.asMethod() == null || method.asMethod().getDeclaringClass() == null
-                            || !method.asMethod().getDeclaringClass().equals(Object.class))
+                    && methodIsNotFromObjectUnlessHashCode(method)
             && typesInSignatureAreVisible(method);
+  }
+
+  private boolean methodIsNotFromObjectUnlessHashCode(final MetaMethod method) {
+    return method.asMethod() == null || method.asMethod().getDeclaringClass() == null
+            || !method.asMethod().getDeclaringClass().equals(Object.class)
+            || method.getName().equals("hashCode");
   }
 
   private boolean typesInSignatureAreVisible(final MetaMethod method) {
@@ -315,6 +321,14 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     implementClearInstance(proxyImpl, injectable);
     implementSetContext(proxyImpl, injectable);
     implementUnwrappedInstance(proxyImpl, injectable);
+    implementEquals(proxyImpl);
+  }
+
+  private void implementEquals(final ClassStructureBuilder<?> proxyImpl) {
+    proxyImpl.publicMethod(boolean.class, "equals", Parameter.of(Object.class, "obj")).body()
+      ._(loadVariable("obj").assignValue(invokeStatic(Factory.class, "maybeUnwrapProxy", loadVariable("obj"))))
+      ._(loadVariable("proxyHelper").invoke("getInstance", loadVariable("this")).invoke("equals", loadVariable("obj")).returnValue())
+      .finish();
   }
 
   private void implementInitProxyProperties(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable) {
