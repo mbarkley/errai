@@ -415,8 +415,9 @@ public class IOCProcessor {
     final MetaClass providerImpl = providerInjectable.getInjectedType();
     final MetaMethod providerMethod = providerImpl.getMethod("provide", Class[].class, Annotation[].class);
     final MetaClass providedType = providerMethod.getReturnType();
-    final Injectable providedInjectable = builder.addConcreteInjectable(providedType, qualFactory.forUniversallyQualified(),
-            Dependent.class, InjectableType.ContextualProvider, WiringElementType.Provider, WiringElementType.DependentBean);
+    final Injectable providedInjectable = builder.addConcreteInjectable(providedType,
+            qualFactory.forUniversallyQualified(), Dependent.class, InjectableType.ContextualProvider,
+            WiringElementType.Provider, WiringElementType.DependentBean, WiringElementType.ExactTypeMatching);
     builder.addProducerMemberDependency(providedInjectable, providerImpl, providerInjectable.getQualifier(), providerMethod);
   }
 

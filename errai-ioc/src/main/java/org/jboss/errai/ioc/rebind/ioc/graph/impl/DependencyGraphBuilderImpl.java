@@ -93,15 +93,18 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   private void linkDirectAbstractInjectable(final ConcreteInjectable concreteInjectable) {
-    final AbstractInjectable abstractInjectable = lookupAsAbstractInjectable(concreteInjectable.type, concreteInjectable.qualifier);
     if (concreteInjectable.wiringTypes.contains(WiringElementType.SubTypeMatching)) {
-      final AbstractInjectable contravariant = new AbstractInjectable(concreteInjectable.type, concreteInjectable.qualifier);
-      subTypeMatchingInjectables.add(contravariant);
-      contravariant.linked.add(concreteInjectable);
+      final AbstractInjectable subTypeMatchingInjectable = new AbstractInjectable(concreteInjectable.type, concreteInjectable.qualifier);
+      subTypeMatchingInjectables.add(subTypeMatchingInjectable);
+      subTypeMatchingInjectable.linked.add(concreteInjectable);
+    } else if (concreteInjectable.wiringTypes.contains(WiringElementType.ExactTypeMatching)) {
+      final AbstractInjectable exactTypeMatchingInjectable = new AbstractInjectable(concreteInjectable.type, concreteInjectable.qualifier);
+      exactTypeMatchingInjectable.linked.add(concreteInjectable);
+      directAbstractInjectablesByAssignableTypes.put(concreteInjectable.type.getErased(), exactTypeMatchingInjectable);
     } else {
+      final AbstractInjectable abstractInjectable = lookupAsAbstractInjectable(concreteInjectable.type, concreteInjectable.qualifier);
       abstractInjectable.linked.add(concreteInjectable);
     }
-    processAssignableTypes(abstractInjectable);
   }
 
   private void processAssignableTypes(final AbstractInjectable abstractInjectable) {
@@ -120,6 +123,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     if (abstractInjectable == null) {
       abstractInjectable = new AbstractInjectable(type, qualifier);
       abstractInjectables.put(handle, abstractInjectable);
+      processAssignableTypes(abstractInjectable);
     }
 
     return abstractInjectable;
@@ -530,7 +534,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   private void linkAbstractInjectables() {
     linkAbstractInjectablsFromDependencies();
-    linkContravariantAbstractInjectables();
+    linkSubTypeMatchingAbstractInjectables();
   }
 
   private void linkAbstractInjectablsFromDependencies() {
@@ -545,7 +549,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     }
   }
 
-  private void linkContravariantAbstractInjectables() {
+  private void linkSubTypeMatchingAbstractInjectables() {
     for (final AbstractInjectable subTypeMatching : subTypeMatchingInjectables) {
       final Collection<AbstractInjectable> candidates = directAbstractInjectablesByAssignableTypes.get(subTypeMatching.type.getErased());
       for (final AbstractInjectable candidate : candidates) {

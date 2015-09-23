@@ -7,6 +7,7 @@ public enum WiringElementType {
   Type,
   Specialization,
   SubTypeMatching,
+  ExactTypeMatching,
   SingletonBean,
   NormalScopedBean,
   JsType,
