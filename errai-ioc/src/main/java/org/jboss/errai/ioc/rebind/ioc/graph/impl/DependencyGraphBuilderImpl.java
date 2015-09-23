@@ -68,10 +68,10 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       throwDuplicateConcreteInjectableException(factoryName, concretesByName.get(factoryName), concrete);
     }
     concretesByName.put(factoryName, concrete);
-    linkDirectAbstractInjectable(concrete);
     if (concrete.wiringTypes.contains(WiringElementType.Specialization)) {
       specializations.add(concrete);
     }
+    linkDirectAbstractInjectable(concrete);
 
     return concrete;
   }
@@ -246,15 +246,17 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     final MetaClass specializedType = specialization.type.getSuperClass().getErased();
     for (final AbstractInjectable injectable : directAbstractInjectablesByAssignableTypes.get(specializedType)) {
       if (injectable.type.equals(specializedType)) {
-        updateSpecializedInjectableLinks(specialization, toBeRemoved, injectable);
-        break;
+        if (!injectable.linked.isEmpty()) {
+          updateSpecializedInjectableLinks(specialization, toBeRemoved, injectable);
+          break;
+        }
       }
     }
   }
 
   private void updateSpecializedInjectableLinks(final ConcreteInjectable specialization, final Set<ConcreteInjectable> toBeRemoved,
           final AbstractInjectable injectable) {
-    assert injectable.linked.size() == 1;
+    assert injectable.linked.size() == 1 : "The injectable " + injectable + " should have one link but instead has:\n" + injectable.linked;
     final ConcreteInjectable specialized = (ConcreteInjectable) injectable.linked.iterator().next();
     specialization.qualifier = qualFactory.combine(specialization.qualifier, specialized.qualifier);
     toBeRemoved.add(specialized);

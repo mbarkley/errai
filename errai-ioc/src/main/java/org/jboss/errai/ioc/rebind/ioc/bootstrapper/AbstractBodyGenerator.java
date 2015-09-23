@@ -173,9 +173,11 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
   }
 
   private void implementAccessibleMethods(final ClassStructureBuilder<?> proxyImpl, final Injectable injectable, final BuildMetaClass factoryClass) {
+    final Multimap<String, MetaMethod> proxiedMethodsByName = HashMultimap.create();
     final MetaClass injectedType = injectable.getInjectedType();
     for (final MetaMethod method : injectedType.getMethods()) {
-      if (shouldProxyMethod(method)) {
+      if (shouldProxyMethod(method, proxiedMethodsByName)) {
+        proxiedMethodsByName.put(method.getName(), method);
         final BlockBuilder<?> body = createProxyMethodDeclaration(proxyImpl, method);
         final StatementBuilder proxiedInstanceDeclaration = declareFinalVariable("proxiedInstance",
                 injectable.getInjectedType(), loadVariable("proxyHelper").invoke("getInstance", loadVariable("this")));
@@ -254,17 +256,42 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     }
   }
 
-  private boolean shouldProxyMethod(final MetaMethod method) {
+  private boolean shouldProxyMethod(final MetaMethod method, final Multimap<String, MetaMethod> proxiedMethodsByName) {
     return (method.getDeclaringClass() != null && method.getDeclaringClass().isInterface())
             || !method.isStatic() && !method.isPrivate() && !method.isFinal()
                     && methodIsNotFromObjectUnlessHashCode(method)
-            && typesInSignatureAreVisible(method);
+            && typesInSignatureAreVisible(method)
+            && isNotAlreadyProxied(method, proxiedMethodsByName);
+  }
+
+  private boolean isNotAlreadyProxied(final MetaMethod method, final Multimap<String, MetaMethod> proxiedMethodsByName) {
+    methodLoop:
+    for (final MetaMethod proxiedMethod : proxiedMethodsByName.get(method.getName())) {
+      final MetaParameter[] proxiedParams = proxiedMethod.getParameters();
+      final MetaParameter[] methodParams = method.getParameters();
+      if (proxiedParams.length == methodParams.length) {
+        for (int i = 0; i < methodParams.length; i++) {
+          if (!proxiedParams[i].getType().isAssignableTo(methodParams[i].getType())) {
+            continue methodLoop;
+          }
+        }
+
+        return false;
+      }
+    }
+
+    return true;
   }
 
   private boolean methodIsNotFromObjectUnlessHashCode(final MetaMethod method) {
-    return method.asMethod() == null || method.asMethod().getDeclaringClass() == null
+    return (method.asMethod() == null || method.asMethod().getDeclaringClass() == null
             || !method.asMethod().getDeclaringClass().equals(Object.class)
-            || method.getName().equals("hashCode");
+            || method.getName().equals("hashCode"))
+            && isNotEqualsMethod(method);
+  }
+
+  private boolean isNotEqualsMethod(final MetaMethod method) {
+    return !(method.getName().equals("equals") && method.getParameters().length == 1);
   }
 
   private boolean typesInSignatureAreVisible(final MetaMethod method) {
