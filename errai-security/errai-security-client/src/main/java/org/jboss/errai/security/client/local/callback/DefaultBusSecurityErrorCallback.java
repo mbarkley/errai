@@ -16,10 +16,10 @@
  */
 package org.jboss.errai.security.client.local.callback;
 
-import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
 import org.jboss.errai.bus.client.api.UncaughtException;
+import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.security.client.local.api.SecurityContext;
 import org.jboss.errai.security.shared.exception.SecurityException;
 import org.jboss.errai.security.shared.exception.UnauthenticatedException;
@@ -36,7 +36,7 @@ import org.jboss.errai.ui.nav.client.local.api.SecurityError;
  *
  * @author Max Barkley <mbarkley@redhat.com>
  */
-@ApplicationScoped
+@EntryPoint
 public class DefaultBusSecurityErrorCallback {
 
   private final SecurityContext context;
