@@ -342,8 +342,15 @@ public class IOCProcessor {
   }
 
   private boolean isTypeInjectableCandidate(MetaClass type) {
-    final boolean isMemberClass = (type.asClass() != null && type.asClass().isMemberClass());
-    return type.isPublic() && type.isConcrete() && (!isMemberClass || type.isStatic());
+    boolean isNotTopLevel;
+    // Workaround for http://bugs.java.com/view_bug.do?bug_id=2210448
+    try {
+      isNotTopLevel = (type.asClass() != null && type.asClass().getDeclaringClass() != null);
+    } catch (IncompatibleClassChangeError ex) {
+      isNotTopLevel = true;
+    }
+
+    return type.isPublic() && type.isConcrete() && (!isNotTopLevel || type.isStatic());
   }
 
   private boolean isSimpleton(final MetaClass type) {

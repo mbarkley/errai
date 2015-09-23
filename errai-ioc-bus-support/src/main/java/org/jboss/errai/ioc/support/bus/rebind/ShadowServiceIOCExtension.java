@@ -115,7 +115,7 @@ public class ShadowServiceIOCExtension extends IOCDecoratorExtension<ShadowServi
       if (ProxyUtil.isMethodInInterface(intf, method)) {
         final Class<?>[] parameterTypes = method.getParameterTypes();
         VariableReference[] objects = new VariableReference[parameterTypes.length];
-        final BlockBuilder<ElseBlockBuilder> blockBuilder = If.cond(Stmt.loadVariable("\"" + ProxyUtil.createCallSignature(intf, method) + "\"").invoke("equals",
+        final BlockBuilder<ElseBlockBuilder> blockBuilder = If.cond(Stmt.loadLiteral(ProxyUtil.createCallSignature(intf, method)).invoke("equals",
                 Stmt.loadVariable("commandType")));
         for (int i = 0; i < parameterTypes.length; i++) {
           Class<?> parameterType = parameterTypes[i];
