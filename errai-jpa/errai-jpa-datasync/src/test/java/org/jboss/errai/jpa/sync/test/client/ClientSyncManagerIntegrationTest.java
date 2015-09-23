@@ -14,6 +14,7 @@ import org.jboss.errai.common.client.api.extension.InitVotes;
 import org.jboss.errai.enterprise.client.cdi.CDIClientBootstrap;
 import org.jboss.errai.enterprise.client.cdi.api.CDI;
 import org.jboss.errai.ioc.client.Container;
+import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ioc.client.container.IOCBeanManagerLifecycle;
 import org.jboss.errai.ioc.client.container.SyncBeanManagerImpl;
@@ -432,7 +433,7 @@ public class ClientSyncManagerIntegrationTest extends GWTTestCase {
     final Map<String, Object> parameters = new HashMap<String, Object>();
 
     // replace the caller so we can see what the SyncWorker asks its ClientSyncManager to do
-    csm.dataSyncService = new Caller<DataSyncService>() {
+    Factory.maybeUnwrapProxy(csm).dataSyncService = new Caller<DataSyncService>() {
 
       @Override
       public DataSyncService call(final RemoteCallback<?> callback) {
