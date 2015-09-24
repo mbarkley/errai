@@ -13,6 +13,14 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 
+/**
+ * Generates factories that lookup types from the {@link WindowInjectionContext}
+ * , allowing the injection of types between dynamic runtime modules.
+ *
+ * @see FactoryBodyGenerator
+ * @see AbstractBodyGenerator
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public class JsTypeFactoryBodyGenerator extends AbstractBodyGenerator {
 
   @Override

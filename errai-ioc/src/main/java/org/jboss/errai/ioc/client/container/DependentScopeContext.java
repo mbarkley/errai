@@ -6,6 +6,14 @@ import javax.enterprise.context.Dependent;
 
 import org.jboss.errai.ioc.client.api.ScopeContext;
 
+/**
+ * The {@link Context} implementation for all {@link Dependent} scoped beans.
+ * Unlike other scopes, beans which have no explicit scope will be considered
+ * dependent. Therefore some beans will be registered with this scope that do
+ * not actually have the {@link Dependent} annotation.
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 @ScopeContext({Dependent.class})
 public class DependentScopeContext extends AbstractContext {
 

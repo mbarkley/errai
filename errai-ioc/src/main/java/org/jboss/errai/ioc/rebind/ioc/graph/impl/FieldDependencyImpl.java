@@ -4,6 +4,10 @@ import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.FieldDependency;
 
+/**
+ * @see FieldDependency
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 class FieldDependencyImpl extends BaseDependency implements FieldDependency {
 
   final MetaField field;

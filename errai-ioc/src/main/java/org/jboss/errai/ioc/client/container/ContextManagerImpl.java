@@ -6,6 +6,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
+/**
+ * @see ContextManager
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public class ContextManagerImpl implements ContextManager {
 
   private final Map<String, Context> contextsByFactoryName = new HashMap<String, Context>();

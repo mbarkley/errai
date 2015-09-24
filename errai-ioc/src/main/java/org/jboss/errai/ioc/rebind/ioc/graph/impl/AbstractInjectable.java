@@ -11,6 +11,12 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependenc
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
+/**
+ * This is used in the {@link DependencyGraphBuilderImpl} for representing
+ * injectables in dependencies that have not yet been resolved.
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 class AbstractInjectable extends BaseInjectable {
   // TODO needs to be renamed and not be an Injectable
   // TODO review getDependencies and similar to see if they should throw errors.
@@ -72,7 +78,7 @@ class AbstractInjectable extends BaseInjectable {
   }
 
   @Override
-  public boolean isTransient() {
+  public boolean isExtension() {
     return false;
   }
 }

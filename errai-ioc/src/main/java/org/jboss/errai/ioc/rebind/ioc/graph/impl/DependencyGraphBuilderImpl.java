@@ -40,6 +40,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 
 /**
+ * @see DependencyGraphBuilder
  * @author Max Barkley <mbarkley@redhat.com>
  */
 public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
@@ -56,7 +57,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   @Override
-  public Injectable addConcreteInjectable(final MetaClass injectedType, final Qualifier qualifier, Class<? extends Annotation> literalScope,
+  public Injectable addInjectable(final MetaClass injectedType, final Qualifier qualifier, Class<? extends Annotation> literalScope,
           final InjectableType factoryType, final WiringElementType... wiringTypes) {
     final ConcreteInjectable concrete = new ConcreteInjectable(injectedType, qualifier, literalScope, factoryType, Arrays.asList(wiringTypes));
     return registerNewConcreteInjectable(concrete);
@@ -77,9 +78,9 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   @Override
-  public Injectable addTransientInjectable(final MetaClass injectedType, final Qualifier qualifier,
+  public Injectable addExtensionInjectable(final MetaClass injectedType, final Qualifier qualifier,
           final Class<? extends Annotation> literalScope, final WiringElementType... wiringTypes) {
-    final ConcreteInjectable concrete = new TransientInjectable(injectedType, qualifier, literalScope, InjectableType.Extension, Arrays.asList(wiringTypes));
+    final ConcreteInjectable concrete = new ExtensionInjectable(injectedType, qualifier, literalScope, InjectableType.Extension, Arrays.asList(wiringTypes));
     return registerNewConcreteInjectable(concrete);
   }
 
@@ -415,7 +416,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     final Map<String, ConcreteInjectable> customProvideds = new HashMap<String, ConcreteInjectable>();
 
     for (final ConcreteInjectable concrete : concretesByName.values()) {
-      if (concrete.isTransient()) {
+      if (concrete.isExtension()) {
         transientInjectableNames.add(concrete.getFactoryName());
       }
       if (!visited.contains(concrete)) {
@@ -486,8 +487,8 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
           throwAmbiguousDependencyException(dep, concrete, new ArrayList<ConcreteInjectable>(resolved));
         } else {
           ConcreteInjectable injectable = resolved.iterator().next();
-          if (injectable.isTransient()) {
-            final TransientInjectable providedInjectable = (TransientInjectable) injectable;
+          if (injectable.isExtension()) {
+            final ExtensionInjectable providedInjectable = (ExtensionInjectable) injectable;
             final MetaClass injectedType;
             if (concrete.wiringTypes.contains(WiringElementType.SubTypeMatching)) {
               injectedType = dep.injectable.type;
@@ -666,6 +667,10 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     addDependency(concreteInjectable, dep);
   }
 
+  /**
+   * @see DependencyGraph
+   * @author Max Barkley <mbarkley@redhat.com>
+   */
   class DependencyGraphImpl implements DependencyGraph {
 
     @SuppressWarnings("unchecked")

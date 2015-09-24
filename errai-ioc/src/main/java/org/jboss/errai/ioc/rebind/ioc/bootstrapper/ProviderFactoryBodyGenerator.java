@@ -13,6 +13,7 @@ import javax.inject.Provider;
 
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
+import org.jboss.errai.ioc.client.api.IOCProvider;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
@@ -21,10 +22,19 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 
 import com.google.common.collect.Multimap;
 
+/**
+ * Create factories for beans from {@link Provider providers} annotated with
+ * {@link IOCProvider}.
+ *
+ * @see FactoryBodyGenerator
+ * @see AbstractBodyGenerator
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public class ProviderFactoryBodyGenerator extends AbstractBodyGenerator {
 
   @Override
-  protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable, final DependencyGraph graph, InjectionContext injectionContext) {
+  protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
+          final Injectable injectable, final DependencyGraph graph, InjectionContext injectionContext) {
     final Multimap<DependencyType, Dependency> dependenciesByType = separateByType(injectable.getDependencies());
     assert dependenciesByType.size() == 1 : "The factory " + injectable.getFactoryName() + " is a Provider and should have exactly one dependency";
     final Collection<Dependency> providerInstanceDeps = dependenciesByType.get(DependencyType.ProducerMember);

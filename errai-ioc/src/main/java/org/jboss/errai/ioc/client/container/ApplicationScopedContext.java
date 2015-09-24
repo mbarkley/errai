@@ -12,6 +12,12 @@ import org.jboss.errai.ioc.client.api.ScopeContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * An implementation of {@link Context} for singleton beans. All calls to
+ * {@link #getInstance(String)} will return the same bean instance.
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 @ScopeContext({ApplicationScoped.class, Singleton.class, EntryPoint.class})
 public class ApplicationScopedContext extends AbstractContext {
 

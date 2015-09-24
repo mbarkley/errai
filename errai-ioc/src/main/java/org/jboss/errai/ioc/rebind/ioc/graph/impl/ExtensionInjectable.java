@@ -7,15 +7,20 @@ import java.util.Collections;
 
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.ProvidedInjectable.InjectionSite;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
-class TransientInjectable extends ConcreteInjectable {
+/**
+ * @see DependencyGraphBuilder#addExtensionInjectable(MetaClass, Qualifier, Class, WiringElementType...)
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
+class ExtensionInjectable extends ConcreteInjectable {
 
   final Collection<InjectionSite> injectionSites = new ArrayList<InjectionSite>();
 
-  TransientInjectable(final MetaClass type, final Qualifier qualifier,
+  ExtensionInjectable(final MetaClass type, final Qualifier qualifier,
           final Class<? extends Annotation> literalScope, final InjectableType injectorType,
           final Collection<WiringElementType> wiringTypes) {
     super(type, qualifier, literalScope, injectorType, wiringTypes);
@@ -30,7 +35,7 @@ class TransientInjectable extends ConcreteInjectable {
   }
 
   @Override
-  public boolean isTransient() {
+  public boolean isExtension() {
     return true;
   }
 

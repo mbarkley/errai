@@ -89,6 +89,14 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.js.JsType;
 
+/**
+ * Creates {@link DependencyGraph} by adding all types and dependencies to the
+ * {@link DependencyGraphBuilder}. Generates {@link Factory} subclasses and
+ * {@link GWT#create(Class)} calls for every {@link Injectable} in the
+ * dependency graph.
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public class IOCProcessor {
 
   private final InjectionContext injectionContext;
@@ -100,6 +108,11 @@ public class IOCProcessor {
     this.qualFactory = injectionContext.getQualifierFactory();
   }
 
+  /**
+   * Process the dependency graph and generate code in BoostrapperImpl to declare and create factories for all {@link Injectable injectables}.
+   *
+   * @param processingContext
+   */
   public void process(final IOCProcessingContext processingContext) {
     final Collection<MetaClass> allMetaClasses = findRelevantClasses(processingContext);
 
@@ -130,10 +143,10 @@ public class IOCProcessor {
 
   private void addAllInjectableProviders(final DependencyGraphBuilder graphBuilder) {
     for (final InjectableHandle handle : injectionContext.getInjectableProviders().keySet()) {
-      graphBuilder.addTransientInjectable(handle.getType(), handle.getQualifier(), Dependent.class, WiringElementType.DependentBean);
+      graphBuilder.addExtensionInjectable(handle.getType(), handle.getQualifier(), Dependent.class, WiringElementType.DependentBean);
     }
     for (final InjectableHandle handle : injectionContext.getSubTypeMatchingInjectableProviders().keySet()) {
-      graphBuilder.addTransientInjectable(handle.getType(), handle.getQualifier(), Dependent.class,
+      graphBuilder.addExtensionInjectable(handle.getType(), handle.getQualifier(), Dependent.class,
               WiringElementType.DependentBean, WiringElementType.SubTypeMatching);
     }
   }
@@ -319,18 +332,18 @@ public class IOCProcessor {
   private void processType(final MetaClass type, final DependencyGraphBuilder builder) {
     if (isTypeInjectableCandidate(type)) {
       if (isSimpleton(type)) {
-        builder.addConcreteInjectable(type, qualFactory.forSource(type), Dependent.class, InjectableType.Type,
+        builder.addInjectable(type, qualFactory.forSource(type), Dependent.class, InjectableType.Type,
                 WiringElementType.DependentBean, WiringElementType.Simpleton);
       } else if (isTypeInjectable(type)) {
         final Class<? extends Annotation> directScope = getScope(type);
-        final Injectable typeInjectable = builder.addConcreteInjectable(type, qualFactory.forSource(type),
+        final Injectable typeInjectable = builder.addInjectable(type, qualFactory.forSource(type),
                 directScope, InjectableType.Type, getWiringTypes(type, directScope));
         processInjectionPoints(typeInjectable, builder);
         maybeProcessAsProducer(builder, typeInjectable);
         maybeProcessAsProvider(typeInjectable, builder);
       }
     } else if (type.isAnnotationPresent(JsType.class)) {
-      builder.addConcreteInjectable(type, qualFactory.forUniversallyQualified(), Dependent.class, InjectableType.JsType);
+      builder.addInjectable(type, qualFactory.forUniversallyQualified(), Dependent.class, InjectableType.JsType);
     }
   }
 
@@ -422,7 +435,7 @@ public class IOCProcessor {
     final MetaClass providerImpl = providerInjectable.getInjectedType();
     final MetaMethod providerMethod = providerImpl.getMethod("provide", Class[].class, Annotation[].class);
     final MetaClass providedType = providerMethod.getReturnType();
-    final Injectable providedInjectable = builder.addConcreteInjectable(providedType,
+    final Injectable providedInjectable = builder.addInjectable(providedType,
             qualFactory.forUniversallyQualified(), Dependent.class, InjectableType.ContextualProvider,
             WiringElementType.Provider, WiringElementType.DependentBean, WiringElementType.ExactTypeMatching);
     builder.addProducerMemberDependency(providedInjectable, providerImpl, providerInjectable.getQualifier(), providerMethod);
@@ -432,7 +445,7 @@ public class IOCProcessor {
     final MetaClass providerImpl = providerImplInjectable.getInjectedType();
     final MetaMethod providerMethod = providerImpl.getMethod("get", new Class[0]);
     final MetaClass providedType = providerMethod.getReturnType();
-    final Injectable providedInjectable = builder.addConcreteInjectable(providedType, qualFactory.forUniversallyQualified(),
+    final Injectable providedInjectable = builder.addInjectable(providedType, qualFactory.forUniversallyQualified(),
             Dependent.class, InjectableType.Provider, WiringElementType.Provider, WiringElementType.DependentBean);
     builder.addProducerMemberDependency(providedInjectable, providerImplInjectable.getInjectedType(), providerImplInjectable.getQualifier(), providerMethod);
   }
@@ -476,7 +489,7 @@ public class IOCProcessor {
         } else {
           wiringTypes = new WiringElementType[] { getWiringTypesForScopeAnnotation(directScope) };
         }
-        final Injectable producedInjectable = builder.addConcreteInjectable(method.getReturnType(),
+        final Injectable producedInjectable = builder.addInjectable(method.getReturnType(),
                 qualFactory.forSource(method), directScope, InjectableType.Producer, wiringTypes);
         builder.addProducerMemberDependency(producedInjectable, typeInjectable.getInjectedType(), typeInjectable.getQualifier(), method);
         final MetaParameter[] params = method.getParameters();
@@ -564,7 +577,7 @@ public class IOCProcessor {
       final List<MetaField> fields = type.getFieldsAnnotatedWith(producerAnno);
       for (final MetaField field : fields) {
         final Class<? extends Annotation> scopeAnno = getScope(field);
-        final Injectable producedInjectable = builder.addConcreteInjectable(field.getType(),
+        final Injectable producedInjectable = builder.addInjectable(field.getType(),
                 qualFactory.forSource(field), scopeAnno, InjectableType.Producer,
                 getWiringTypesForScopeAnnotation(scopeAnno));
         builder.addProducerMemberDependency(producedInjectable, concreteInjectable.getInjectedType(), concreteInjectable.getQualifier(), field);

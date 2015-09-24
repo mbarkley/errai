@@ -7,10 +7,22 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
 
+import javax.enterprise.context.Dependent;
+
 import com.google.common.base.Supplier;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.SetMultimap;
 
+/**
+ * Creates proxies and wires dependencies for a bean. The abstract methods in
+ * this class are implemented by code generation. Because of this, care should
+ * be taken when modifying the names of fields or parameters in this type.
+ *
+ * @param <T>
+ *          The type of the bean that this factory creates.
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public abstract class Factory<T> {
 
   /*
@@ -18,7 +30,7 @@ public abstract class Factory<T> {
    */
   protected final Factory<T> thisInstance = this;
 
-  private final Map<T, Map<String, Object>> referenceMaps = new HashMap<T, Map<String,Object>>();
+  private final Map<T, Map<String, Object>> referenceMaps = new HashMap<T, Map<String, Object>>();
   private final SetMultimap<T, Object> dependentScopedDependencies = Multimaps
           .newSetMultimap(new IdentityHashMap<T, Collection<Object>>(), new Supplier<Set<Object>>() {
             @Override
@@ -29,8 +41,31 @@ public abstract class Factory<T> {
 
   private T incompleteInstance;
 
+  /**
+   * At runtime the init method is called once after all factories and
+   * {@link Context contexts} have been registered. This allows decorators an
+   * opportunity to register a bean type for services that may lookup instances
+   * on demand.
+   *
+   * @param context
+   *          Some decorators may wish to register callbacks that create an
+   *          instance of the bean. This should be done using
+   *          {@link Context#getInstance(String)}.
+   */
   public abstract void init(Context context);
 
+  /**
+   * This method is invoked whenever an actual instance of a bean must be
+   * constructed. If a bean is proxied, this will likely happen on the first
+   * invocation of a method on the proxy. Otherwise this will occur when the
+   * bean is injected into another type.
+   *
+   * This method always returns an unproxied, fully wired instance of a type.
+   *
+   * @param contextManager
+   *          For requesting instances from other factories. Never {@code null}.
+   * @return A fully wired, unproxied instance of a bean.
+   */
   public abstract T createInstance(ContextManager contextManager);
 
   public abstract void invokePostConstructs(T instance);
@@ -65,6 +100,14 @@ public abstract class Factory<T> {
     return dependentScopedBeanRef;
   }
 
+  /**
+   * This method performs any cleanup required for destroying a type. It will
+   * invoke generated statements from decorators, invoke disposers or predestroy
+   * methods, and destroy and {@link Dependent} scoped dependencies.
+   *
+   * @param instance The instance being destroyed.
+   * @param contextManager For destroying dependencies.
+   */
   @SuppressWarnings("unchecked")
   public void destroyInstance(final Object instance, final ContextManager contextManager) {
     final Object unwrapped = maybeUnwrapProxy(instance);
@@ -82,7 +125,8 @@ public abstract class Factory<T> {
   public static <P> P maybeUnwrapProxy(P instance) {
     if (instance instanceof Proxy) {
       return ((Proxy<P>) instance).unwrappedInstance();
-    } else {
+    }
+    else {
       return instance;
     }
   }

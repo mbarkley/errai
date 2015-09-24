@@ -71,6 +71,14 @@ import com.google.common.collect.Multimap;
 import com.google.gwt.core.ext.GeneratorContext;
 import com.google.gwt.core.ext.TreeLogger;
 
+/**
+ * Implements functionality common to most {@link FactoryBodyGenerator} such as
+ * generating proxies and managing
+ * {@link Factory#getReferenceAs(Object, String, Class) references}.
+ *
+ * @see FactoryBodyGenerator
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
 
   protected static Multimap<DependencyType, Dependency> separateByType(final Collection<Dependency> dependencies) {
@@ -83,6 +91,16 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     return separated;
   }
 
+  /**
+   * This is populated at the start of
+   * {@link #generate(ClassStructureBuilder, Injectable, DependencyGraph, InjectionContext, TreeLogger, GeneratorContext)}
+   * .
+   *
+   * Calls to {@link FactoryController#addInvokeAfter(MetaMethod, Statement)},
+   * {@link FactoryController#addInvokeBefore(MetaMethod, Statement)}, or
+   * {@link FactoryController#addProxyProperty(String, Class, Statement)} will
+   * require the type produced by the generated factory to be proxiable.
+   */
   protected FactoryController controller;
 
   protected void implementCreateProxy(final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable) {
@@ -107,8 +125,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
   }
 
   /**
-   *
-   * @return Returns null if unproxiable and a proxy is not required.
+   * @return Returns {@code null} if unproxiable and a proxy is not required.
    */
   private MetaClass maybeCreateProxyImplementation(final Injectable injectable, final ClassStructureBuilder<?> bodyBlockBuilder) {
 
@@ -422,6 +439,22 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     return getPrivateMethodName(postConstruct);
   }
 
+  /**
+   * @param bodyBlockBuilder
+   *          The {@link ClassStructureBuilder} for the {@link Factory} being
+   *          generated.
+   * @param injectable
+   *          Contains metadata (including dependencies) or the bean that the
+   *          generated factory will produce.
+   * @param graph
+   *          The dependency graph that the {@link Injectable} parameter is
+   *          from.
+   * @param injectionContext
+   *          The single injection context shared between all
+   *          {@link FactoryBodyGenerator FactoryBodyGenerators}.
+   * @return A list of statements that will generated in the
+   *         {@link Factory#createInstance(ContextManager)} method.
+   */
   protected abstract List<Statement> generateCreateInstanceStatements(ClassStructureBuilder<?> bodyBlockBuilder,
           Injectable injectable, DependencyGraph graph, InjectionContext injectionContext);
 
@@ -435,7 +468,7 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     final List<Statement> factoryInitStatements = generateFactoryInitStatements(bodyBlockBuilder, injectable, graph, injectionContext);
     final List<Statement> createInstanceStatements = generateCreateInstanceStatements(bodyBlockBuilder, injectable, graph, injectionContext);
     final List<Statement> destroyInstanceStatements = generateDestroyInstanceStatements(bodyBlockBuilder, injectable, graph, injectionContext);
-    final List<Statement> invokePostConstructStatements = generateInovkePostConstructsStatements(bodyBlockBuilder, injectable, graph, injectionContext);
+    final List<Statement> invokePostConstructStatements = generateInvokePostConstructsStatements(bodyBlockBuilder, injectable, graph, injectionContext);
 
     implementFactoryInit(bodyBlockBuilder, injectable, factoryInitStatements);
     implementCreateInstance(bodyBlockBuilder, injectable, createInstanceStatements);
@@ -460,12 +493,44 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
           final DependencyGraph graph, final InjectionContext injectionContext) {
   }
 
+  /**
+   * @param bodyBlockBuilder
+   *          The {@link ClassStructureBuilder} for the {@link Factory} being
+   *          generated.
+   * @param injectable
+   *          Contains metadata (including dependencies) or the bean that the
+   *          generated factory will produce.
+   * @param graph
+   *          The dependency graph that the {@link Injectable} parameter is
+   *          from.
+   * @param injectionContext
+   *          The single injection context shared between all
+   *          {@link FactoryBodyGenerator FactoryBodyGenerators}.
+   * @return A list of statements that will generated in the
+   *         {@link Factory#init(Context)} method.
+   */
   protected List<Statement> generateFactoryInitStatements(ClassStructureBuilder<?> bodyBlockBuilder,
           Injectable injectable, DependencyGraph graph, InjectionContext injectionContext) {
     return Collections.emptyList();
   }
 
-  protected List<Statement> generateInovkePostConstructsStatements(ClassStructureBuilder<?> bodyBlockBuilder,
+  /**
+   * @param bodyBlockBuilder
+   *          The {@link ClassStructureBuilder} for the {@link Factory} being
+   *          generated.
+   * @param injectable
+   *          Contains metadata (including dependencies) or the bean that the
+   *          generated factory will produce.
+   * @param graph
+   *          The dependency graph that the {@link Injectable} parameter is
+   *          from.
+   * @param injectionContext
+   *          The single injection context shared between all
+   *          {@link FactoryBodyGenerator FactoryBodyGenerators}.
+   * @return A list of statements that will generated in the
+   *         {@link Factory#invokePostConstructs(Object)} method.
+   */
+  protected List<Statement> generateInvokePostConstructsStatements(ClassStructureBuilder<?> bodyBlockBuilder,
           Injectable injectable, DependencyGraph graph, InjectionContext injectionContext) {
     return Collections.emptyList();
   }
@@ -496,6 +561,22 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
             .appendAll(destroyInstanceStatements).finish();
   }
 
+  /**
+   * @param bodyBlockBuilder
+   *          The {@link ClassStructureBuilder} for the {@link Factory} being
+   *          generated.
+   * @param injectable
+   *          Contains metadata (including dependencies) or the bean that the
+   *          generated factory will produce.
+   * @param graph
+   *          The dependency graph that the {@link Injectable} parameter is
+   *          from.
+   * @param injectionContext
+   *          The single injection context shared between all
+   *          {@link FactoryBodyGenerator FactoryBodyGenerators}.
+   * @return A list of statements that will generated in the
+   *         {@link Factory#destroyInstance(Object, ContextManager)} method.
+   */
   protected List<Statement> generateDestroyInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
           final Injectable injectable, final DependencyGraph graph, final InjectionContext injectionContext) {
     return controller.getDestructionStatements();

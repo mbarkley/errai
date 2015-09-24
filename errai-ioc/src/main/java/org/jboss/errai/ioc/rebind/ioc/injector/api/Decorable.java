@@ -10,8 +10,11 @@ import static org.jboss.errai.ioc.rebind.ioc.bootstrapper.FactoryGenerator.getLo
 import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 
+import javax.enterprise.context.Dependent;
+
 import org.jboss.errai.codegen.Context;
 import org.jboss.errai.codegen.Statement;
+import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
@@ -20,11 +23,29 @@ import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
+import org.jboss.errai.ioc.client.api.CodeDecorator;
+import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.util.CDIAnnotationUtils;
 
+/**
+ * Contains metadata for an element of a particular {@link DecorableType}.
+ *
+ * {@link CodeDecorator Code decorators} can use this instance to inspect
+ * annotations and other information regarding a decorable element.
+ *
+ * This type also has methods for generating code to access the decorable type
+ * within the context of certain {@link Factory} methods.
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public class Decorable {
 
+  /**
+   * The kinds of decorable elements.
+   *
+   * @author Max Barkley <mbarkley@redhat.com>
+   */
   public enum DecorableType {
     FIELD  {
       @Override
@@ -191,46 +212,92 @@ public class Decorable {
     return decorableType.hashCode() ^ CDIAnnotationUtils.hashCode(annotation) ^ annotated.hashCode() ^ injectable.hashCode();
   }
 
+  /**
+   * @return The annotation relevant to the {@link CodeDecorator} for which this {@link Decorable} was created.
+   */
   public Annotation getAnnotation() {
     return annotation;
   }
 
+  /**
+   * @return The declaring type of the decorable element. If the decorable element is a type, then this returns that type.
+   */
   public MetaClass getDecorableDeclaringType() {
     return decorableType().getEnclosingType(annotated);
   }
 
+  /**
+   * @return The type of the decorable element. The type of a field or parameter, the return type of a method, the type itself for a type.
+   */
   public MetaClass getType() {
     return decorableType().getType(annotated);
   }
 
+  /**
+   * For all but parameters, this access statement can be used in generated
+   * implementations for
+   * {@link Factory#createInstance(org.jboss.errai.ioc.client.container.ContextManager)}
+   * and
+   * {@link Factory#destroyInstance(Object, org.jboss.errai.ioc.client.container.ContextManager)}
+   * . For parameters it is only valid in the former.
+   *
+   * @param params
+   *          If this decorable is a method these parameters are used in the
+   *          generated invocation. Otherwise they are ignored.
+   * @return A reference to the decorated value. For fields or methods, the
+   *         member is loaded/invoked. For types a reference to the constructed
+   *         type. For parameters, a reference to a local variable of the value that was passed in to the parameter.
+   */
   public Statement getAccessStatement(Statement... params) {
     return decorableType().getAccessStatement(annotated, factory, params);
   }
 
+  /**
+   * @return The annotated element of this decorable.
+   */
   public HasAnnotations get() {
     return annotated;
   }
 
+  /**
+   * @return The context of the {@link ClassStructureBuilder} of the
+   *         {@link Factory} being generated.
+   */
   public Context getCodegenContext() {
     return context;
   }
 
+  /**
+   * @return The value of {@link #get()} cast as a field.
+   */
   public MetaMethod getAsMethod() {
     return (MetaMethod) annotated;
   }
 
+  /**
+   * @return The kind of this decorable.
+   */
   public DecorableType decorableType() {
     return decorableType;
   }
 
+  /**
+   * @return The shared injection context used to generate all factories.
+   */
   public InjectionContext getInjectionContext() {
     return injectionContext;
   }
 
+  /**
+   * @return The value of {@link #get()} cast as a parameter.
+   */
   public MetaParameter getAsParameter() {
     return (MetaParameter) annotated;
   }
 
+  /**
+   * @return The value of {@link #get()} cast as a field.
+   */
   public MetaField getAsField() {
     return (MetaField) annotated;
   }
@@ -243,18 +310,33 @@ public class Decorable {
     return decorableType().call(annotated, factory, values);
   }
 
+  /**
+   * @return The name of the annotated element. Calls
+   *         {@link MetaClassMember#getName()} for fields and methods. The
+   *         source code name for parameter, and the simple class name for
+   *         types.
+   */
   public String getName() {
     return decorableType().getName(annotated);
   }
 
+  /**
+   * @return The injectable for the enclosing type.
+   */
   public Injectable getEnclosingInjectable() {
     return injectable;
   }
 
+  /**
+   * @return The {@link BuildMetaClass} for the factory being generated.
+   */
   public BuildMetaClass getFactoryMetaClass() {
     return factory;
   }
 
+  /**
+   * @return True iff the enclosing injectable is {@link Dependent} scoped.
+   */
   public boolean isEnclosingTypeDependent() {
     return injectable.getWiringElementTypes().contains(WiringElementType.DependentBean);
   }

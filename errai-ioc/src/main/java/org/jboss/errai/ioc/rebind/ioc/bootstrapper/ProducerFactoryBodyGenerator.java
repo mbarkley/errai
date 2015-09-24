@@ -40,6 +40,13 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 import com.google.common.collect.Multimap;
 
+/**
+ * Generates factories for beans of producer methods or fields.
+ *
+ * @see FactoryBodyGenerator
+ * @see AbstractBodyGenerator
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
 
   @Override

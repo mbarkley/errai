@@ -14,8 +14,14 @@ import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.util.Stmt;
+import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 
+/**
+ * Some useful methods for generating code to inject dependencies in {@link Factory factories}.
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public class InjectUtil {
 
   public static Statement invokePublicOrPrivateMethod(final FactoryController controller, final MetaMethod method, final Statement... params) {
@@ -45,10 +51,24 @@ public class InjectUtil {
     }
   }
 
+  /**
+   * Generates code to call
+   * {@link Factory#getReferenceAs(Object, String, Class)} for an instance in
+   * {@link Factory#createInstance(org.jboss.errai.ioc.client.container.ContextManager)}
+   * and
+   * {@link Factory#destroyInstance(Object, org.jboss.errai.ioc.client.container.ContextManager)}
+   * methods.
+   */
   public static ContextualStatementBuilder constructGetReference(final String name, final Class<?> refType) {
     return loadVariable("thisInstance").invoke("getReferenceAs", loadVariable("instance"), name, refType);
   }
 
+  /**
+   * Generates code to call {@link Factory#setReference(Object, String, Object)}
+   * for an instance in the
+   * {@link Factory#createInstance(org.jboss.errai.ioc.client.container.ContextManager)}
+   * method.
+   */
   public static ContextualStatementBuilder constructSetReference(final String name, final Statement value) {
     return loadVariable("thisInstance").invoke("setReference", Stmt.loadVariable("instance"), name, value);
   }

@@ -11,6 +11,13 @@ import java.util.Set;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
 
+/**
+ * Base class used by {@link ApplicationScopedContext} and
+ * {@link DependentScopeContext}. Maps created proxies and instances to
+ * factories.
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public abstract class AbstractContext implements Context {
 
   private final Map<String, Factory<?>> factories = new HashMap<String, Factory<?>>();

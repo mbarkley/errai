@@ -26,11 +26,23 @@ import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
+import org.jboss.errai.ioc.client.api.CodeDecorator;
+import org.jboss.errai.ioc.client.container.ContextManager;
+import org.jboss.errai.ioc.client.container.Factory;
+import org.jboss.errai.ioc.client.container.Proxy;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable.DecorableType;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
 
+/**
+ * The single point of contact for {@link CodeDecorator code decorators} to add
+ * generated code to a {@link Factory}.
+ *
+ * @see CodeDecorator
+ * @see Factory
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public class FactoryController {
 
   private final ListMultimap<MetaMethod, Statement> invokeBefore = ArrayListMultimap.create();
@@ -53,22 +65,51 @@ public class FactoryController {
     this.factory = factory;
   }
 
+  /**
+   * Add a statement to be run in a proxy before the invocation of a bean's
+   * method. Using this method will force the bean to be proxied.
+   */
   public void addInvokeBefore(final MetaMethod method, Statement statement) {
     invokeBefore.put(method, statement);
   }
 
+  /**
+   * @return All statements added with {@link #addInvokeBefore(MetaMethod, Statement)} for the given method.
+   */
   public List<Statement> getInvokeBeforeStatements(final MetaMethod method) {
     return invokeBefore.get(method);
   }
 
+  /**
+   * Add a statement to be run in a proxy after the invocation of a bean's
+   * method. Using this method will force the bean to be proxied.
+   */
   public void addInvokeAfter(final MetaMethod method, Statement statement) {
     invokeAfter.put(method, statement);
   }
 
+  /**
+   * @return All statements added with {@link #addInvokeAfter(MetaMethod, Statement)} for the given method.
+   */
   public List<Statement> getInvokeAfterStatements(final MetaMethod method) {
     return invokeAfter.get(method);
   }
 
+  /**
+   * Add a private field to a bean's proxy. Calling this method forces a bean to
+   * be proxied.
+   *
+   * @param name
+   *          The name of the field.
+   * @param type
+   *          The type of the field.
+   * @param statement
+   *          The initialization statement. This statement is invoked in a
+   *          generated implementation for
+   *          {@link Proxy#initProxyProperties(Object)}.
+   * @return A statement with the loaded proxy field that was just created. This
+   *         statement is only valid when used within the context of the proxy.
+   */
   public Statement addProxyProperty(final String name, final Class<?> type, final Statement statement) {
     proxyProperties.put(name, new Statement() {
       @Override
@@ -85,22 +126,46 @@ public class FactoryController {
     return loadVariable(name);
   }
 
+  /**
+   * @return All field names and initialization statements added with {@link #addProxyProperty(String, Class, Statement)}.
+   */
   public Collection<Entry<String, Statement>> getProxyProperties() {
     return proxyProperties.entrySet();
   }
 
+  /**
+   * Add a list of statements to the implementation of
+   * {@link Factory#init(org.jboss.errai.ioc.client.container.Context)}.
+   */
   public void addFactoryInitializationStatements(final List<Statement> factoryInitializationStatements) {
     this.factoryInitializationStatements.addAll(factoryInitializationStatements);
   }
 
+  /**
+   * @return All statements added with
+   *         {@link #addFactoryInitializationStatements(List)}, in the order
+   *         they were added.
+   */
   public List<Statement> getFactoryInitializaionStatements() {
     return factoryInitializationStatements;
   }
 
+  /**
+   * Add a list of statements to the implementation of
+   * {@link Factory#createInstance(org.jboss.errai.ioc.client.container.ContextManager)}
+   * .
+   */
   public void addInitializationStatements(final List<Statement> callbackBodyStatements) {
     initializationStatements.addAll(callbackBodyStatements);
   }
 
+  /**
+   * @return All statements added with
+   *         {@link #addInitializationStatements(List)} in the order they were
+   *         added followed by all statements added with
+   *         {@link #addInitializationStatementsToEnd(List)} in the order they
+   *         were added.
+   */
   public List<Statement> getInitializationStatements() {
     final List<Statement> stmts = new ArrayList<Statement>();
     stmts.addAll(initializationStatements);
@@ -109,44 +174,120 @@ public class FactoryController {
     return stmts;
   }
 
+  /**
+   * Add a list of statements to the implementation of
+   * {@link Factory#destroyInstance(Object, org.jboss.errai.ioc.client.container.ContextManager)}
+   * . The {@code instance} parameter in scope is guaranteed to be unproxied.
+   */
   public void addDestructionStatements(final List<Statement> callbackInstanceStatement) {
     destructionStatements.addAll(callbackInstanceStatement);
   }
 
+  /**
+   * @return All statements added with {@link #addDestructionStatements(List)}
+   *         in the order they were added.
+   */
   public List<Statement> getDestructionStatements() {
     return destructionStatements;
   }
 
+  /**
+   * @param name The name of an attribute.
+   * @return True iff an attribute with the given name has been set with {@link #setAttribute(String, Object)}.
+   */
   public boolean hasAttribute(final String name) {
     return attributes.containsKey(name);
   }
 
+  /**
+   * Set an attribute that can be looked up with {@link #getAttribute(String)}.
+   */
   public void setAttribute(final String name, final Object value) {
     attributes.put(name, value);
   }
 
+  /**
+   * Lookup an attribute that was previously added with {@link #setAttribute(String, Object)}.
+   *
+   * @return The value of the attribute with the given name, or {@code null} if not attribute exists.
+   */
   public Object getAttribute(final String name) {
     return attributes.get(name);
   }
 
+  /**
+   * @param instanceStmt
+   *          The statement for the instance that will be the first parameter to
+   *          {@link ContextManager#getInstanceProperty(Object, String, Class)}.
+   * @param name
+   *          The name of the property.
+   * @param refType
+   *          The type of the property.
+   * @return A statement that looks up a property of an instance from another
+   *         factory via
+   *         {@link ContextManager#getInstanceProperty(Object, String, Class)}.
+   */
   public ContextualStatementBuilder getInstancePropertyStmt(final Statement instanceStmt, final String name, final Class<?> refType) {
     return loadVariable("contextManager").invoke("getInstanceProperty", instanceStmt, name, refType);
   }
 
+  /**
+   * @param name
+   *          The name of the property.
+   * @param refType
+   *          The type of the property.
+   * @return A statement to call
+   *         {@link Factory#getReferenceAs(Object, String, Class)} for an
+   *         instance in
+   *         {@link Factory#createInstance(org.jboss.errai.ioc.client.container.ContextManager)}
+   *         and
+   *         {@link Factory#destroyInstance(Object, org.jboss.errai.ioc.client.container.ContextManager)}
+   *         methods.
+   */
   public ContextualStatementBuilder getReferenceStmt(final String name, final Class<?> refType) {
     return constructGetReference(name, refType);
   }
 
+  /**
+   * @param name
+   *          The name of the property.
+   * @param value
+   *          A statement for the value to be set.
+   * @return A statement to call
+   *         {@link Factory#setReference(Object, String, Object)} for an
+   *         instance in the
+   *         {@link Factory#createInstance(org.jboss.errai.ioc.client.container.ContextManager)}
+   *         method.
+   */
   public ContextualStatementBuilder setReferenceStmt(final String name, final Statement value) {
     return constructSetReference(name, value);
   }
 
+  /**
+   * This should only be called for non-public fields. This method forces a
+   * private accessor to be generated for the field.
+   *
+   * @param field
+   *          A non-public field.
+   * @return A statement for accessing the value of a field.
+   */
   public ContextualStatementBuilder exposedFieldStmt(final MetaField field) {
     addExposedField(field);
 
     return DecorableType.FIELD.getAccessStatement(field, factory);
   }
 
+  /**
+   * For public methods, fields, and parameters of public methods, this method
+   * does nothing. Otherwise this method generates private accessors/mutators.
+   * In the case of a parameter this method acts as if called for the declaring
+   * method.
+   *
+   * This method is idempotent.
+   *
+   * @param annotated
+   *          A method, field, or parameter that may or may not be public.
+   */
   public void ensureMemberExposed(final HasAnnotations annotated) {
     final MetaClassMember member;
     if (annotated instanceof MetaParameter) {
@@ -163,40 +304,88 @@ public class FactoryController {
     }
   }
 
+  /**
+   * This method is idempotent.
+   *
+   * @param field A non-public field for which private accessor and mutator methods should be generated.
+   */
   public void addExposedField(final MetaField field) {
     exposedFields.add(field);
   }
 
+  /**
+   * This should only be called for non-public methods. This method forces a
+   * private accessor to be generated for the method.
+   *
+   * @param method
+   *          A non-public method.
+   * @param params
+   *          Statements for the values to be passed in as parameters.
+   * @return A statement for accessing the value of a field.
+   */
   public ContextualStatementBuilder exposedMethodStmt(final MetaMethod method, final Statement... params) {
     addExposedMethod(method);
 
     return DecorableType.METHOD.getAccessStatement(method, factory, params);
   }
 
+  /**
+   * This method is idempotent.
+   *
+   * @param method A non-public method for which a private accessor should be generated.
+   */
   public void addExposedMethod(final MetaMethod method) {
     exposedMethods.add(method);
   }
 
+  /**
+   * @return A statement for getting an instance of the type produced by this
+   *         factory in
+   *         {@link Factory#init(org.jboss.errai.ioc.client.container.Context)}.
+   */
   public Statement contextGetInstanceStmt() {
     return castTo(producedType, loadVariable("context").invoke("getInstance", factoryName));
   }
 
-  public Statement contextDestroyInstanceStmt() {
-    return loadVariable("context").invoke("destroyInstance", loadVariable("instance"));
-  }
-
+  /**
+   * @return An unmodifiable collection of fields added with
+   *         {@link #addExposedField(MetaField)} or
+   *         {@link #ensureMemberExposed(HasAnnotations)}.
+   */
   public Collection<MetaField> getExposedFields() {
     return Collections.unmodifiableCollection(exposedFields);
   }
 
+  /**
+   * @return An unmodifiable collection of methods added with
+   *         {@link #addExposedMethod(MetaMethod)} or
+   *         {@link #ensureMemberExposed(HasAnnotations)}.
+   */
   public Collection<MetaMethod> getExposedMethods() {
     return Collections.unmodifiableCollection(exposedMethods);
   }
 
+  /**
+   * Add a list of statements that are to be added to
+   * {@link Factory#createInstance(ContextManager)} after all statements added
+   * with {@link #addInitializationStatements(List)}.
+   *
+   * @param statements
+   *          A collection of statements to be added to the end of
+   *          {@link Factory#createInstance(ContextManager)}.
+   */
   public void addInitializationStatementsToEnd(final List<Statement> statements) {
     endInitializationStatements.addAll(statements);
   }
 
+  /**
+   * @return True iff any of the following methods have been called:
+   *         <ul>
+   *            <li>{@link #addInvokeBefore(MetaMethod, Statement)},
+   *            <li>{@link #addInvokeAfter(MetaMethod, Statement)},
+   *            <li>{@link #addProxyProperty(String, Class, Statement)}.
+   *         </ul>
+   */
   public boolean requiresProxy() {
     return !(proxyProperties.isEmpty() && invokeAfter.isEmpty() && invokeBefore.isEmpty());
   }

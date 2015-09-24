@@ -27,6 +27,12 @@ import com.google.gwt.core.ext.RebindResult;
 import com.google.gwt.core.ext.TreeLogger;
 import com.google.gwt.core.ext.UnableToCompleteException;
 
+/**
+ * Generates {@link Factory} subclasses by dispatching to the appropriate
+ * {@link FactoryBodyGenerator} and writing the output.
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public class FactoryGenerator extends IncrementalGenerator {
 
   private static final String GENERATED_PACKAGE = "org.jboss.errai.ioc.client";

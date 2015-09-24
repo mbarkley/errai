@@ -4,6 +4,10 @@ import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ProducerInstanceDependency;
 
+/**
+ * @see ProducerInstanceDependency
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 class ProducerInstanceDependencyImpl extends BaseDependency implements ProducerInstanceDependency {
 
   MetaClassMember producingMember;

@@ -11,8 +11,22 @@ import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
+import org.jboss.errai.ioc.rebind.ioc.graph.impl.DependencyGraphBuilderImpl.DependencyGraphImpl;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
+/**
+ * Concrete here does not mean "for a concrete class". Rather, it means that
+ * this injectable was for bean that we know how to produce (either because it
+ * is a scoped type or from producer member). In contrast,
+ * {@link AbstractInjectable abstract injectables} are used in unresolved
+ * dependencies to represent a injectable that we do not yet know how to
+ * construct.
+ *
+ * When the {@link DependencyGraphImpl} is constructed, resolution has occurred
+ * and it will contain only concrete injecables.
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 class ConcreteInjectable extends BaseInjectable {
   final InjectableType injectableType;
   final Collection<WiringElementType> wiringTypes;
@@ -27,14 +41,6 @@ class ConcreteInjectable extends BaseInjectable {
     this.literalScope = literalScope;
     this.wiringTypes = wiringTypes;
     this.injectableType = injectorType;
-  }
-
-  boolean isProxiable() {
-    if (proxiable == null) {
-      proxiable = type.isInterface() || (type.isDefaultInstantiable() && !type.isFinal());
-    }
-
-    return proxiable;
   }
 
   @Override
@@ -91,7 +97,7 @@ class ConcreteInjectable extends BaseInjectable {
   }
 
   @Override
-  public boolean isTransient() {
+  public boolean isExtension() {
     return false;
   }
 }

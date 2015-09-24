@@ -1,8 +1,15 @@
 package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 
+/**
+ * A handle for looking up {@link Injectable injectables}.
+ *
+ * @see Injectable
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public class InjectableHandle {
   final MetaClass type;
 
@@ -13,10 +20,16 @@ public class InjectableHandle {
     this.qualifier = qualifier;
   }
 
+  /**
+   * @return The class of the injectable represented by this handle.
+   */
   public MetaClass getType() {
     return type;
   }
 
+  /**
+   * @return The qualifier of the injectable represented by this handle.
+   */
   public Qualifier getQualifier() {
     return qualifier;
   }

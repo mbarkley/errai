@@ -1,5 +1,9 @@
 package org.jboss.errai.ioc.client.container;
 
+/**
+ * @see ProxyHelper
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public class ProxyHelperImpl<T> implements ProxyHelper<T> {
 
   private final String factoryName;

@@ -8,6 +8,13 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 
+/**
+ * Common base class for {@link ConcreteInjectable} and
+ * {@link AbstractInjectable} so that they can both be stored as links in
+ * abstract injectables.
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 abstract class BaseInjectable implements Injectable {
     private static final Multiset<String> allFactoryNames = HashMultiset.create();
 

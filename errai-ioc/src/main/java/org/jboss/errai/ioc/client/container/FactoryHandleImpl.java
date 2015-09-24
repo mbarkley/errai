@@ -5,6 +5,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * @see FactoryHandle
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public class FactoryHandleImpl implements FactoryHandle {
 
   // TODO intern qualifiers for all FactoryHandle instances

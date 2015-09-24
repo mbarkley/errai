@@ -8,10 +8,27 @@ import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaParameter;
 
+/**
+ * When an injectable is added using
+ * {@link DependencyGraphBuilder#addExtensionInjectable(MetaClass, Qualifier, Class, org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType...)}
+ * each injection point it satisfies will have its own
+ * {@link ProvidedInjectable}.
+ *
+ * @see Injectable
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public interface ProvidedInjectable extends Injectable {
 
+  /**
+   * @return Get the single injection site for this {@link ProvidedInjectable}.
+   */
   public InjectionSite getInjectionSite();
 
+  /**
+   * Contains metadata for a single injection point.
+   *
+   * @author Max Barkley <mbarkley@redhat.com>
+   */
   public static class InjectionSite implements HasAnnotations {
 
     private final MetaClass enclosingType;
@@ -33,10 +50,16 @@ public interface ProvidedInjectable extends Injectable {
       }
     }
 
+    /**
+     * @return A unique name for this injection site.
+     */
     public String getUniqueName() {
       return enclosingType.getName() + "_" + annotatedName();
     }
 
+    /**
+     * @return The enclosing type for this injection site.
+     */
     public MetaClass getEnclosingType() {
       return enclosingType;
     }
@@ -56,6 +79,9 @@ public interface ProvidedInjectable extends Injectable {
       return annotated.getAnnotation(annotation);
     }
 
+    /**
+     * @return The exact type of this injection site.
+     */
     public MetaClass getExactType() {
       if (annotated instanceof MetaField) {
         return ((MetaField) annotated).getType();

@@ -51,6 +51,14 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 import com.google.common.collect.Multimap;
 
+/**
+ * Generate factories for type injectable beans. Generates code to support
+ * constructor, field, and method injection.
+ *
+ * @see FactoryBodyGenerator
+ * @see AbstractBodyGenerator
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
 
   @Override
@@ -98,7 +106,7 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
   }
 
   @Override
-  protected List<Statement> generateInovkePostConstructsStatements(ClassStructureBuilder<?> bodyBlockBuilder,
+  protected List<Statement> generateInvokePostConstructsStatements(ClassStructureBuilder<?> bodyBlockBuilder,
           Injectable injectable, DependencyGraph graph, InjectionContext injectionContext) {
     final List<Statement> stmts = new ArrayList<Statement>();
     final Queue<MetaMethod> postConstructMethods = gatherPostConstructs(injectable);

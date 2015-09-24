@@ -27,6 +27,12 @@ import org.jboss.errai.ioc.util.CDIAnnotationUtils;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 
+/**
+ * Default implementation of {@link QualifierFactory}. Adheres to the CDI spec
+ * regarding what qualifiers injectables and injection points have.
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public class DefaultQualifierFactory implements QualifierFactory {
 
   private static final Any ANY = new Any() {

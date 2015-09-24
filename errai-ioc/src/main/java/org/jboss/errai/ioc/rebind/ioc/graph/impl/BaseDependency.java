@@ -4,6 +4,11 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 
+/**
+ * Base implementation for all {@link Dependency dependencies}.
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 class BaseDependency implements Dependency {
   AbstractInjectable injectable;
   final DependencyType dependencyType;

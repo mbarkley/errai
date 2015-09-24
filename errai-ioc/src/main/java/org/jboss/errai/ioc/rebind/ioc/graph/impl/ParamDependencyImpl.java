@@ -4,6 +4,10 @@ import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ParamDependency;
 
+/**
+ * @see ParamDependency
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 class ParamDependencyImpl extends BaseDependency implements ParamDependency {
 
   final int paramIndex;
