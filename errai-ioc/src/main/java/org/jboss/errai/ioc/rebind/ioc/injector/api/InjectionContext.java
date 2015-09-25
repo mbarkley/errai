@@ -36,13 +36,14 @@ import javax.enterprise.inject.Stereotype;
 import javax.inject.Qualifier;
 import javax.inject.Scope;
 
-import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
-import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.common.client.api.Assert;
 import org.jboss.errai.config.util.ClassScanner;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.FactoryBodyGenerator;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.FactoryGenerator;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessor;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.QualifierFactory;
 import org.jboss.errai.ioc.rebind.ioc.graph.impl.DefaultQualifierFactory;
@@ -55,6 +56,17 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 
+/**
+ * At every rebind phase, a single {@link InjectionContext} is used. It contains
+ * information on enabled alternatives, whitelisted and blacklisted beans, and
+ * annotations associated with various {@link WiringElementType wiring types}.
+ *
+ * The injection context also stores string-named attributes for sharing data
+ * between the {@link IOCProcessor} and separate usages of the
+ * {@link FactoryGenerator}.
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 public class InjectionContext {
   private static final Logger log = LoggerFactory.getLogger(InjectionContext.class);
 
@@ -77,8 +89,6 @@ public class InjectionContext {
   private final Multimap<ElementType, Class<? extends Annotation>> decoratorsByElementType = HashMultimap.create();
   private final Multimap<Class<? extends Annotation>, Class<? extends Annotation>> metaAnnotationAliases
       = HashMultimap.create();
-
-  private final Map<MetaParameter, Statement> inlineBeanReferenceMap = new HashMap<MetaParameter, Statement>();
 
   private final Map<String, Object> attributeMap = new HashMap<String, Object>();
 
@@ -144,10 +154,39 @@ public class InjectionContext {
     }
   }
 
+  /**
+   * Register an {@link InjectableProvider} for injection sites that are
+   * sastisfied by the given {@link InjectableHandle}.
+   *
+   * @param handle
+   *          Contains the type and qualifier that the given provider satisfies.
+   * @param provider
+   *          The
+   *          {@link InjectableProvider#getGenerator(org.jboss.errai.ioc.rebind.ioc.graph.api.ProvidedInjectable.InjectionSite)}
+   *          will be called for every injection site satisified by the given
+   *          handle. The returned {@link FactoryBodyGenerator} will be used to
+   *          generate factories specific to the given injection sites.
+   */
   public void registerInjectableProvider(final InjectableHandle handle, final InjectableProvider provider) {
     injectableProviders.put(handle, provider);
   }
 
+  /**
+   * Like
+   * {@link #registerInjectableProvider(InjectableHandle, InjectableProvider)}
+   * except that the given {@link InjectableProvider} will be used to satisfy
+   * any injection point where the qualifier is satisfied and the type is a
+   * subtype of {@link InjectableHandle#getType()}.
+   *
+   * @param handle
+   *          Contains the type and qualifier that the given provider satisfies.
+   * @param provider
+   *          The
+   *          {@link InjectableProvider#getGenerator(org.jboss.errai.ioc.rebind.ioc.graph.api.ProvidedInjectable.InjectionSite)}
+   *          will be called for every injection site satisified by the given
+   *          handle. The returned {@link FactoryBodyGenerator} will be used to
+   *          generate factories specific to the given injection sites.
+   */
   public void registerSubTypeMatchingInjectableProvider(final InjectableHandle handle, final InjectableProvider provider) {
     subTypeMatchingInjectableProviders.put(handle, provider);
   }
@@ -386,14 +425,6 @@ public class InjectionContext {
 
   public boolean hasAttribute(final String name) {
     return attributeMap.containsKey(name);
-  }
-
-  public void addInlineBeanReference(final MetaParameter ref, final Statement statement) {
-    inlineBeanReferenceMap.put(ref, statement);
-  }
-
-  public Statement getInlineBeanReference(final MetaParameter ref) {
-    return inlineBeanReferenceMap.get(ref);
   }
 
   public boolean isAsync() {
