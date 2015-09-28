@@ -763,6 +763,7 @@ public abstract class AbstractMetaClass<T> extends MetaClass {
   }
 
   private String contentString;
+  private int hashContent;
 
   @Override
   public int hashContent() {
@@ -793,9 +794,10 @@ public abstract class AbstractMetaClass<T> extends MetaClass {
       }
 
       contentString = sb.toString();
+      hashContent = contentString.hashCode();
     }
 
-    return contentString.hashCode();
+    return hashContent;
   }
 
   private String _hashString;
