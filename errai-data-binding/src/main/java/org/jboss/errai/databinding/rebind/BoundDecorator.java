@@ -17,6 +17,7 @@
 package org.jboss.errai.databinding.rebind;
 
 import static org.jboss.errai.codegen.util.Stmt.declareVariable;
+import static org.jboss.errai.codegen.util.Stmt.loadLiteral;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 import static org.jboss.errai.codegen.util.Stmt.nestedCall;
 import static org.jboss.errai.codegen.util.Stmt.throw_;
@@ -121,7 +122,7 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
 
 
       // Generate the binding
-      Statement conv = bound.converter().equals(Bound.NO_CONVERTER.class) ? null : Stmt.newObject(bound.converter());
+      Statement conv = bound.converter().equals(Bound.NO_CONVERTER.class) ? loadLiteral(null) : Stmt.newObject(bound.converter());
       Statement onKeyUp = Stmt.load(bound.onKeyUp());
       statements.add(Stmt.loadVariable("binder").invoke("bind", widget, property, conv, onKeyUp));
     }
