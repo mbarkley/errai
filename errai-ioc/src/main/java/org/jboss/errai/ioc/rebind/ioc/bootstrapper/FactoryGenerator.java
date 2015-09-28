@@ -136,7 +136,7 @@ public class FactoryGenerator extends IncrementalGenerator {
 
       return sameContent;
     } else {
-      log.trace("No cached injectable was found for " + typeName);
+      log.trace("No cached injectable was found for {}", typeName);
       return false;
     }
   }
