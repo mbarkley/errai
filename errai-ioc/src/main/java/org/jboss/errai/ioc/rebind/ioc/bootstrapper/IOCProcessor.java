@@ -330,20 +330,24 @@ public class IOCProcessor {
   }
 
   private void processType(final MetaClass type, final DependencyGraphBuilder builder) {
-    if (isTypeInjectableCandidate(type)) {
-      if (isSimpleton(type)) {
-        builder.addInjectable(type, qualFactory.forSource(type), Dependent.class, InjectableType.Type,
-                WiringElementType.DependentBean, WiringElementType.Simpleton);
-      } else if (isTypeInjectable(type)) {
-        final Class<? extends Annotation> directScope = getScope(type);
-        final Injectable typeInjectable = builder.addInjectable(type, qualFactory.forSource(type),
-                directScope, InjectableType.Type, getWiringTypes(type, directScope));
-        processInjectionPoints(typeInjectable, builder);
-        maybeProcessAsProducer(builder, typeInjectable);
-        maybeProcessAsProvider(typeInjectable, builder);
+    try {
+      if (isTypeInjectableCandidate(type)) {
+        if (isSimpleton(type)) {
+          builder.addInjectable(type, qualFactory.forSource(type), Dependent.class, InjectableType.Type,
+                  WiringElementType.DependentBean, WiringElementType.Simpleton);
+        } else if (isTypeInjectable(type)) {
+          final Class<? extends Annotation> directScope = getScope(type);
+          final Injectable typeInjectable = builder.addInjectable(type, qualFactory.forSource(type),
+                  directScope, InjectableType.Type, getWiringTypes(type, directScope));
+          processInjectionPoints(typeInjectable, builder);
+          maybeProcessAsProducer(builder, typeInjectable);
+          maybeProcessAsProvider(typeInjectable, builder);
+        }
+      } else if (type.isAnnotationPresent(JsType.class)) {
+        builder.addInjectable(type, qualFactory.forUniversallyQualified(), Dependent.class, InjectableType.JsType);
       }
-    } else if (type.isAnnotationPresent(JsType.class)) {
-      builder.addInjectable(type, qualFactory.forUniversallyQualified(), Dependent.class, InjectableType.JsType);
+    } catch (Throwable t) {
+      throw new RuntimeException("A fatal error occurred while processing " + type.getFullyQualifiedName(), t);
     }
   }
 
