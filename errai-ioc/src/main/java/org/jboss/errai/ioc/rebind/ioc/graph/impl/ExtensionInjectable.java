@@ -20,10 +20,10 @@ class ExtensionInjectable extends ConcreteInjectable {
 
   final Collection<InjectionSite> injectionSites = new ArrayList<InjectionSite>();
 
-  ExtensionInjectable(final MetaClass type, final Qualifier qualifier,
+  ExtensionInjectable(final MetaClass type, final Qualifier qualifier, final String factoryName,
           final Class<? extends Annotation> literalScope, final InjectableType injectorType,
           final Collection<WiringElementType> wiringTypes) {
-    super(type, qualifier, literalScope, injectorType, wiringTypes);
+    super(type, qualifier, factoryName, literalScope, injectorType, wiringTypes);
   }
 
   public Collection<InjectionSite> getInjectionSites() {

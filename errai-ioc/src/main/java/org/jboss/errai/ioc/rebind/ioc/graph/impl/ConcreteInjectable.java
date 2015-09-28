@@ -34,10 +34,12 @@ class ConcreteInjectable extends BaseInjectable {
   final Class<? extends Annotation> literalScope;
   Boolean proxiable = null;
   boolean requiresProxy = false;
+  Integer hashContent = null;
 
-  ConcreteInjectable(final MetaClass type, final Qualifier qualifier, final Class<? extends Annotation> literalScope,
-          final InjectableType injectorType, final Collection<WiringElementType> wiringTypes) {
-    super(type, qualifier);
+  ConcreteInjectable(final MetaClass type, final Qualifier qualifier, final String factoryName,
+          final Class<? extends Annotation> literalScope, final InjectableType injectorType,
+          final Collection<WiringElementType> wiringTypes) {
+    super(type, qualifier, factoryName);
     this.literalScope = literalScope;
     this.wiringTypes = wiringTypes;
     this.injectableType = injectorType;
@@ -99,5 +101,23 @@ class ConcreteInjectable extends BaseInjectable {
   @Override
   public boolean isExtension() {
     return false;
+  }
+
+  @Override
+  public int hashContent() {
+    if (hashContent == null) {
+      hashContent = computeHashContent();
+    }
+
+    return hashContent;
+  }
+
+  private int computeHashContent() {
+    int hashContent = type.hashContent();
+    for (final BaseDependency dep: dependencies) {
+      hashContent ^= dep.injectable.resolution.type.hashContent();
+    }
+
+    return hashContent;
   }
 }

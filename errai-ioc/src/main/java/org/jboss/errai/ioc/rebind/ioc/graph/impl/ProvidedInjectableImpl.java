@@ -14,14 +14,10 @@ class ProvidedInjectableImpl extends ConcreteInjectable implements ProvidedInjec
   final ExtensionInjectable injectable;
 
   ProvidedInjectableImpl(final ExtensionInjectable injectable, final InjectionSite site) {
-    super(injectable.type, injectable.qualifier, injectable.literalScope, InjectableType.ExtensionProvided, injectable.wiringTypes);
+    super(injectable.type, injectable.qualifier, injectable.getFactoryNameForInjectionSite(site),
+            injectable.literalScope, InjectableType.ExtensionProvided, injectable.wiringTypes);
     this.site = site;
     this.injectable = injectable;
-  }
-
-  @Override
-  public String getFactoryName() {
-    return injectable.getFactoryNameForInjectionSite(site);
   }
 
   @Override

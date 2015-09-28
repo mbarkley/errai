@@ -97,4 +97,13 @@ public interface Injectable {
    */
   boolean isExtension();
 
+  /**
+   * @return A hashcode based on the following:
+   *    <ul>
+   *      <li>The {@link MetaClass#hashContent() hashContent} of the {@link MetaClass} produced by this injectable.
+   *      <il>The hashContent of the MetaClasses of all dependencies.
+   *    </ul>
+   */
+  int hashContent();
+
 }

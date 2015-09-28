@@ -16,9 +16,12 @@ import org.jboss.errai.common.metadata.RebindUtils;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
-import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.gwt.core.ext.GeneratorContext;
 import com.google.gwt.core.ext.IncrementalGenerator;
@@ -35,20 +38,27 @@ import com.google.gwt.core.ext.UnableToCompleteException;
  */
 public class FactoryGenerator extends IncrementalGenerator {
 
+  private static final Logger log = LoggerFactory.getLogger(FactoryGenerator.class);
+
   private static final String GENERATED_PACKAGE = "org.jboss.errai.ioc.client";
   private static final Map<String, FactoryBodyGenerator> customBodyGenerators = new HashMap<String, FactoryBodyGenerator>();
   private static DependencyGraph graph;
   private static InjectionContext injectionContext;
+  private static Map<String, String> generatedSourceByFactoryTypeName = new HashMap<String, String>();
+  private static Map<String, Injectable> injectablesByFactoryTypeName = new HashMap<String, Injectable>();
 
   public static void setDependencyGraph(final DependencyGraph graph) {
+    log.debug("Dependency graph set.");
     FactoryGenerator.graph = graph;
   }
 
   public static void setInjectionContext(final InjectionContext injectionContext) {
+    log.debug("Injection context set.");
     FactoryGenerator.injectionContext = injectionContext;
   }
 
   public static void registerCustomBodyGenerator(final String typeName, final FactoryBodyGenerator generator) {
+    log.debug("Custom body generator registered for " + typeName);
     customBodyGenerators.put(typeName, generator);
   }
 
@@ -90,7 +100,17 @@ public class FactoryGenerator extends IncrementalGenerator {
     if (pw != null) {
       generator.generate(factoryBuilder, injectable, graph, injectionContext, logger, generatorContext);
 
-      final String factorySource = factoryBuilder.toJavaString();
+      final String factorySource;
+      if (isCacheUsable(typeName, injectable)) {
+        log.debug("Reusing cached factory for " + typeName);
+        factorySource = generatedSourceByFactoryTypeName.get(typeName);
+      } else {
+        log.debug("Generating factory for " + typeName);
+        factorySource = factoryBuilder.toJavaString();
+        generatedSourceByFactoryTypeName.put(typeName, factorySource);
+        injectablesByFactoryTypeName.put(typeName, injectable);
+      }
+
       final File tmpFile = new File(RebindUtils.getErraiCacheDir().getAbsolutePath() + "/" + factorySimpleClassName + ".java");
       RebindUtils.writeStringToFile(tmpFile, factorySource);
       pw.write(factorySource);
@@ -98,8 +118,38 @@ public class FactoryGenerator extends IncrementalGenerator {
 
       return new RebindResult(RebindMode.USE_ALL_NEW, factoryBuilder.getClassDefinition().getFullyQualifiedName());
     } else {
+      log.debug("Reusing factory for " + typeName);
       return new RebindResult(RebindMode.USE_EXISTING, getFactorySubTypeName(typeName));
     }
+  }
+
+  private boolean isCacheUsable(final String typeName, final Injectable givenInjectable) {
+    final Injectable cachedInjectable = injectablesByFactoryTypeName.get(typeName);
+
+    if (cachedInjectable != null) {
+      final boolean sameContent = cachedInjectable.hashContent() == givenInjectable.hashContent();
+      if (log.isTraceEnabled() && !sameContent) {
+        log.trace("Different hashContent for cached " + typeName);
+        traceConstituentHashContents(cachedInjectable, "cached " + typeName);
+        traceConstituentHashContents(givenInjectable, "new " + typeName);
+      }
+
+      return sameContent;
+    } else {
+      log.trace("No cached injectable was found for " + typeName);
+      return false;
+    }
+  }
+
+  private static void traceConstituentHashContents(final Injectable injectable, final String name) {
+    log.trace("Begin trace of hashContent for {}", name);
+    log.trace("Combined content: {}", injectable.hashContent());
+    log.trace("HashContent for injectable type: {}", injectable.getInjectedType().hashContent());
+    for (final Dependency dep : injectable.getDependencies()) {
+      log.trace("HashContent for {} dep of type {}: {}", dep.getDependencyType().toString(),
+              dep.getInjectable().getInjectedType(), dep.getInjectable().getInjectedType().hashContent());
+    }
+    log.trace("End trace of hashContent for {}", name);
   }
 
   private FactoryBodyGenerator selectBodyGenerator(final InjectableType factoryType, final String typeName) {

@@ -19,14 +19,12 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
  */
 class AbstractInjectable extends BaseInjectable {
   // TODO needs to be renamed and not be an Injectable
-  // TODO review getDependencies and similar to see if they should throw errors.
-  // They should probably only be called on ConcreteInjectables
 
   final Collection<BaseInjectable> linked = new HashSet<BaseInjectable>();
   ConcreteInjectable resolution;
 
   AbstractInjectable(final MetaClass type, final Qualifier qualifier) {
-    super(type, qualifier);
+    super(type, qualifier, null);
   }
 
   @Override
@@ -80,5 +78,16 @@ class AbstractInjectable extends BaseInjectable {
   @Override
   public boolean isExtension() {
     return false;
+  }
+
+  @Override
+  public String getFactoryName() {
+    throw new RuntimeException("Abstract injectables to not have a factory name.");
+  }
+
+  @Override
+  public int hashContent() {
+    // TODO Auto-generated method stub
+    throw new RuntimeException("This method should only be called for concrete injectables.");
   }
 }

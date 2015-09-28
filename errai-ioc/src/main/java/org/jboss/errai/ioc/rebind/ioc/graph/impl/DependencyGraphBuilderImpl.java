@@ -51,6 +51,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   private final Collection<AbstractInjectable> subTypeMatchingInjectables = new ArrayList<AbstractInjectable>();
   private final Map<String, ConcreteInjectable> concretesByName = new HashMap<String, ConcreteInjectable>();
   private final List<ConcreteInjectable> specializations = new ArrayList<ConcreteInjectable>();
+  private final FactoryNameGenerator nameGenerator = new FactoryNameGenerator();
 
   public DependencyGraphBuilderImpl(final QualifierFactory qualFactory) {
     this.qualFactory = qualFactory;
@@ -58,8 +59,10 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
   @Override
   public Injectable addInjectable(final MetaClass injectedType, final Qualifier qualifier, Class<? extends Annotation> literalScope,
-          final InjectableType factoryType, final WiringElementType... wiringTypes) {
-    final ConcreteInjectable concrete = new ConcreteInjectable(injectedType, qualifier, literalScope, factoryType, Arrays.asList(wiringTypes));
+          final InjectableType injectableType, final WiringElementType... wiringTypes) {
+    final ConcreteInjectable concrete = new ConcreteInjectable(injectedType, qualifier,
+            nameGenerator.generateFor(injectedType, qualifier, injectableType), literalScope, injectableType,
+            Arrays.asList(wiringTypes));
     return registerNewConcreteInjectable(concrete);
   }
 
@@ -80,7 +83,9 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   @Override
   public Injectable addExtensionInjectable(final MetaClass injectedType, final Qualifier qualifier,
           final Class<? extends Annotation> literalScope, final WiringElementType... wiringTypes) {
-    final ConcreteInjectable concrete = new ExtensionInjectable(injectedType, qualifier, literalScope, InjectableType.Extension, Arrays.asList(wiringTypes));
+    final ConcreteInjectable concrete = new ExtensionInjectable(injectedType, qualifier,
+            nameGenerator.generateFor(injectedType, qualifier, InjectableType.Extension), literalScope,
+            InjectableType.Extension, Arrays.asList(wiringTypes));
     return registerNewConcreteInjectable(concrete);
   }
 
