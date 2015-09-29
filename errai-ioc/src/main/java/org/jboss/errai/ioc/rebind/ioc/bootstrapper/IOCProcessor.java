@@ -16,9 +16,11 @@
 
 package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
 
+import static org.jboss.errai.codegen.Parameter.finalOf;
 import static org.jboss.errai.codegen.builder.impl.ObjectBuilder.newInstanceOf;
 import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
 import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
+import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
 import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 
@@ -29,6 +31,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,6 +47,7 @@ import javax.inject.Provider;
 
 import org.jboss.errai.codegen.InnerClass;
 import org.jboss.errai.codegen.Modifier;
+import org.jboss.errai.codegen.Parameter;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.AnonymousClassStructureBuilder;
 import org.jboss.errai.codegen.builder.BlockBuilder;
@@ -123,18 +128,23 @@ public class IOCProcessor {
     FactoryGenerator.setInjectionContext(injectionContext);
 
     final Map<Class<? extends Annotation>, MetaClass> scopeContexts = findScopeContexts(processingContext);
-    @SuppressWarnings("rawtypes")
-    final BlockBuilder registerFactoriesBody = addScopeContextsToRegisterFactoriesMethod(processingContext, scopeContexts);
+    final Set<MetaClass> scopeContextSet = new LinkedHashSet<MetaClass>(scopeContexts.values());
+    final Statement[] contextLocalVarInvocation = contextLocalVarInvocation(scopeContextSet);
 
-    declareAndRegisterFactories(processingContext, dependencyGraph, scopeContexts, registerFactoriesBody);
+    @SuppressWarnings("rawtypes")
+    final BlockBuilder registerFactoriesBody = createRegisterFactoriesMethod(processingContext, scopeContextSet);
+
+    declareAndRegisterFactories(processingContext, dependencyGraph, scopeContexts, scopeContextSet, registerFactoriesBody);
     final String contextManagerFieldName = declareContextManagerField(processingContext);
     declareWindowInjectionContextField(processingContext);
-    addContextsToContextManager(new HashSet<MetaClass>(scopeContexts.values()), contextManagerFieldName, registerFactoriesBody);
     callFinishInitOnContextManager(contextManagerFieldName, registerFactoriesBody);
 
     registerFactoriesBody.finish();
 
-    processingContext.getBlockBuilder()._(loadVariable("this").invoke("registerFactories"));
+    processingContext.getBlockBuilder()
+      .appendAll(contextLocalVarDeclarations(scopeContextSet))
+      ._(loadVariable("this").invoke("registerFactories", (Object[]) contextLocalVarInvocation));
+    addContextsToContextManager(scopeContextSet, contextManagerFieldName, processingContext.getBlockBuilder());
   }
 
   private void callFinishInitOnContextManager(final String contextManagerFieldName, final BlockBuilder<?> registerFactoriesBody) {
@@ -152,9 +162,9 @@ public class IOCProcessor {
   }
 
   private void addContextsToContextManager(final Collection<MetaClass> scopeContextImpls,
-          final String contextManagerFieldName, @SuppressWarnings("rawtypes") final BlockBuilder registerFactoriesBody) {
+          final String contextManagerFieldName, @SuppressWarnings("rawtypes") final BlockBuilder methodBody) {
     for (final MetaClass scopeContextImpl : scopeContextImpls) {
-      registerFactoriesBody._(loadVariable(contextManagerFieldName).invoke("addContext", loadVariable(getContextVarName(scopeContextImpl))));
+      methodBody._(loadVariable(contextManagerFieldName).invoke("addContext", loadVariable(getContextVarName(scopeContextImpl))));
     }
   }
 
@@ -176,18 +186,38 @@ public class IOCProcessor {
             .finish();
   }
 
+  @SuppressWarnings({ "rawtypes", "unchecked" })
   private void declareAndRegisterFactories(final IOCProcessingContext processingContext,
           final DependencyGraph dependencyGraph, final Map<Class<? extends Annotation>, MetaClass> scopeContexts,
-          @SuppressWarnings("rawtypes") final BlockBuilder registerFactoriesBody) {
+          final Collection<MetaClass> orderedScopeContexts, final BlockBuilder registerFactoriesBody) {
+    final Parameter[] contextParamsDeclaration = contextParamsDeclaration(orderedScopeContexts);
+    final Statement[] contextLocalVarInvocation = contextLocalVarInvocation(orderedScopeContexts);
+    int methodNumber = 0;
+    int registeredInThisMethod = 0;
+    BlockBuilder curMethod = null;
     for (final Injectable injectable : dependencyGraph) {
+      if (registeredInThisMethod % 500 == 0) {
+        if (curMethod != null) {
+          curMethod.finish();
+          registerFactoriesBody._(loadVariable("this").invoke("registerFactories" + methodNumber, (Object[]) contextLocalVarInvocation));
+          methodNumber++;
+          registeredInThisMethod = 0;
+        }
+        curMethod = processingContext.getBootstrapBuilder().privateMethod(void.class, "registerFactories" + methodNumber, contextParamsDeclaration).body();
+      }
       if (!injectable.isContextual()) {
         if (injectable.getInjectableType().equals(InjectableType.ExtensionProvided)) {
-          declareAndRegisterConcreteInjectable(injectable, processingContext, scopeContexts, registerFactoriesBody);
+          declareAndRegisterConcreteInjectable(injectable, processingContext, scopeContexts, curMethod);
           registerFactoryBodyGeneratorForInjectionSite(injectable);
         } else {
-          declareAndRegisterConcreteInjectable(injectable, processingContext, scopeContexts, registerFactoriesBody);
+          declareAndRegisterConcreteInjectable(injectable, processingContext, scopeContexts, curMethod);
         }
       }
+      registeredInThisMethod++;
+    }
+    if (curMethod != null) {
+      curMethod.finish();
+      registerFactoriesBody._(loadVariable("this").invoke("registerFactories" + methodNumber, (Object[]) contextLocalVarInvocation));
     }
   }
 
@@ -234,28 +264,51 @@ public class IOCProcessor {
   }
 
   @SuppressWarnings("rawtypes")
-  private BlockBuilder addScopeContextsToRegisterFactoriesMethod(final IOCProcessingContext processingContext,
-          final Map<Class<? extends Annotation>, MetaClass> scopeContexts) {
-    final Set<String> namesAlreadyAdded = new HashSet<String>();
-    @SuppressWarnings({ "unchecked" })
-    final BlockBuilder methodBody = processingContext.getBootstrapBuilder().privateMethod(void.class, "registerFactories").body();
-    for (final Class<? extends Annotation> scope : injectionContext.getAnnotationsForElementType(WiringElementType.NormalScopedBean)) {
-      if (scopeContexts.containsKey(scope)) {
-        final MetaClass scopeContextImpl = scopeContexts.get(scope);
-        if (!namesAlreadyAdded.contains(scopeContextImpl.getName())) {
-          if (!scopeContextImpl.isDefaultInstantiable()) {
-            throw new RuntimeException("The @ScopeContext " + scopeContextImpl.getName() + " must have a public, no-args constructor.");
-          }
+  private BlockBuilder createRegisterFactoriesMethod(final IOCProcessingContext processingContext,
+          final Collection<MetaClass> scopeContexts) {
+    final Parameter[] contextParams = contextParamsDeclaration(scopeContexts);
 
-          methodBody._(Stmt.declareFinalVariable(getContextVarName(scopeContextImpl), Context.class, newInstanceOf(scopeContextImpl)));
-          namesAlreadyAdded.add(scopeContextImpl.getName());
-        }
-      }
-    }
-    final MetaClass dependentContext = scopeContexts.get(Dependent.class);
-    methodBody._(Stmt.declareFinalVariable(getContextVarName(dependentContext), Context.class, newInstanceOf(dependentContext)));
+    @SuppressWarnings({ "unchecked" })
+    final BlockBuilder methodBody = processingContext.getBootstrapBuilder().privateMethod(void.class, "registerFactories", contextParams).body();
 
     return methodBody;
+  }
+
+  private Parameter[] contextParamsDeclaration(final Collection<MetaClass> scopeContexts) {
+    final Parameter[] contextParams = new Parameter[scopeContexts.size()];
+    final Iterator<MetaClass> iter = scopeContexts.iterator();
+    int i = 0;
+    while (iter.hasNext()) {
+      final MetaClass scopeContextImpl = iter.next();
+      contextParams[i++] = finalOf(Context.class, getContextVarName(scopeContextImpl));
+    }
+    return contextParams;
+  }
+
+  private Statement[] contextLocalVarInvocation(final Collection<MetaClass> scopeContexts) {
+    final Statement[] vars = new Statement[scopeContexts.size()];
+    final Iterator<MetaClass> iter = scopeContexts.iterator();
+    int i = 0;
+    while (iter.hasNext()) {
+      vars[i++] = loadVariable(getContextVarName(iter.next()));
+    }
+
+    return vars;
+  }
+
+  private List<Statement> contextLocalVarDeclarations(final Collection<MetaClass> scopeContextTypes) {
+    final List<Statement> declarations = new ArrayList<Statement>();
+    for (final MetaClass scopeContextImpl : scopeContextTypes) {
+      if (!scopeContextImpl.isDefaultInstantiable()) {
+        throw new RuntimeException(
+                "The @ScopeContext " + scopeContextImpl.getName() + " must have a public, no-args constructor.");
+      }
+
+      declarations.add(declareFinalVariable(getContextVarName(scopeContextImpl), Context.class,
+              newInstanceOf(scopeContextImpl)));
+    }
+
+    return declarations;
   }
 
   private void registerFactoryWithContext(final Injectable injectable, final MetaClass factoryClass,

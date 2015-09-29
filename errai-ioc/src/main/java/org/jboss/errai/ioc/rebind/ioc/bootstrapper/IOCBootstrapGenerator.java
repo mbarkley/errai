@@ -34,7 +34,6 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import org.jboss.errai.codegen.Context;
-import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.BlockBuilder;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.impl.BlockBuilderImpl;
@@ -224,34 +223,9 @@ public class IOCBootstrapGenerator {
     processorFactory.process(processingContext);
     log.debug("Processed dependency graph in " + (System.currentTimeMillis() - start) + "ms");
 
-    int i = 0;
-    int beanDeclareMethodCount = 0;
-    BlockBuilder<? extends ClassStructureBuilder<?>> declareBeanBody = null;
-
-    for (final Statement stmt : processingContext.getAppendToEnd()) {
-      if (declareBeanBody == null || (i % 500) == 0) {
-        if (declareBeanBody != null) {
-          declareBeanBody.finish();
-        }
-        final String methodName = "declareBeans_" + beanDeclareMethodCount++;
-
-        declareBeanBody = classBuilder.privateMethod(void.class, methodName).body();
-        blockBuilder.append(Stmt.loadVariable("this").invoke(methodName));
-      }
-
-      declareBeanBody.append(stmt);
-
-      i++;
-    }
-
-    if (declareBeanBody != null) {
-      declareBeanBody.finish();
-    }
-
     doAfterRunnbales(blockBuilder);
 
     blockBuilder.append(loadVariable("contextManager").returnValue());
-
     blockBuilder.finish();
 
     return classBuilder.toJavaString();
