@@ -55,16 +55,6 @@ public interface ClientBeanManager {
   Object getActualBeanReference(Object ref);
 
   /**
-   * Associates the reference to a proxied bean to the underlying bean instance which it is proxying.
-   *
-   * @param proxyRef
-   *     the reference to the proxy
-   * @param realRef
-   *     the reference to the bean being proxied.
-   */
-  void addProxyReference(final Object proxyRef, final Object realRef);
-
-  /**
    * Determines whether the referenced object is itself a proxy to a managed bean.
    *
    * @param ref

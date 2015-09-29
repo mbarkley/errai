@@ -41,7 +41,7 @@ import com.google.common.collect.Multimap;
  * @author Mike Brock
  */
 @Alternative
-public class SyncBeanManagerImpl implements SyncBeanManager {
+public class SyncBeanManagerImpl implements SyncBeanManager, SyncBeanManagerSetup {
 
   private static final Default DEFAULT = new Default() {
 
@@ -72,12 +72,6 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
     } else {
       return ref;
     }
-  }
-
-  @Override
-  public void addProxyReference(Object proxyRef, Object realRef) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
   }
 
   @Override
@@ -124,12 +118,12 @@ public class SyncBeanManagerImpl implements SyncBeanManager {
     }
   }
 
-  @SuppressWarnings({ "rawtypes" })
+  @SuppressWarnings({ "rawtypes", "unchecked" })
   @Override
-  public Collection<IOCBeanDef> lookupBeans(final String name) {
-    final Collection<IOCBeanDef> beanDefs = new ArrayList<IOCBeanDef>();
-    for (final Class<?> type : typesByName.get(name)) {
-      beanDefs.addAll(lookupBeans(type));
+  public <T> Collection<IOCBeanDef<T>> lookupBeans(final String name) {
+    final Collection<IOCBeanDef<T>> beanDefs = new ArrayList<IOCBeanDef<T>>();
+    for (final Class type : typesByName.get(name)) {
+      beanDefs.addAll(lookupBeans((Class<T>) type));
     }
 
     return beanDefs;

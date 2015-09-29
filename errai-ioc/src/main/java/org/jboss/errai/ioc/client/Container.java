@@ -23,6 +23,7 @@ import org.jboss.errai.ioc.client.container.ContextManager;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ioc.client.container.IOCEnvironment;
 import org.jboss.errai.ioc.client.container.SyncBeanManager;
+import org.jboss.errai.ioc.client.container.SyncBeanManagerSetup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +60,7 @@ public class Container implements EntryPoint {
       final ContextManager contextManager = bootstrapper.bootstrapContainer();
       final SyncBeanManager beanManager = IOC.getBeanManager();
 
-      beanManager.setContextManager(contextManager);
+      ((SyncBeanManagerSetup) beanManager).setContextManager(contextManager);
       init = true;
       for (final Runnable run : afterInit) {
         run.run();

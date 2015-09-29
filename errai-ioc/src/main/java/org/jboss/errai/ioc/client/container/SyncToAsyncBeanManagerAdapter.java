@@ -64,11 +64,6 @@ public class SyncToAsyncBeanManagerAdapter implements AsyncBeanManager {
   }
 
   @Override
-  public void addProxyReference(Object proxyRef, Object realRef) {
-    bm.addProxyReference(proxyRef, realRef);
-  }
-
-  @Override
   public boolean isProxyReference(Object ref) {
     return bm.isProxyReference(ref);
   }
@@ -86,7 +81,7 @@ public class SyncToAsyncBeanManagerAdapter implements AsyncBeanManager {
   @Override
   @SuppressWarnings("rawtypes")
   public Collection<AsyncBeanDef> lookupBeans(String name) {
-    final Collection<IOCBeanDef> beanDefs = bm.lookupBeans(name);
+    final Collection<IOCBeanDef<Object>> beanDefs = bm.lookupBeans(name);
 
     final List<AsyncBeanDef> asyncBeanDefs = new ArrayList<AsyncBeanDef>();
     for (final IOCBeanDef beanDef : beanDefs) {

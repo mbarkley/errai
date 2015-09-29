@@ -32,12 +32,6 @@ public class AsyncBeanManagerImpl implements AsyncBeanManager {
   }
 
   @Override
-  public void addProxyReference(Object proxyRef, Object realRef) {
-    // TODO Auto-generated method stub
-    throw new RuntimeException("Not yet implemented.");
-  }
-
-  @Override
   public boolean isProxyReference(Object ref) {
     // TODO Auto-generated method stub
     throw new RuntimeException("Not yet implemented.");
