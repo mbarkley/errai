@@ -129,7 +129,7 @@ public class IOCProcessor {
     declareAndRegisterFactories(processingContext, dependencyGraph, scopeContexts, registerFactoriesBody);
     final String contextManagerFieldName = declareContextManagerField(processingContext);
     declareWindowInjectionContextField(processingContext);
-    addContextsToContextManager(scopeContexts.values(), contextManagerFieldName, registerFactoriesBody);
+    addContextsToContextManager(new HashSet<MetaClass>(scopeContexts.values()), contextManagerFieldName, registerFactoriesBody);
     callFinishInitOnContextManager(contextManagerFieldName, registerFactoriesBody);
 
     registerFactoriesBody.finish();
