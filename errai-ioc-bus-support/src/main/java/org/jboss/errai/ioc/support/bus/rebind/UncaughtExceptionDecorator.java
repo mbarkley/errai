@@ -16,6 +16,7 @@
 
 package org.jboss.errai.ioc.support.bus.rebind;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -24,7 +25,11 @@ import org.jboss.errai.bus.client.api.UncaughtException;
 import org.jboss.errai.bus.client.framework.ClientMessageBusImpl;
 import org.jboss.errai.codegen.Parameter;
 import org.jboss.errai.codegen.Statement;
+import org.jboss.errai.codegen.builder.AnonymousClassStructureBuilder;
+import org.jboss.errai.codegen.builder.BlockBuilder;
+import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
 import org.jboss.errai.codegen.exception.GenerationException;
+import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
@@ -32,6 +37,7 @@ import org.jboss.errai.codegen.util.GenUtil;
 import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.api.CodeDecorator;
+import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.client.container.InitializationCallback;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
@@ -64,32 +70,46 @@ public class UncaughtExceptionDecorator extends IOCDecoratorExtension<UncaughtEx
           + GenUtil.getMethodString(method) + " of type " + method.getDeclaringClass() + ".");
     }
 
+    final boolean isEnclosingTypeDependent = decorable.isEnclosingTypeDependent();
     final String handlerVar = method.getName() + "Handler";
     final Statement setRefStmt = controller.setReferenceStmt(handlerVar, Refs.get(handlerVar));
-
-    final List<Statement> initStatements = Arrays.asList(
-            generateExceptionHandler(decorable, handlerVar),
-            setRefStmt,
-            Stmt.castTo(ClientMessageBusImpl.class, Stmt.invokeStatic(ErraiBus.class, "get"))
-                    .invoke("addUncaughtExceptionHandler", Refs.get(handlerVar)));
-
     final Statement getRefStmt = controller.getReferenceStmt(handlerVar, UncaughtExceptionHandler.class);
+
+    final List<Statement> initStatements = new ArrayList<Statement>(Arrays.asList(
+            generateExceptionHandler(decorable, controller, handlerVar, isEnclosingTypeDependent),
+            Stmt.castTo(ClientMessageBusImpl.class, Stmt.invokeStatic(ErraiBus.class, "get"))
+                    .invoke("addUncaughtExceptionHandler", Refs.get(handlerVar))));
+    if (isEnclosingTypeDependent) {
+      initStatements.add(setRefStmt);
+    }
+
     final List<Statement> destStatements = Arrays.<Statement>asList(
             Stmt.castTo(ClientMessageBusImpl.class, Stmt.invokeStatic(ErraiBus.class, "get"))
                     .invoke("removeUncaughtExceptionHandler", getRefStmt));
 
-    controller.addInitializationStatements(initStatements);
-    controller.addDestructionStatements(destStatements);
+    if (isEnclosingTypeDependent) {
+      controller.addInitializationStatements(initStatements);
+      controller.addDestructionStatements(destStatements);
+    } else {
+      controller.addFactoryInitializationStatements(initStatements);
+    }
   }
 
-  private Statement generateExceptionHandler(final Decorable decorable, final String name) {
+  private Statement generateExceptionHandler(final Decorable decorable, final FactoryController controller,
+          final String name, final boolean isEnclosingTypeDependent) {
+    final BlockBuilder<AnonymousClassStructureBuilder> initBuilder = Stmt.newObject(UncaughtExceptionHandler.class)
+            .extend().publicMethod(void.class, "onUncaughtException", Parameter.of(Throwable.class, "t")).body();
+    if (!isEnclosingTypeDependent) {
+      final MetaClass enclosingType = decorable.getEnclosingInjectable().getInjectedType();
+      initBuilder.append(Stmt.declareFinalVariable("instance", enclosingType,
+              Stmt.castTo(enclosingType, Stmt.invokeStatic(Factory.class, "maybeUnwrapProxy", controller.contextGetInstanceStmt()))));
+    }
+
+    final ObjectBuilder initStmt = initBuilder.append(decorable.call(Refs.get("t"))).finish().finish();
+
     final Statement handlerStatement =
         Stmt.declareFinalVariable(name, UncaughtExceptionHandler.class,
-            Stmt.newObject(UncaughtExceptionHandler.class).extend()
-                .publicMethod(void.class, "onUncaughtException", Parameter.of(Throwable.class, "t"))
-                .append(decorable.call(Refs.get("t")))
-                .finish()
-                .finish());
+            initStmt);
 
     return handlerStatement;
   }
