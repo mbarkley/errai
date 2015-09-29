@@ -419,6 +419,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
     final Set<ConcreteInjectable> visited = new HashSet<ConcreteInjectable>();
     final Set<String> transientInjectableNames = new HashSet<String>();
     final Map<String, ConcreteInjectable> customProvideds = new HashMap<String, ConcreteInjectable>();
+    final List<String> dependencyProblems = new ArrayList<String>();
 
     for (final ConcreteInjectable concrete : concretesByName.values()) {
       if (concrete.isExtension()) {
@@ -426,9 +427,11 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       }
       if (!visited.contains(concrete)) {
         for (final BaseDependency dep : concrete.dependencies) {
-          final ConcreteInjectable resolved = resolveDependency(dep, concrete, customProvideds);
-          if (dep.dependencyType.equals(DependencyType.Constructor)) {
-            resolved.setRequiresProxyTrue();
+          final ConcreteInjectable resolved = resolveDependency(dep, concrete, customProvideds, dependencyProblems);
+          if (resolved != null) {
+            if (dep.dependencyType.equals(DependencyType.Constructor)) {
+              resolved.setRequiresProxyTrue();
+            }
           }
         }
       }
@@ -436,6 +439,22 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
 
     concretesByName.keySet().removeAll(transientInjectableNames);
     concretesByName.putAll(customProvideds);
+
+    if (!dependencyProblems.isEmpty()) {
+      throw new RuntimeException(buildMessageFromProblems(dependencyProblems));
+    }
+  }
+
+  private String buildMessageFromProblems(final List<String> dependencyProblems) {
+    final StringBuilder builder = new StringBuilder();
+    builder.append("The following dependency problems were found:\n");
+    for (final String problem : dependencyProblems) {
+      builder.append('\t')
+             .append(problem)
+             .append('\n');
+    }
+
+    return builder.toString();
   }
 
   private AbstractInjectable copyAbstractInjectable(final AbstractInjectable injectable) {
@@ -464,7 +483,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
   }
 
   private ConcreteInjectable resolveDependency(final BaseDependency dep, final ConcreteInjectable concrete,
-          final Map<String, ConcreteInjectable> customProvideds) {
+          final Map<String, ConcreteInjectable> customProvideds, final Collection<String> problems) {
     if (dep.injectable.resolution != null) {
       return dep.injectable.resolution;
     }
@@ -489,7 +508,8 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       if (resolvedByPriority.containsKey(priority)) {
         final Collection<ConcreteInjectable> resolved = resolvedByPriority.get(priority);
         if (resolved.size() > 1) {
-          throwAmbiguousDependencyException(dep, concrete, new ArrayList<ConcreteInjectable>(resolved));
+          problems.add(ambiguousDependencyMessage(dep, concrete, new ArrayList<ConcreteInjectable>(resolved)));
+          return null;
         } else {
           ConcreteInjectable injectable = resolved.iterator().next();
           if (injectable.isExtension()) {
@@ -510,18 +530,17 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
       }
     }
 
-    throwUnsatisfiedDependencyException(dep, concrete);
-
-    throw new RuntimeException("This line can never be reached but is required for the method to compile.");
+    problems.add(unsatisfiedDependencyMessage(dep, concrete));
+    return null;
   }
 
-  private void throwUnsatisfiedDependencyException(final BaseDependency dep, final ConcreteInjectable concrete) {
+  private String unsatisfiedDependencyMessage(final BaseDependency dep, final ConcreteInjectable concrete) {
     final String message = "Unsatisfied " + dep.dependencyType.toString().toLowerCase() + " dependency " + dep.injectable + " for " + concrete;
 
-    throw new RuntimeException(message);
+    return message;
   }
 
-  private void throwAmbiguousDependencyException(final BaseDependency dep, final ConcreteInjectable concrete, final List<ConcreteInjectable> resolved) {
+  private String ambiguousDependencyMessage(final BaseDependency dep, final ConcreteInjectable concrete, final List<ConcreteInjectable> resolved) {
     final StringBuilder messageBuilder = new StringBuilder();
     messageBuilder.append("Ambiguous resolution for ")
                   .append(dep.dependencyType.toString().toLowerCase())
@@ -537,7 +556,7 @@ public class DependencyGraphBuilderImpl implements DependencyGraphBuilder {
                     .append(resolved.get(i));
     }
 
-    throw new RuntimeException(messageBuilder.toString());
+    return messageBuilder.toString();
   }
 
   private void linkAbstractInjectables() {

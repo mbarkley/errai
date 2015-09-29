@@ -322,20 +322,37 @@ public class IOCProcessor {
   }
 
   private DependencyGraph processDependencies(final Collection<MetaClass> types, final DependencyGraphBuilder builder) {
+    final List<String> problems = new ArrayList<String>();
     for (final MetaClass type : types) {
-      processType(type, builder);
+      processType(type, builder, problems);
     }
 
-    return builder.createGraph(true);
+    if (problems.isEmpty()) {
+      return builder.createGraph(true);
+    } else {
+      throw new RuntimeException(buildProblemsMessage(problems));
+    }
   }
 
-  private void processType(final MetaClass type, final DependencyGraphBuilder builder) {
+  private String buildProblemsMessage(final List<String> problems) {
+    final StringBuilder builder = new StringBuilder();
+    builder.append("The following problems were found:\n");
+    for (final String problem : problems) {
+      builder.append('\t')
+             .append(problem)
+             .append('\n');
+    }
+
+    return builder.toString();
+  }
+
+  private void processType(final MetaClass type, final DependencyGraphBuilder builder, final List<String> problems) {
     try {
       if (isTypeInjectableCandidate(type)) {
         if (isSimpleton(type)) {
           builder.addInjectable(type, qualFactory.forSource(type), Dependent.class, InjectableType.Type,
                   WiringElementType.DependentBean, WiringElementType.Simpleton);
-        } else if (isTypeInjectable(type)) {
+        } else if (isTypeInjectable(type, problems)) {
           final Class<? extends Annotation> directScope = getScope(type);
           final Injectable typeInjectable = builder.addInjectable(type, qualFactory.forSource(type),
                   directScope, InjectableType.Type, getWiringTypes(type, directScope));
@@ -654,22 +671,24 @@ public class IOCProcessor {
     return null;
   }
 
-  private boolean isTypeInjectable(final MetaClass type) {
-    return isEnabled(type) && isConstructable(type);
+  private boolean isTypeInjectable(final MetaClass type, final List<String> problems) {
+    return isEnabled(type) && isConstructable(type, problems);
   }
 
-  private boolean isConstructable(final MetaClass type) {
+  private boolean isConstructable(final MetaClass type, final List<String> problems) {
     final List<MetaConstructor> injectableConstructors = getInjectableConstructors(type);
 
     if (injectableConstructors.size() > 1) {
-      throw new RuntimeException(type.getFullyQualifiedName() + " has " + injectableConstructors.size() + " constructors annotated with @Inject.");
+      problems.add(type.getFullyQualifiedName() + " has " + injectableConstructors.size() + " constructors annotated with @Inject.");
+      return false;
     } else if (injectableConstructors.size() == 1) {
       if (scopeDoesNotRequireProxy(type)) {
         return true;
       } else if (type.isDefaultInstantiable()) {
         return true;
       } else {
-        throw new RuntimeException(type.getFullyQualifiedName() + " must have a default, no args constructor.");
+        problems.add(type.getFullyQualifiedName() + " must have a default, no args constructor.");
+        return false;
       }
     } else {
       return type.isDefaultInstantiable();
