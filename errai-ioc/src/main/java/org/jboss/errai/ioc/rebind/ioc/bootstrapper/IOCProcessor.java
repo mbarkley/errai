@@ -214,7 +214,7 @@ public class IOCProcessor {
       registerFactoriesBody._(loadVariable("windowContext").invoke("addBeanProvider",
               injectable.getInjectedType().getFullyQualifiedName(), createJsTypeProviderFor(injectable)));
       for (final MetaClass mc : injectable.getInjectedType().getAllSuperTypesAndInterfaces()) {
-        if (mc.isPublic()) {
+        if (mc.isPublic() && !mc.equals(injectable.getInjectedType()) && !mc.getFullyQualifiedName().equals("java.lang.Object")) {
           registerFactoriesBody._(loadVariable("windowContext").invoke("addSuperTypeAlias",
                   mc.getFullyQualifiedName(), injectable.getInjectedType().getFullyQualifiedName()));
         }
