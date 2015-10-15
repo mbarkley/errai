@@ -36,6 +36,7 @@ import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaParameter;
+import org.jboss.errai.common.rebind.NameUtil;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.QualifierFactory;
 import org.jboss.errai.ioc.util.CDIAnnotationUtils;
@@ -261,7 +262,7 @@ public class DefaultQualifierFactory implements QualifierFactory {
       if (identifier == null) {
         final StringBuilder builder = new StringBuilder();
         for (final AnnotationWrapper wrapper : annotations) {
-          builder.append(wrapper.anno.annotationType().getName().replace('.', '_'))
+          builder.append(NameUtil.derivedIdentifier(wrapper.anno.annotationType().getName()))
                  .append("__");
         }
         // Remove last delimeter

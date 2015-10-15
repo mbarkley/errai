@@ -17,23 +17,22 @@
 package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.common.rebind.NameUtil;
+import org.jboss.errai.common.rebind.UniqueNameGenerator;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 
-import com.google.common.collect.HashMultiset;
-import com.google.common.collect.Multiset;
-
 public class FactoryNameGenerator {
-
-  private final Multiset<String> allFactoryNames = HashMultiset.create();
   /**
    * If this property is set to true, the factory names of injectables will be shortened versions, instead of containing fully qualified type names.
    */
   public static final String SHORT_NAMES_PROP = "errai.graph_builder.short_factory_names";
   public static final boolean SHORT_NAMES = Boolean.parseBoolean(System.getProperty(SHORT_NAMES_PROP, "true"));
 
+  private final UniqueNameGenerator uniqueGenerator = new UniqueNameGenerator();
+
   public String generateFor(final MetaClass type, final Qualifier qualifier, final InjectableType injectableType) {
-    final String typeName = type.getFullyQualifiedName().replace('.', '_').replace('$', '_');
+    final String typeName = NameUtil.derivedIdentifier(type.getFullyQualifiedName());
     final String qualNames = qualifier.getIdentifierSafeString();
     String factoryName;
     if (SHORT_NAMES) {
@@ -42,39 +41,15 @@ public class FactoryNameGenerator {
     } else {
       factoryName = injectableType + "_factory_for__" + typeName + "__with_qualifiers__" + qualNames;
     }
-    final int collisions = allFactoryNames.count(factoryName);
-    allFactoryNames.add(factoryName);
-    if (collisions > 0) {
-      factoryName = factoryName + "_" + String.valueOf(collisions);
-    }
 
-    return factoryName;
+    return uniqueGenerator.uniqueName(factoryName);
   }
 
   private String shorten(final String compoundName) {
     final String[] names = compoundName.split("__");
     final StringBuilder builder = new StringBuilder();
     for (final String name : names) {
-      builder.append(shortenName(name)).append('_');
-    }
-    builder.delete(builder.length() - 1, builder.length());
-
-    return builder.toString();
-  }
-
-  private String shortenName(final String name) {
-    final String[] parts = name.split("_");
-    final StringBuilder builder = new StringBuilder();
-    boolean haveSeenUpperCase = false;
-    for (final String part : parts) {
-      if (haveSeenUpperCase || Character.isUpperCase(part.charAt(0))) {
-        builder.append(part);
-        haveSeenUpperCase = true;
-      }
-      else {
-        builder.append(part.charAt(0));
-      }
-      builder.append('_');
+      builder.append(NameUtil.shortenDerivedIdentifier(name)).append('_');
     }
     builder.delete(builder.length() - 1, builder.length());
 
