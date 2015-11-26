@@ -2,6 +2,7 @@ package org.jboss.errai.ui.test.basic.client;
 
 import org.jboss.errai.enterprise.client.cdi.AbstractErraiCDITest;
 import org.jboss.errai.ioc.client.container.IOC;
+import org.jboss.errai.ui.test.basic.client.res.NonCompositeComponent;
 import org.junit.Test;
 
 import com.google.gwt.dom.client.Document;
@@ -75,9 +76,9 @@ public class BasicTemplateTest extends AbstractErraiCDITest {
   private void testHasHTMLPreservesInnerHTML(BasicTemplateTestApp app) throws Exception {
     Anchor c4comp = app.getComponent().getC4();
     String c4compHtml = c4comp.getHTML();
-    assertTrue("Inner HTML should be preserved when component implements ", 
+    assertTrue("Inner HTML should be preserved when component implements ",
         RegExp.compile("<span(.)*>LinkHTML</span>").test(c4compHtml));
-    
+
     Element c4 = c4comp.getElement();
     assertEquals("blah", c4.getAttribute("href"));
     assertEquals("SPAN", c4.getFirstChildElement().getTagName());
@@ -101,15 +102,26 @@ public class BasicTemplateTest extends AbstractErraiCDITest {
     System.out.println("DUMPING: " + Document.get().getElementById("root").getInnerHTML());
     assertEquals(c6.getElement(), c5.getElement().getFirstChildElement());
   }
-  
+
   @Test
   public void testPrecedenceRules() throws Exception {
     PrecedenceTemplateTestApp app = IOC.getBeanManager().lookupBean(PrecedenceTemplateTestApp.class).getInstance();
-   
+
     assertEquals(app.getComponent().getA().getText(), "This is a");
     assertEquals(app.getComponent().getB().getText(), "This is b");
     assertEquals(app.getComponent().getC().getText(), "This is c");
     assertEquals(app.getComponent().getE().getText(), "This is d, e, and f");
+  }
+
+  @Test
+  public void testLoadingNonCompositeTemplatedBean() throws Exception {
+    final NonCompositeComponent instance = IOC.getBeanManager().lookupBean(NonCompositeComponent.class).getInstance();
+
+    assertTrue(instance.getTextBox().getElement().hasParentElement());
+    assertTrue(instance.getButton().getElement().hasParentElement());
+
+    assertTrue(instance.getTextBox().getElement().getParentElement().equals(instance.getElement()));
+    assertTrue(instance.getButton().getElement().getParentElement().equals(instance.getElement()));
   }
 
 }

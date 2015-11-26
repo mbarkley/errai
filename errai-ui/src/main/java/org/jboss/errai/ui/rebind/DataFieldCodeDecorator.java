@@ -29,6 +29,7 @@ import org.jboss.errai.ioc.client.api.CodeDecorator;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
+import org.jboss.errai.ui.client.element.AbstractTemplated;
 import org.jboss.errai.ui.shared.Template;
 import org.jboss.errai.ui.shared.api.annotations.DataField;
 
@@ -62,6 +63,8 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
             + "] which does not support @Inject; this instance must be created manually.");
       }
       instance = Stmt.invokeStatic(ElementWrapperWidget.class, "getWidget", instance);
+    } else if (decorable.getType().isAssignableTo(AbstractTemplated.class)) {
+      instance = Stmt.nestedCall(instance).invoke("getWidget");
     }
     saveDataField(decorable, decorable.getType(), name, decorable.getName(), instance);
   }

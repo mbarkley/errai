@@ -27,6 +27,7 @@ import org.jboss.errai.common.client.ui.ElementWrapperWidget;
 import org.jboss.errai.common.client.util.CreationalCallback;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ioc.client.container.IOCResolutionException;
+import org.jboss.errai.ui.client.element.AbstractTemplated;
 import org.jboss.errai.ui.client.local.spi.TemplateProvider;
 import org.jboss.errai.ui.client.local.spi.TemplateRenderingCallback;
 import org.jboss.errai.ui.client.local.spi.TranslationService;
@@ -94,7 +95,7 @@ public final class TemplateUtil {
 
     Element parentElement = element.getParentElement();
     try {
-      if (field instanceof HasText) {
+      if (field instanceof HasText && (!(field instanceof ElementWrapperWidget) || field.getElement().getChildCount() == 0)) {
         Node firstNode = element.getFirstChild();
         while (firstNode != null) {
           if (firstNode != element.getFirstChildElement())
@@ -138,6 +139,13 @@ public final class TemplateUtil {
             " - Did you already @Insert or @Replace a parent Element?" +
             " Is an element referenced by more than one @DataField?", e);
     }
+  }
+
+  public static void initTemplated(AbstractTemplated templated, Element wrapped, Collection<Widget> dataFields) {
+    templated.setElement(wrapped);
+    templated.setWidget(new TemplateWidget(wrapped, dataFields));
+
+    StyleBindingsRegistry.get().updateStyles(templated);
   }
 
   public static void initWidget(Composite component, Element wrapped, Collection<Widget> dataFields) {

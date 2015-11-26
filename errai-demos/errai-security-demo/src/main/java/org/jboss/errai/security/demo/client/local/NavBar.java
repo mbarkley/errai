@@ -23,6 +23,7 @@ import org.jboss.errai.common.client.api.Caller;
 import org.jboss.errai.common.client.api.RemoteCallback;
 import org.jboss.errai.security.shared.api.annotation.RestrictedAccess;
 import org.jboss.errai.security.shared.service.AuthenticationService;
+import org.jboss.errai.ui.client.element.AbstractTemplated;
 import org.jboss.errai.ui.nav.client.local.Navigation;
 import org.jboss.errai.ui.nav.client.local.TransitionTo;
 import org.jboss.errai.ui.shared.api.annotations.DataField;
@@ -31,18 +32,17 @@ import org.jboss.errai.ui.shared.api.annotations.Templated;
 
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.user.client.ui.Anchor;
-import com.google.gwt.user.client.ui.Composite;
 
 /**
  * <p>
  * A navigation bar that lives outside the {@link Navigation#getContentPanel()
  * navigation content panel} so that it is always displayed on the page.
- * 
+ *
  * <p>
  * {@link RestrictedAccess} annotated on a field applies a
  * {@link RestrictedAccess#CSS_CLASS_NAME CSS class} to the element when a user
  * is not logged in or lacks the specified roles.
- * 
+ *
  * <p>
  * {@link #admin}, and {{@link #logout} become hidden when a user lacks roles.
  * {@link #login} uses additional CSS rules so that it is hidden when a user
@@ -50,7 +50,7 @@ import com.google.gwt.user.client.ui.Composite;
  */
 @Templated
 @Dependent
-public class NavBar extends Composite {
+public class NavBar extends AbstractTemplated {
 
   @Inject @DataField Anchor messages;
   @Inject @DataField @RestrictedAccess Anchor login;
@@ -61,7 +61,7 @@ public class NavBar extends Composite {
   @Inject TransitionTo<Messages> messagesTab;
   @Inject TransitionTo<LoginForm> loginTab;
   @Inject TransitionTo<AdminPage> adminTab;
-  
+
   @Inject Caller<AuthenticationService> authServiceCaller;
 
   @EventHandler("messages")
@@ -78,7 +78,7 @@ public class NavBar extends Composite {
   public void onAdminTabClicked(ClickEvent event) {
     adminTab.go();
   }
-  
+
   @EventHandler("logout")
   public void logoutClicked(final ClickEvent event) {
     authServiceCaller.call(new RemoteCallback<Void>() {

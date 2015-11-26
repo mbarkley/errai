@@ -62,6 +62,7 @@ import org.jboss.errai.ioc.rebind.ioc.bootstrapper.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
+import org.jboss.errai.ui.client.element.AbstractTemplated;
 import org.jboss.errai.ui.client.local.spi.TemplateRenderingCallback;
 import org.jboss.errai.ui.shared.Template;
 import org.jboss.errai.ui.shared.TemplateUtil;
@@ -112,9 +113,9 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
     Class<?> templateProvider = declaringClass.getAnnotation(Templated.class).provider();
     boolean customProvider = templateProvider != Templated.DEFAULT_PROVIDER.class;
 
-    if (!declaringClass.isAssignableTo(Composite.class)) {
+    if (!(declaringClass.isAssignableTo(Composite.class) || declaringClass.isAssignableTo(AbstractTemplated.class))) {
       throw new GenerationException("@Templated class [" + declaringClass.getFullyQualifiedName()
-          + "] must extend base class [" + Composite.class.getName() + "].");
+          + "] must extend base class [" + Composite.class.getName() + "] or [" + AbstractTemplated.class.getName() + "].");
     }
 
     final List<Statement> initStmts = new ArrayList<Statement>();
@@ -142,19 +143,6 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
     else {
       controller.addInitializationStatements(initStmts);
     }
-
-    // TODO AAAAAAAAAHHHHHHRRRRRRRGGGGGGG
-//    if (ctx.getInjectionContext().isAsync()) {
-//      final Statement runnable = Stmt.newObject(Runnable.class).extend()
-//        .publicOverridesMethod("run")
-//        .append(addInitCallback)
-//        .finish()
-//        .finish();
-//      stmts.add(Stmt.loadVariable("async").invoke("runOnFinish", runnable));
-//    }
-//    else {
-//      stmts.add(addInitCallback);
-//    }
 
     controller.addDestructionStatements(generateTemplateDestruction(decorable));
     controller.addInitializationStatementsToEnd(Collections.<Statement>singletonList(invokeStatic(StyleBindingsRegistry.class, "get")
@@ -544,6 +532,8 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
                                              final Statement dataFieldElements,
                                              final Statement fieldsMap) {
 
+    final boolean composite = decorable.getEnclosingInjectable().getInjectedType().isAssignableTo(Composite.class);
+
     /*
      * Merge each field's Widget Element into the DOM in place of the
      * corresponding data-field
@@ -563,12 +553,18 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
       initStmts.add(Stmt.nestedCall(fieldsMap).invoke("put", field.getKey(), field.getValue()));
     }
 
-    /*
-     * Attach the Template to the Component, and set up the GWT Widget hierarchy
-     * to preserve Handlers and DOM events.
-     */
-    initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "initWidget", component, rootTemplateElement,
-        Stmt.nestedCall(fieldsMap).invoke("values")));
+    final String initMethodName;
+    if (composite) {
+      /*
+       * Attach the Template to the Component, and set up the GWT Widget hierarchy
+       * to preserve Handlers and DOM events.
+       */
+      initMethodName = "initWidget";
+    } else {
+      initMethodName = "initTemplated";
+    }
+    initStmts.add(Stmt.invokeStatic(TemplateUtil.class, initMethodName, component, rootTemplateElement,
+            Stmt.nestedCall(fieldsMap).invoke("values")));
 
   }
 
