@@ -8,9 +8,13 @@ import org.jboss.errai.ui.shared.api.annotations.Bound;
 import org.jboss.errai.ui.shared.api.annotations.DataField;
 import org.jboss.errai.ui.shared.api.annotations.Templated;
 
+import com.google.gwt.dom.client.Document;
 import com.google.gwt.dom.client.Style;
 import com.google.gwt.user.client.ui.Composite;
 import com.google.gwt.user.client.ui.Label;
+
+import elemental.client.Browser;
+import elemental.html.SpanElement;
 
 /**
  * @author Mike Brock
@@ -21,6 +25,8 @@ public class StyleBoundTemplate extends Composite {
   @Inject @Bound @AdminBinding @DataField private Label testA;
   @Inject @Bound @TestBinding @DataField private Label testB;
   @Inject @Bound @ComponentBinding @DataField private CustomComponent testC;
+  @AdminBinding @DataField private SpanElement elemental = Browser.getDocument().createSpanElement();
+  @AdminBinding @DataField("user-element") private com.google.gwt.dom.client.SpanElement userElement = Document.get().createSpanElement();
 
   public Label getTestA() {
     return testA;
@@ -29,9 +35,17 @@ public class StyleBoundTemplate extends Composite {
   public Label getTestB() {
     return testB;
   }
-    
+
   public CustomComponent getTestC() {
     return testC;
+  }
+
+  public SpanElement getElementalElement() {
+    return elemental;
+  }
+
+  public com.google.gwt.dom.client.SpanElement getUserSpanElement() {
+    return userElement;
   }
 
   public TestModel getTestModel() {
@@ -49,7 +63,7 @@ public class StyleBoundTemplate extends Composite {
        style.clearVisibility();
      }
   }
-  
+
   @ComponentBinding
   private void testCustomComponentBindingStyleUpdate(Style style) {
     if ("0".equals(getTestModel().getTestC())) {

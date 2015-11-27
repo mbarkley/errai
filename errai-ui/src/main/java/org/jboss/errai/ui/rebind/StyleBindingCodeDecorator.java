@@ -44,6 +44,8 @@ import org.jboss.errai.ioc.client.container.RefHolder;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
+import org.jboss.errai.ui.client.element.AbstractTemplated;
+import org.jboss.errai.ui.shared.TemplateUtil;
 import org.jboss.errai.ui.shared.api.annotations.style.StyleBinding;
 import org.jboss.errai.ui.shared.api.style.BindingRegistrationHandle;
 import org.jboss.errai.ui.shared.api.style.StyleBindingChangeHandler;
@@ -52,6 +54,7 @@ import org.jboss.errai.ui.shared.api.style.StyleBindingsRegistry;
 
 import com.google.gwt.dom.client.Style;
 import com.google.gwt.user.client.Element;
+import com.google.gwt.user.client.ui.Widget;
 
 /**
  * @author Mike Brock
@@ -183,10 +186,22 @@ public class StyleBindingCodeDecorator extends IOCDecoratorExtension<StyleBindin
       }
     }
     // ERRAI-821 deferred initialization
-    initStmts.add(invokeStatic(StyleBindingsRegistry.class, "get")
-        .invoke("addElementBinding", Refs.get("instance"),
-            decorable.getAnnotation(),
-            nestedCall(valueAccessor).invoke("getElement")));
+    if (decorable.getType().isAssignableTo(Widget.class) || decorable.getType().isAssignableTo(AbstractTemplated.class)) {
+      initStmts.add(invokeStatic(StyleBindingsRegistry.class, "get")
+              .invoke("addElementBinding", Refs.get("instance"),
+                      decorable.getAnnotation(),
+                      nestedCall(valueAccessor).invoke("getElement")));
+    }
+    else if (decorable.getType().isAssignableTo(com.google.gwt.dom.client.Element.class)
+            || DataFieldCodeDecorator.isElementalElement(decorable.getType())) {
+      initStmts.add(invokeStatic(StyleBindingsRegistry.class, "get")
+              .invoke("addElementBinding", Refs.get("instance"),
+                      decorable.getAnnotation(),
+                      invokeStatic(TemplateUtil.class, "asDeprecatedElement", valueAccessor)));
+    } else {
+      throw new RuntimeException("Unrecognized type, " + decorable.getType().getFullyQualifiedName()
+              + ", with style binding " + decorable.getAnnotation().annotationType().getName());
+    }
 
     addCleanup(decorable, controller, destructionStmts);
 

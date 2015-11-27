@@ -36,6 +36,7 @@ import org.jboss.errai.ui.shared.api.annotations.Templated;
 import org.jboss.errai.ui.shared.api.style.StyleBindingsRegistry;
 import org.jboss.errai.ui.shared.wrapper.ElementWrapper;
 
+import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.core.client.JsArray;
 import com.google.gwt.core.shared.GWT;
 import com.google.gwt.dom.client.Element;
@@ -138,6 +139,24 @@ public final class TemplateUtil {
       throw new IllegalStateException("Could not replace Element with [data-field=" + fieldName + "]" +
             " - Did you already @Insert or @Replace a parent Element?" +
             " Is an element referenced by more than one @DataField?", e);
+    }
+  }
+
+  public static Element asElement(Object element) {
+    if (element instanceof JavaScriptObject) {
+      return (Element) element;
+    } else {
+      throw new RuntimeException("The @DataField of type elemental.dom.Element was not a "
+              + JavaScriptObject.class.getSimpleName());
+    }
+  }
+
+  public static com.google.gwt.user.client.Element asDeprecatedElement(Object element) {
+    if (element instanceof JavaScriptObject) {
+      return (com.google.gwt.user.client.Element) element;
+    } else {
+      throw new RuntimeException("The @DataField of type elemental.dom.Element was not a "
+              + JavaScriptObject.class.getSimpleName());
     }
   }
 
@@ -343,7 +362,7 @@ public final class TemplateUtil {
     return widget;
   }
 
-  public static <T extends EventHandler> void setupWrappedElementEventHandler(Composite component, Widget widget,
+  public static <T extends EventHandler> void setupWrappedElementEventHandler(Widget widget,
           T handler, com.google.gwt.event.dom.client.DomEvent.Type<T> type) {
     widget.addDomHandler(handler, type);
   }

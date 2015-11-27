@@ -15,8 +15,11 @@
  */
 package org.jboss.errai.ui.rebind;
 
+import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Queue;
 
 import javax.inject.Inject;
 
@@ -31,6 +34,7 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 import org.jboss.errai.ui.client.element.AbstractTemplated;
 import org.jboss.errai.ui.shared.Template;
+import org.jboss.errai.ui.shared.TemplateUtil;
 import org.jboss.errai.ui.shared.api.annotations.DataField;
 
 import com.google.common.base.Strings;
@@ -63,10 +67,31 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
             + "] which does not support @Inject; this instance must be created manually.");
       }
       instance = Stmt.invokeStatic(ElementWrapperWidget.class, "getWidget", instance);
+    } else if (isElementalElement(decorable.getType())) {
+      instance = Stmt.invokeStatic(ElementWrapperWidget.class, "getWidget", Stmt.invokeStatic(TemplateUtil.class, "asElement", instance));
     } else if (decorable.getType().isAssignableTo(AbstractTemplated.class)) {
       instance = Stmt.nestedCall(instance).invoke("getWidget");
     }
     saveDataField(decorable, decorable.getType(), name, decorable.getName(), instance);
+  }
+
+  public static boolean isElementalElement(final MetaClass type) {
+    if (!(type.isInterface() && type.getFullyQualifiedName().startsWith("elemental."))) {
+      return false;
+    }
+
+    final Queue<MetaClass> interfaces = new LinkedList<MetaClass>();
+    interfaces.add(type);
+
+    while (!interfaces.isEmpty()) {
+      final MetaClass iface = interfaces.poll();
+      if (iface.getFullyQualifiedName().equals("elemental.dom.Element")) {
+        return true;
+      }
+      interfaces.addAll(Arrays.asList(iface.getInterfaces()));
+    }
+
+    return false;
   }
 
   private void saveDataField(Decorable decorable, MetaClass type, String name, String fieldName, Statement instance) {

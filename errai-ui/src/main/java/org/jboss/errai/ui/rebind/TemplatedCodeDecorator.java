@@ -18,7 +18,9 @@ package org.jboss.errai.ui.rebind;
 import static org.jboss.errai.codegen.util.Stmt.declareVariable;
 import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
+import static org.jboss.errai.codegen.util.Stmt.nestedCall;
 import static org.jboss.errai.codegen.util.Stmt.newObject;
+import static org.jboss.errai.ui.rebind.DataFieldCodeDecorator.isElementalElement;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
@@ -421,7 +423,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
           }
 
           if (dataFieldType.isAssignableTo(Element.class)) {
-            initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "setupWrappedElementEventHandler", instance,
+            initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "setupWrappedElementEventHandler",
                 eventSource, listenerInstance,
                 Stmt.invokeStatic(eventType, "getType")));
           }
@@ -434,8 +436,11 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
             final Statement widget = Cast.to(Widget.class, eventSource);
             initStmts.add(Stmt.nestedCall(widget).invoke("addDomHandler",
                 listenerInstance, Stmt.invokeStatic(eventType, "getType")));
-          }
-          else {
+          } else if (isElementalElement(dataFieldType)) {
+            initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "setupWrappedElementEventHandler",
+                eventSource, listenerInstance,
+                Stmt.invokeStatic(eventType, "getType")));
+          } else {
             throw new GenerationException("@DataField [" + name + "] of type [" + dataFieldType.getName()
                 + "] in class [" + declaringClass.getFullyQualifiedName()
                 + "] does not implement required interface [" + hasHandlerType.getName()

@@ -31,7 +31,10 @@ import org.jboss.errai.ui.shared.api.annotations.EventHandler;
 import org.jboss.errai.ui.shared.api.annotations.Templated;
 
 import com.google.gwt.event.dom.client.ClickEvent;
-import com.google.gwt.user.client.ui.Anchor;
+
+import elemental.client.Browser;
+import elemental.html.AnchorElement;
+import elemental.js.html.JsAnchorElement;
 
 /**
  * <p>
@@ -52,10 +55,13 @@ import com.google.gwt.user.client.ui.Anchor;
 @Dependent
 public class NavBar extends AbstractTemplated {
 
-  @Inject @DataField Anchor messages;
-  @Inject @DataField @RestrictedAccess Anchor login;
-  @Inject @DataField @RestrictedAccess(roles = "admin") Anchor admin;
-  @Inject @DataField @RestrictedAccess Anchor logout;
+  /*
+   * Calling Browser.getDocument().createAnchorElement() makes an <anchor> tag instead of an <a> tag.
+   */
+  @DataField AnchorElement messages = (JsAnchorElement) Browser.getDocument().createElement("a");
+  @DataField @RestrictedAccess AnchorElement login = (JsAnchorElement) Browser.getDocument().createElement("a");
+  @DataField @RestrictedAccess(roles = "admin") AnchorElement admin = (JsAnchorElement) Browser.getDocument().createElement("a");
+  @DataField @RestrictedAccess AnchorElement logout = (JsAnchorElement) Browser.getDocument().createElement("a");
 
   @Inject TransitionTo<WelcomePage> welcomePage;
   @Inject TransitionTo<Messages> messagesTab;
