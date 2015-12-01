@@ -13,7 +13,6 @@ import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.CheckBox;
 import com.google.gwt.user.client.ui.Composite;
 import com.google.gwt.user.client.ui.PasswordTextBox;
-import com.google.gwt.user.client.ui.TextBox;
 
 import elemental.client.Browser;
 import elemental.html.ButtonElement;
@@ -26,9 +25,8 @@ public class ElementFormComponent extends Composite {
   @DataField
   private Element form = DOM.createForm();
 
-  @Inject
   @DataField
-  private TextBox username;
+  private HTMLInputElement username = createInputElement();
 
   @Inject
   @DataField
@@ -49,7 +47,11 @@ public class ElementFormComponent extends Composite {
     return form;
   }
 
-  public TextBox getUsername() {
+  private static native HTMLInputElement createInputElement() /*-{
+    return $doc.createElement("input");
+  }-*/;
+
+  public HTMLInputElement getUsername() {
     return username;
   }
 

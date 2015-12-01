@@ -18,9 +18,7 @@ package org.jboss.errai.ui.rebind;
 import static org.jboss.errai.codegen.util.Stmt.declareVariable;
 import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
-import static org.jboss.errai.codegen.util.Stmt.nestedCall;
 import static org.jboss.errai.codegen.util.Stmt.newObject;
-import static org.jboss.errai.ui.rebind.DataFieldCodeDecorator.isElementalElement;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
@@ -436,16 +434,16 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
             final Statement widget = Cast.to(Widget.class, eventSource);
             initStmts.add(Stmt.nestedCall(widget).invoke("addDomHandler",
                 listenerInstance, Stmt.invokeStatic(eventType, "getType")));
-          } else if (isElementalElement(dataFieldType)) {
+          } else if (RebindUtil.isNativeJsType(dataFieldType) || RebindUtil.isElementalIface(dataFieldType)) {
             initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "setupWrappedElementEventHandler",
                 eventSource, listenerInstance,
                 Stmt.invokeStatic(eventType, "getType")));
           } else {
             throw new GenerationException("@DataField [" + name + "] of type [" + dataFieldType.getName()
                 + "] in class [" + declaringClass.getFullyQualifiedName()
-                + "] does not implement required interface [" + hasHandlerType.getName()
+                + "] must either implement the interface [" + hasHandlerType.getName()
                 + "] specified by @EventHandler method " + method.getName() + "(" + eventType.getName()
-                + ")]");
+                + ")] or else be a DOM element (wrapped as either a JavaScriptObject or a native @JsType).");
           }
         }
       }

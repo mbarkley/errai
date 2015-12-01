@@ -15,11 +15,8 @@
  */
 package org.jboss.errai.ui.rebind;
 
-import java.util.Arrays;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.Map;
-import java.util.Queue;
 
 import javax.inject.Inject;
 
@@ -39,6 +36,7 @@ import org.jboss.errai.ui.shared.api.annotations.DataField;
 
 import com.google.common.base.Strings;
 import com.google.gwt.dom.client.Element;
+import com.google.gwt.user.client.ui.Widget;
 
 
 /**
@@ -67,31 +65,16 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
             + "] which does not support @Inject; this instance must be created manually.");
       }
       instance = Stmt.invokeStatic(ElementWrapperWidget.class, "getWidget", instance);
-    } else if (isElementalElement(decorable.getType())) {
+    } else if (RebindUtil.isNativeJsType(decorable.getType()) || RebindUtil.isElementalIface(decorable.getType())) {
       instance = Stmt.invokeStatic(ElementWrapperWidget.class, "getWidget", Stmt.invokeStatic(TemplateUtil.class, "asElement", instance));
     } else if (decorable.getType().isAssignableTo(AbstractTemplated.class)) {
       instance = Stmt.nestedCall(instance).invoke("getWidget");
+    } else if (!decorable.getType().isAssignableTo(Widget.class)) {
+      throw new GenerationException("Unable to use [" + name + "] in class [" + decorable.getDecorableDeclaringType()
+              + "] as a @DataField. The field must be a Widget or a DOM element as either a JavaScriptObject or native @JsType.");
     }
+
     saveDataField(decorable, decorable.getType(), name, decorable.getName(), instance);
-  }
-
-  public static boolean isElementalElement(final MetaClass type) {
-    if (!(type.isInterface() && type.getFullyQualifiedName().startsWith("elemental."))) {
-      return false;
-    }
-
-    final Queue<MetaClass> interfaces = new LinkedList<MetaClass>();
-    interfaces.add(type);
-
-    while (!interfaces.isEmpty()) {
-      final MetaClass iface = interfaces.poll();
-      if (iface.getFullyQualifiedName().equals("elemental.dom.Element")) {
-        return true;
-      }
-      interfaces.addAll(Arrays.asList(iface.getInterfaces()));
-    }
-
-    return false;
   }
 
   private void saveDataField(Decorable decorable, MetaClass type, String name, String fieldName, Statement instance) {

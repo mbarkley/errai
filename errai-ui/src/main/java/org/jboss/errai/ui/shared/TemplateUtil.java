@@ -143,20 +143,23 @@ public final class TemplateUtil {
   }
 
   public static Element asElement(Object element) {
-    if (element instanceof JavaScriptObject) {
-      return (Element) element;
-    } else {
-      throw new RuntimeException("The @DataField of type elemental.dom.Element was not a "
-              + JavaScriptObject.class.getSimpleName());
+    try {
+      return nativeCast(element);
+    } catch (Throwable t) {
+      throw new RuntimeException("Error casting @DataField of type " + element.getClass().getName() + " to " + Element.class.getName(), t);
     }
   }
 
+  private static native <T extends JavaScriptObject> T nativeCast(Object element) /*-{
+    return element;
+  }-*/;
+
   public static com.google.gwt.user.client.Element asDeprecatedElement(Object element) {
-    if (element instanceof JavaScriptObject) {
-      return (com.google.gwt.user.client.Element) element;
-    } else {
-      throw new RuntimeException("The @DataField of type elemental.dom.Element was not a "
-              + JavaScriptObject.class.getSimpleName());
+    try {
+      return nativeCast(element);
+    } catch (Throwable t) {
+      throw new RuntimeException("Error casting @DataField of type " + element.getClass().getName() + " to "
+              + com.google.gwt.user.client.Element.class.getName(), t);
     }
   }
 

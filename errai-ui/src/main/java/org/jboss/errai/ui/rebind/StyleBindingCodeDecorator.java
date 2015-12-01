@@ -193,7 +193,7 @@ public class StyleBindingCodeDecorator extends IOCDecoratorExtension<StyleBindin
                       nestedCall(valueAccessor).invoke("getElement")));
     }
     else if (decorable.getType().isAssignableTo(com.google.gwt.dom.client.Element.class)
-            || DataFieldCodeDecorator.isElementalElement(decorable.getType())) {
+            || RebindUtil.isNativeJsType(decorable.getType()) || RebindUtil.isElementalIface(decorable.getType())) {
       initStmts.add(invokeStatic(StyleBindingsRegistry.class, "get")
               .invoke("addElementBinding", Refs.get("instance"),
                       decorable.getAnnotation(),
