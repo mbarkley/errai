@@ -16,8 +16,6 @@
 
 package org.jboss.errai.databinding.rebind;
 
-import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
@@ -35,7 +33,6 @@ import java.util.ResourceBundle;
 import java.util.Set;
 
 import org.jboss.errai.codegen.Statement;
-import org.jboss.errai.codegen.Variable;
 import org.jboss.errai.codegen.exception.GenerationException;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
@@ -44,7 +41,6 @@ import org.jboss.errai.codegen.meta.MetaConstructor;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
-import org.jboss.errai.codegen.util.PrivateAccessUtil;
 import org.jboss.errai.common.metadata.RebindUtils;
 import org.jboss.errai.config.rebind.EnvUtil;
 import org.jboss.errai.config.util.ClassScanner;
@@ -270,19 +266,6 @@ public class DataBindingUtil {
         dataBinderRef = DecorableType.FIELD.getAccessStatement(field, decorable.getFactoryMetaClass());
         if (!field.isPublic()) {
           controller.addExposedField(field);
-        }
-      }
-    }
-    else {
-      for (final MetaField field : enclosingType.getFields()) {
-        if (field.isAnnotationPresent(AutoBound.class)) {
-          assertTypeIsDataBinder(field.getType());
-          dataModelType = (MetaClass) field.getType().getParameterizedType().getTypeParameters()[0];
-          dataBinderRef = invokeStatic(decorable.getInjectionContext().getProcessingContext().getBootstrapClass(),
-                  PrivateAccessUtil.getPrivateFieldAccessorName(field),
-                  Variable.get("instance"));
-          controller.exposedFieldStmt(field);
-          break;
         }
       }
     }
