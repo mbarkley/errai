@@ -35,6 +35,10 @@
     <when-type-is class="org.jboss.errai.ui.client.local.spi.LessStyleMapping"/>
   </generate-with>
 
+  <generate-with class="org.jboss.errai.ui.rebind.TemplateProcessorGenerator">
+    <when-type-assignable class="org.jboss.errai.ui.client.local.api.TemplateProcessor"/>
+  </generate-with>
+
   <source path="client" />
   <source path="shared" />
 </module>

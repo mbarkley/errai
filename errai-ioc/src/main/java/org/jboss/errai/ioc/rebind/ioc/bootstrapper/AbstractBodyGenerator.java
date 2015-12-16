@@ -569,10 +569,10 @@ public abstract class AbstractBodyGenerator implements FactoryBodyGenerator {
     implementCreateProxy(bodyBlockBuilder, injectable);
     implementGetHandle(bodyBlockBuilder, injectable);
 
-    addPrivateAccessors(bodyBlockBuilder);
+    addPrivateAccessors(controller, bodyBlockBuilder);
   }
 
-  private void addPrivateAccessors(final ClassStructureBuilder<?> bodyBlockBuilder) {
+  public static void addPrivateAccessors(final FactoryController controller, final ClassStructureBuilder<?> bodyBlockBuilder) {
     for (final MetaField field : controller.getExposedFields()) {
       addPrivateAccessStubs("jsni", bodyBlockBuilder, field);
     }
