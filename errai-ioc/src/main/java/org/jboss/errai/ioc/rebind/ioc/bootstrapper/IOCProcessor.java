@@ -141,12 +141,13 @@ public class IOCProcessor {
   /**
    * Process the dependency graph and generate code in BoostrapperImpl to declare and create factories for all {@link Injectable injectables}.
    *
-   * @param processingContext
+   * @param bootstrapBuilder
+   * @param blockBuilder
    */
-  public void process(final IOCProcessingContext processingContext) {
+  public void process(final ClassStructureBuilder<?> bootstrapBuilder, final BlockBuilder<?> blockBuilder) {
     long start = System.currentTimeMillis();
 
-    final Collection<MetaClass> allMetaClasses = findRelevantClasses(processingContext);
+    final Collection<MetaClass> allMetaClasses = findRelevantClasses();
     log.debug("Found {} classes", allMetaClasses.size());
     final DependencyGraphBuilder graphBuilder = new DependencyGraphBuilderImpl(qualFactory, injectionContext.isAsync());
 
@@ -165,27 +166,27 @@ public class IOCProcessor {
 
     start = System.currentTimeMillis();
 
-    final Map<Class<? extends Annotation>, MetaClass> scopeContexts = findScopeContexts(processingContext);
+    final Map<Class<? extends Annotation>, MetaClass> scopeContexts = findScopeContexts();
     final Set<MetaClass> scopeContextSet = new LinkedHashSet<MetaClass>(scopeContexts.values());
     final Statement[] contextLocalVarInvocation = contextLocalVarInvocation(scopeContextSet);
 
     @SuppressWarnings("rawtypes")
-    final BlockBuilder registerFactoriesBody = createRegisterFactoriesMethod(processingContext, scopeContextSet);
+    final BlockBuilder registerFactoriesBody = createRegisterFactoriesMethod(bootstrapBuilder, scopeContextSet);
 
-    declareAndRegisterFactories(processingContext, dependencyGraph, scopeContexts, scopeContextSet, registerFactoriesBody);
-    final String contextManagerFieldName = declareContextManagerField(processingContext);
-    declareWindowInjectionContextField(processingContext);
+    declareAndRegisterFactories(bootstrapBuilder, dependencyGraph, scopeContexts, scopeContextSet, registerFactoriesBody);
+    final String contextManagerFieldName = declareContextManagerField(bootstrapBuilder);
+    declareWindowInjectionContextField(bootstrapBuilder);
     if (injectionContext.isAsync()) {
-      declareAsyncBeanManagerSetupField(processingContext);
+      declareAsyncBeanManagerSetupField(bootstrapBuilder);
     }
 
     registerFactoriesBody.finish();
 
-    processingContext.getBlockBuilder()
+    blockBuilder
       .appendAll(contextLocalVarDeclarations(scopeContextSet))
       ._(loadVariable("this").invoke("registerFactories", (Object[]) contextLocalVarInvocation));
-    addContextsToContextManager(scopeContextSet, contextManagerFieldName, processingContext.getBlockBuilder());
-    callFinishInitOnContextManager(contextManagerFieldName, processingContext.getBlockBuilder());
+    addContextsToContextManager(scopeContextSet, contextManagerFieldName, blockBuilder);
+    callFinishInitOnContextManager(contextManagerFieldName, blockBuilder);
 
     log.debug("Processed factory GWT.create calls in {}ms", System.currentTimeMillis() - start);
   }
@@ -211,10 +212,9 @@ public class IOCProcessor {
     }
   }
 
-  @SuppressWarnings("unchecked")
-  private String declareContextManagerField(final IOCProcessingContext processingContext) {
+  private String declareContextManagerField(final ClassStructureBuilder<?> bootstrapBuilder) {
     final String contextManagerFieldName = "contextManager";
-    processingContext.getBootstrapBuilder()
+    bootstrapBuilder
       .privateField(contextManagerFieldName, ContextManager.class)
       .initializesWith(ObjectBuilder.newInstanceOf(ContextManagerImpl.class))
       .finish();
@@ -222,23 +222,21 @@ public class IOCProcessor {
     return contextManagerFieldName;
   }
 
-  @SuppressWarnings("unchecked")
-  private void declareAsyncBeanManagerSetupField(final IOCProcessingContext processingContext) {
-    processingContext.getBootstrapBuilder()
+  private void declareAsyncBeanManagerSetupField(final ClassStructureBuilder<?> bootstrapBuilder) {
+    bootstrapBuilder
       .privateField("asyncBeanManagerSetup", AsyncBeanManagerSetup.class)
       .initializesWith(castTo(AsyncBeanManagerSetup.class, invokeStatic(IOC.class, "getAsyncBeanManager")))
       .finish();
   }
 
-  @SuppressWarnings("unchecked")
-  private void declareWindowInjectionContextField(final IOCProcessingContext processingContext) {
-    processingContext.getBootstrapBuilder().privateField("windowContext", WindowInjectionContext.class)
+  private void declareWindowInjectionContextField(final ClassStructureBuilder<?> bootstrapBuilder) {
+    bootstrapBuilder.privateField("windowContext", WindowInjectionContext.class)
             .modifiers(Modifier.Final).initializesWith(Stmt.invokeStatic(WindowInjectionContext.class, "createOrGet"))
             .finish();
   }
 
-  @SuppressWarnings({ "rawtypes", "unchecked" })
-  private void declareAndRegisterFactories(final IOCProcessingContext processingContext,
+  @SuppressWarnings({ "rawtypes" })
+  private void declareAndRegisterFactories(final ClassStructureBuilder<?> bootstrapBuilder,
           final DependencyGraph dependencyGraph, final Map<Class<? extends Annotation>, MetaClass> scopeContexts,
           final Collection<MetaClass> orderedScopeContexts, final BlockBuilder registerFactoriesBody) {
     final Parameter[] contextParamsDeclaration = contextParamsDeclaration(orderedScopeContexts);
@@ -254,9 +252,9 @@ public class IOCProcessor {
           methodNumber++;
           registeredInThisMethod = 0;
         }
-        curMethod = processingContext.getBootstrapBuilder().privateMethod(void.class, "registerFactories" + methodNumber, contextParamsDeclaration).body();
+        curMethod = bootstrapBuilder.privateMethod(void.class, "registerFactories" + methodNumber, contextParamsDeclaration).body();
       }
-      maybeDeclareAndProcessInjectable(processingContext, scopeContexts, curMethod, injectable);
+      maybeDeclareAndProcessInjectable(bootstrapBuilder, scopeContexts, curMethod, injectable);
       registeredInThisMethod++;
     }
     if (curMethod != null) {
@@ -265,26 +263,26 @@ public class IOCProcessor {
     }
   }
 
-  private void maybeDeclareAndProcessInjectable(final IOCProcessingContext processingContext,
+  private void maybeDeclareAndProcessInjectable(final ClassStructureBuilder<?> bootstrapBuilder,
           final Map<Class<? extends Annotation>, MetaClass> scopeContexts,
           @SuppressWarnings("rawtypes") BlockBuilder curMethod, final Injectable injectable) {
     if (!injectable.isContextual()) {
       if (injectionContext.isAsync() && injectable.loadAsync()) {
-        final MetaClass factoryClass = addFactoryDeclaration(injectable, processingContext);
-        registerAsyncFactory(injectable, processingContext, curMethod, factoryClass);
+        final MetaClass factoryClass = addFactoryDeclaration(injectable, bootstrapBuilder);
+        registerAsyncFactory(injectable, curMethod, factoryClass);
       } else {
         if (injectable.getInjectableType().equals(InjectableType.ExtensionProvided)) {
-          declareAndRegisterConcreteInjectable(injectable, processingContext, scopeContexts, curMethod);
+          declareAndRegisterConcreteInjectable(injectable, bootstrapBuilder, scopeContexts, curMethod);
           registerFactoryBodyGeneratorForInjectionSite(injectable);
         } else {
-          declareAndRegisterConcreteInjectable(injectable, processingContext, scopeContexts, curMethod);
+          declareAndRegisterConcreteInjectable(injectable, bootstrapBuilder, scopeContexts, curMethod);
         }
       }
     }
   }
 
-  private void registerAsyncFactory(final Injectable injectable, final IOCProcessingContext processingContext,
-          @SuppressWarnings("rawtypes") final BlockBuilder curMethod, final MetaClass factoryClass) {
+  private void registerAsyncFactory(final Injectable injectable, @SuppressWarnings("rawtypes") final BlockBuilder curMethod,
+          final MetaClass factoryClass) {
     final Statement handle = generateFactoryHandle(injectable, curMethod);
     final Statement loader = generateFactoryLoader(injectable, factoryClass);
     curMethod._(loadVariable("asyncBeanManagerSetup").invoke("registerAsyncBean", handle, loader));
@@ -354,9 +352,9 @@ public class IOCProcessor {
   }
 
   private void declareAndRegisterConcreteInjectable(final Injectable injectable,
-          final IOCProcessingContext processingContext, final Map<Class<? extends Annotation>, MetaClass> scopeContexts,
+          final ClassStructureBuilder<?> bootstrapBuilder, final Map<Class<? extends Annotation>, MetaClass> scopeContexts,
           @SuppressWarnings("rawtypes") final BlockBuilder registerFactoriesBody) {
-    final MetaClass factoryClass = addFactoryDeclaration(injectable, processingContext);
+    final MetaClass factoryClass = addFactoryDeclaration(injectable, bootstrapBuilder);
     registerFactoryWithContext(injectable, factoryClass, scopeContexts, registerFactoriesBody);
     if (injectable.getWiringElementTypes().contains(WiringElementType.JsType)) {
       registerFactoriesBody._(loadVariable("windowContext").invoke("addBeanProvider",
@@ -382,12 +380,11 @@ public class IOCProcessor {
   }
 
   @SuppressWarnings("rawtypes")
-  private BlockBuilder createRegisterFactoriesMethod(final IOCProcessingContext processingContext,
+  private BlockBuilder createRegisterFactoriesMethod(final ClassStructureBuilder<?> bootstrapBuilder,
           final Collection<MetaClass> scopeContexts) {
     final Parameter[] contextParams = contextParamsDeclaration(scopeContexts);
 
-    @SuppressWarnings({ "unchecked" })
-    final BlockBuilder methodBody = processingContext.getBootstrapBuilder().privateMethod(void.class, "registerFactories", contextParams).body();
+    final BlockBuilder methodBody = bootstrapBuilder.privateMethod(void.class, "registerFactories", contextParams).body();
 
     return methodBody;
   }
@@ -445,7 +442,7 @@ public class IOCProcessor {
     return scopeContextImpl.getFullyQualifiedName().replace('.', '_') + "_context";
   }
 
-  private Map<Class<? extends Annotation>, MetaClass> findScopeContexts(final IOCProcessingContext processingContext) {
+  private Map<Class<? extends Annotation>, MetaClass> findScopeContexts() {
     final Collection<MetaClass> scopeContexts = ClassScanner.getTypesAnnotatedWith(ScopeContext.class);
     final Map<Class<? extends Annotation>, MetaClass> annoToContextImpl = new HashMap<Class<? extends Annotation>, MetaClass>();
     for (final MetaClass scopeContext : scopeContexts) {
@@ -466,7 +463,7 @@ public class IOCProcessor {
     return annoToContextImpl;
   }
 
-  private Collection<MetaClass> findRelevantClasses(final IOCProcessingContext processingContext) {
+  private Collection<MetaClass> findRelevantClasses() {
     final Collection<MetaClass> allMetaClasses = new HashSet<MetaClass>();
     allMetaClasses.addAll(MetaClassFactory.getAllCachedClasses());
     allMetaClasses.remove(MetaClassFactory.get(Object.class));
@@ -474,20 +471,19 @@ public class IOCProcessor {
     return allMetaClasses;
   }
 
-  private MetaClass addFactoryDeclaration(final Injectable injectable, final IOCProcessingContext processingContext) {
+  private MetaClass addFactoryDeclaration(final Injectable injectable, final ClassStructureBuilder<?> bootstrapBuilder) {
     final String factoryName = injectable.getFactoryName();
     final MetaClass typeCreatedByFactory = injectable.getInjectedType();
-    return addFactoryDeclaration(factoryName, typeCreatedByFactory, processingContext);
+    return addFactoryDeclaration(factoryName, typeCreatedByFactory, bootstrapBuilder);
   }
 
   private MetaClass addFactoryDeclaration(final String factoryName, final MetaClass typeCreatedByFactory,
-          final IOCProcessingContext processingContext) {
-    final ClassStructureBuilder<?> builder = processingContext.getBootstrapBuilder();
+          final ClassStructureBuilder<?> bootstrapBuilder) {
     final BuildMetaClass factory = ClassBuilder
             .define(factoryName,
                     parameterizedAs(Factory.class, typeParametersOf(typeCreatedByFactory)))
             .publicScope().abstractClass().body().getClassDefinition();
-    builder.declaresInnerClass(new InnerClass(factory));
+    bootstrapBuilder.declaresInnerClass(new InnerClass(factory));
 
     return factory;
   }

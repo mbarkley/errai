@@ -233,7 +233,7 @@ public class IOCBootstrapGenerator {
 
     log.debug("Process dependency graph...");
     start = System.currentTimeMillis();
-    processorFactory.process(processingContext);
+    processorFactory.process(processingContext.getBootstrapBuilder(), processingContext.getBlockBuilder());
     log.debug("Processed dependency graph in {}ms", System.currentTimeMillis() - start);
 
     doAfterRunnbales(blockBuilder);
