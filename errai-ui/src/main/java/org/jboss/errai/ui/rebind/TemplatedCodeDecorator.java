@@ -615,12 +615,12 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
    */
   @SuppressWarnings("unchecked")
   private Map<MetaClass, BuildMetaClass> getConstructedTemplateTypes(final Decorable decorable) {
-    Map<MetaClass, BuildMetaClass> result = (Map<MetaClass, BuildMetaClass>) decorable.getInjectionContext().getAttribute(
+    Map<MetaClass, BuildMetaClass> result = (Map<MetaClass, BuildMetaClass>) decorable.getAttributes().get(
         CONSTRUCTED_TEMPLATE_SET_KEY);
 
     if (result == null) {
       result = new LinkedHashMap<MetaClass, BuildMetaClass>();
-      decorable.getInjectionContext().setAttribute(CONSTRUCTED_TEMPLATE_SET_KEY, result);
+      decorable.getAttributes().put(CONSTRUCTED_TEMPLATE_SET_KEY, result);
     }
 
     return result;

@@ -27,6 +27,7 @@ import static org.jboss.errai.ioc.rebind.ioc.bootstrapper.FactoryGenerator.getLo
 
 import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
+import java.util.Map;
 
 import javax.enterprise.context.Dependent;
 
@@ -242,20 +243,20 @@ public class Decorable {
   private final HasAnnotations annotated;
   private final Annotation annotation;
   private final DecorableType decorableType;
-  private final InjectionContext injectionContext;
   private final Context context;
   private final BuildMetaClass factory;
   private final Injectable injectable;
+  private final Map<String, Object> attributes;
 
   public Decorable(final HasAnnotations annotated, final Annotation annotation, final DecorableType decorableType,
-          final InjectionContext injectionContext, final Context context, final BuildMetaClass factory, final Injectable injectable) {
+          final Map<String, Object> attributes, final Context context, final BuildMetaClass factory, final Injectable injectable) {
     this.annotated = annotated;
     this.annotation = annotation;
     this.decorableType = decorableType;
-    this.injectionContext = injectionContext;
     this.context = context;
     this.factory = factory;
     this.injectable = injectable;
+    this.attributes = attributes;
   }
 
   @Override
@@ -272,6 +273,13 @@ public class Decorable {
   @Override
   public int hashCode() {
     return decorableType.hashCode() ^ CDIAnnotationUtils.hashCode(annotation) ^ annotated.hashCode() ^ injectable.hashCode();
+  }
+
+  /**
+   * @return A map of attributes shared between all decorators for all factories.
+   */
+  public Map<String, Object> getAttributes() {
+    return attributes;
   }
 
   /**
@@ -341,13 +349,6 @@ public class Decorable {
    */
   public DecorableType decorableType() {
     return decorableType;
-  }
-
-  /**
-   * @return The shared injection context used to generate all factories.
-   */
-  public InjectionContext getInjectionContext() {
-    return injectionContext;
   }
 
   /**

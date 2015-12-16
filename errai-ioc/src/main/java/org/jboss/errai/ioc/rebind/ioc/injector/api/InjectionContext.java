@@ -415,16 +415,8 @@ public class InjectionContext {
     return unmodifiableCollection(elementBindings.entries());
   }
 
-  public void setAttribute(final String name, final Object value) {
-    attributeMap.put(name, value);
-  }
-
-  public Object getAttribute(final String name) {
-    return attributeMap.get(name);
-  }
-
-  public boolean hasAttribute(final String name) {
-    return attributeMap.containsKey(name);
+  public Map<String, Object> getAttributes() {
+    return attributeMap;
   }
 
   public boolean isAsync() {

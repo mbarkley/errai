@@ -98,11 +98,10 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
   private static Map<String, Statement> dataFieldMap(Decorable decorable, MetaClass templateType) {
     String dataFieldMapName = dataFieldMapName(templateType);
 
-    Map<String, Statement> dataFields = (Map<String, Statement>) decorable.getInjectionContext().getAttribute(
-        dataFieldMapName);
+    Map<String, Statement> dataFields = (Map<String, Statement>) decorable.getAttributes().get(dataFieldMapName);
     if (dataFields == null) {
       dataFields = new LinkedHashMap<String, Statement>();
-      decorable.getInjectionContext().setAttribute(dataFieldMapName, dataFields);
+      decorable.getAttributes().put(dataFieldMapName, dataFields);
     }
 
     return dataFields;
@@ -115,11 +114,10 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
   private static Map<String, MetaClass> dataFieldTypeMap(Decorable decorable, MetaClass templateType) {
     String dataFieldTypeMapName = dataFieldTypeMapName(templateType);
 
-    Map<String, MetaClass> dataFieldTypes = (Map<String, MetaClass>) decorable.getInjectionContext().getAttribute(
-        dataFieldTypeMapName);
+    Map<String, MetaClass> dataFieldTypes = (Map<String, MetaClass>) decorable.getAttributes().get(dataFieldTypeMapName);
     if (dataFieldTypes == null) {
       dataFieldTypes = new LinkedHashMap<String, MetaClass>();
-      decorable.getInjectionContext().setAttribute(dataFieldTypeMapName, dataFieldTypes);
+      decorable.getAttributes().put(dataFieldTypeMapName, dataFieldTypes);
     }
 
     return dataFieldTypes;
@@ -139,8 +137,7 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
       result.putAll(aggregateDataFieldMap(decorable, componentType.getSuperClass()));
     }
 
-    Map<String, Statement> dataFields = (Map<String, Statement>) decorable.getInjectionContext().getAttribute(
-        dataFieldMapName(componentType));
+    Map<String, Statement> dataFields = (Map<String, Statement>) decorable.getAttributes().get(dataFieldMapName(componentType));
     if (dataFields != null) {
       result.putAll(dataFields);
     }
@@ -162,8 +159,7 @@ public class DataFieldCodeDecorator extends IOCDecoratorExtension<DataField> {
       result.putAll(aggregateDataFieldTypeMap(decorable, componentType.getSuperClass()));
     }
 
-    Map<String, MetaClass> dataFields = (Map<String, MetaClass>) decorable.getInjectionContext().getAttribute(
-        dataFieldTypeMapName(componentType));
+    Map<String, MetaClass> dataFields = (Map<String, MetaClass>) decorable.getAttributes().get(dataFieldTypeMapName(componentType));
 
     if (dataFields != null) {
       result.putAll(dataFields);

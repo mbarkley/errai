@@ -24,7 +24,9 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.enterprise.context.Dependent;
 
@@ -37,10 +39,9 @@ import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.config.rebind.MetaClassBridgeUtil;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.AbstractBodyGenerator;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
-import org.jboss.errai.ioc.rebind.ioc.bootstrapper.AbstractBodyGenerator;
-import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 import org.jboss.errai.ioc.rebind.ioc.graph.impl.DefaultQualifierFactory;
@@ -48,8 +49,6 @@ import org.jboss.errai.ioc.rebind.ioc.graph.impl.InjectableHandle;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable.DecorableType;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext.Builder;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 import org.jboss.errai.ui.shared.api.annotations.DataField;
 import org.jboss.errai.ui.shared.api.annotations.Templated;
@@ -84,13 +83,13 @@ public class TemplateProcessorGenerator extends Generator {
 
     final Injectable injectable = createInjectable(processedType, classDefinition);
     final FactoryController controller = createFactoryController(processedType, classDefinition);
-    final InjectionContext injectionContext = createInjectionContext(classBody, context, logger);
+    final Map<String, Object> attributes = new HashMap<String, Object>();
 
-    final List<Decorable> dataFieldDecorables = createDataFieldDecorables(processedType, classDefinition, injectable, injectionContext);
+    final List<Decorable> dataFieldDecorables = createDataFieldDecorables(processedType, classDefinition, injectable, attributes);
     for (final Decorable decorable : dataFieldDecorables) {
       dataFieldCodeDecorator.generateDecorator(decorable, controller);
     }
-    templatedCodeDecorator.generateDecorator(createTemplatedDecorable(processedType, classDefinition, injectable, injectionContext), controller);
+    templatedCodeDecorator.generateDecorator(createTemplatedDecorable(processedType, classDefinition, injectable, attributes), controller);
 
     addAccessors(controller, classBody);
 
@@ -115,42 +114,23 @@ public class TemplateProcessorGenerator extends Generator {
     return MetaClassFactory.get(typeName);
   }
 
-  private InjectionContext createInjectionContext(final ClassStructureBuilder<?> classBody,
-          final GeneratorContext generatorContext, final TreeLogger logger) {
-    final Builder injContextBuilder = InjectionContext.Builder.create();
-
-    final org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext.Builder procContextBuilder = IOCProcessingContext.Builder.create();
-
-    procContextBuilder.blockBuilder(classBody.publicConstructor());
-    procContextBuilder.bootstrapBuilder(classBody);
-    procContextBuilder.bootstrapClassInstance(classBody.getClassDefinition());
-    procContextBuilder.context(classBody.getClassDefinition().getContext());
-    procContextBuilder.logger(logger);
-    procContextBuilder.packages(Collections.<String>emptySet());
-    procContextBuilder.generatorContext(generatorContext);
-
-    injContextBuilder.processingContext(procContextBuilder.build());
-
-    return injContextBuilder.build();
-  }
-
   private List<Decorable> createDataFieldDecorables(final MetaClass processedType, final BuildMetaClass classDefinition,
-          final Injectable injectable, final InjectionContext injectionContext) {
+          final Injectable injectable, final Map<String, Object> attributes) {
     final List<Decorable> decorables = new ArrayList<Decorable>();
     final List<MetaField> dataFields = processedType.getFieldsAnnotatedWith(DataField.class);
 
     for (final MetaField dataField : dataFields) {
       decorables.add(new Decorable(dataField, dataField.getAnnotation(DataField.class), DecorableType.FIELD,
-              injectionContext, null, classDefinition, injectable));
+              attributes, null, classDefinition, injectable));
     }
 
     return decorables;
   }
 
   private Decorable createTemplatedDecorable(final MetaClass processedType, final BuildMetaClass classDefinition,
-          final Injectable injectable, final InjectionContext injectionContext) {
+          final Injectable injectable, final Map<String, Object> attributes) {
     return new Decorable(processedType, processedType.getAnnotation(Templated.class), DecorableType.TYPE,
-            injectionContext, null, classDefinition, injectable);
+            attributes, null, classDefinition, injectable);
   }
 
   private void addAccessors(final FactoryController controller, final ClassStructureBuilder<?> classBody) {
