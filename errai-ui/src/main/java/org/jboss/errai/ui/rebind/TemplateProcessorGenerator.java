@@ -19,6 +19,7 @@ package org.jboss.errai.ui.rebind;
 import static org.jboss.errai.codegen.Parameter.finalOf;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 
+import java.io.File;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
+import org.jboss.errai.common.metadata.RebindUtils;
 import org.jboss.errai.config.rebind.MetaClassBridgeUtil;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.AbstractBodyGenerator;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
@@ -70,10 +72,24 @@ public class TemplateProcessorGenerator extends Generator {
     MetaClassBridgeUtil.populateMetaClassFactoryFromTypeOracle(context, logger);
     final MetaClass processorType = getProcessorType(typeName, context);
     final MetaClass processedType = getProcessedType(processorType, typeName);
+    final String generatedPackage = "org.jboss.errai.ui.client";
+    final String generatedSimpleName = "ProcessorFor" + typeName.substring(typeName.lastIndexOf('.') + 1);
+    final String generatedFullyQualifiedName = generatedPackage + "." + generatedSimpleName;
 
+    final PrintWriter pw = context.tryCreate(logger, generatedPackage, generatedSimpleName);
+
+    if (pw != null) {
+      final String generatedSource = generateAndCommitProcessorImpl(logger, context, processorType, processedType, generatedFullyQualifiedName, pw);
+      writeToDotErraiFolder(generatedSimpleName, generatedSource);
+    }
+
+    return generatedFullyQualifiedName;
+  }
+
+  private String generateAndCommitProcessorImpl(final TreeLogger logger, final GeneratorContext context, final MetaClass processorType,
+          final MetaClass processedType, final String generatedFullyQualifiedName, final PrintWriter pw) {
     final ClassStructureBuilder<?> classBody = ClassBuilder
-            .define("org.jboss.errai.ui.client.ProcessorFor" + typeName.substring(typeName.lastIndexOf('.') + 1),
-                    processorType)
+            .define(generatedFullyQualifiedName, processorType)
             .publicScope().body();
     final BuildMetaClass classDefinition = classBody.getClassDefinition();
     final BlockBuilder<?> methodBody = classBody.publicMethod(processedType, "process", finalOf(processedType, "instance")).body();
@@ -97,11 +113,15 @@ public class TemplateProcessorGenerator extends Generator {
               .append(loadVariable("instance").returnValue()).finish();
 
     final String generated = classBody.toJavaString();
-    final PrintWriter pw = context.tryCreate(logger, classDefinition.getPackageName(), classDefinition.getName());
     pw.append(generated);
     context.commit(logger, pw);
 
-    return classDefinition.getFullyQualifiedName();
+    return generated;
+  }
+
+  private void writeToDotErraiFolder(final String simpleClassName, final String source) {
+    final File tmpFile = new File(RebindUtils.getErraiCacheDir().getAbsolutePath() + "/" + simpleClassName + ".java");
+    RebindUtils.writeStringToFile(tmpFile, source);
   }
 
   private MetaClass getProcessorType(String typeName, final GeneratorContext context) {
