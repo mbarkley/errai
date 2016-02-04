@@ -28,7 +28,7 @@ import org.jboss.errai.common.client.api.Assert;
 import org.jboss.errai.common.client.ui.ValueChangeManager;
 import org.jboss.errai.common.client.util.CreationalCallback;
 import org.jboss.errai.databinding.client.BindableListWrapper;
-import org.jboss.errai.databinding.client.api.BindableListChangeHandler;
+import org.jboss.errai.databinding.client.api.handler.list.BindableListChangeHandler;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ioc.client.container.SyncToAsyncBeanManagerAdapter;
 import org.jboss.errai.ioc.client.container.async.AsyncBeanDef;
@@ -248,14 +248,14 @@ public abstract class ListWidget<M, C extends HasModel<M>> extends Composite
   public HandlerRegistration addBindableListChangeHandler(final BindableListChangeHandler<M> handler) {
     ensureItemsInitialized();
     handlers.add(handler);
-    items.addChangeHandler(handler);
+    HandlerRegistration wrapperHandlerRegistration = items.addChangeHandler(handler);
 
     return new HandlerRegistration() {
       @Override
       public void removeHandler() {
         ensureItemsInitialized();
         handlers.remove(handler);
-        items.removeChangeHandler(handler);
+        wrapperHandlerRegistration.removeHandler();
       }
     };
   }
