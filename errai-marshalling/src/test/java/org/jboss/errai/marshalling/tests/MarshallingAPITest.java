@@ -30,6 +30,7 @@ import org.jboss.errai.marshalling.tests.res.AImpl2;
 import org.jboss.errai.marshalling.tests.res.ASubImpl1;
 import org.jboss.errai.marshalling.tests.res.BImpl1;
 import org.jboss.errai.marshalling.tests.res.BImpl2;
+import org.jboss.errai.marshalling.tests.res.Child;
 import org.jboss.errai.marshalling.tests.res.EntityWithAbstractFieldType;
 import org.jboss.errai.marshalling.tests.res.EntityWithInheritedPublicFields;
 import org.jboss.errai.marshalling.tests.res.EntityWithInterface;
@@ -41,6 +42,7 @@ import org.jboss.errai.marshalling.tests.res.EntityWithPublicFields;
 import org.jboss.errai.marshalling.tests.res.InterfaceA;
 import org.jboss.errai.marshalling.tests.res.Outer;
 import org.jboss.errai.marshalling.tests.res.Outer2;
+import org.jboss.errai.marshalling.tests.res.Parent;
 import org.jboss.errai.marshalling.tests.res.shared.ItemWithEnum;
 import org.jboss.errai.marshalling.tests.res.shared.NullBoxedNatives;
 import org.jboss.errai.marshalling.tests.res.shared.Role;
@@ -81,12 +83,12 @@ public class MarshallingAPITest {
   public void testNullLong() {
     testEncodeDecode((Long) null);
   }
-  
+
   @Test
   public void testDoubleNan() {
     testEncodeDecode(Double.NaN);
   }
-  
+
   @Test
   public void testDoublePosInf() {
     testEncodeDecode(Double.POSITIVE_INFINITY);
@@ -111,7 +113,7 @@ public class MarshallingAPITest {
   public void testFloatNegInf() {
     testEncodeDecode(Float.NEGATIVE_INFINITY);
   }
-  
+
   @Test
   public void testQualifiedShort() {
     testEncodeDecode((short) 123);
@@ -274,19 +276,19 @@ public class MarshallingAPITest {
     ewmuav.setData(data);
     testEncodeDecode(ewmuav);
   }
-  
+
   // This is a regression test for ERRAI-794
   @Test
   public void testBackReferenceOrderingWithMapsTo() {
     Outer.Nested key = new Outer.Nested("exp");
     Outer outer = new Outer (Arrays.asList(key), key);
     testEncodeDecode(outer);
-    
+
     Outer2.Nested key2 = new Outer2.Nested("exp");
     Outer2 outer2 = new Outer2 (key2, Arrays.asList(key2));
     testEncodeDecode(outer2);
   }
-  
+
   // This is a regression test for ERRAI-811
   @Test
   public void testEntityWithMapUsingNullKey() {
@@ -296,5 +298,20 @@ public class MarshallingAPITest {
 
     testEncodeDecode(data);
   }
-  
+
+  // This is a regression test for ERRAI-919
+  @Test
+  public void testCyclicEntitiesWithMapsTo() throws Exception {
+    final Child child = new Child();
+    final Parent parent = new Parent(child);
+    child.setParent(parent);
+
+    final String json = ServerMarshalling.toJSON(parent);
+    final Object result = ServerMarshalling.fromJSON(json);
+    Assert.assertTrue(result instanceof Parent);
+    final Parent parentResult = (Parent) result;
+    Assert.assertSame(parentResult, parentResult.getChild().getParent());
+    Assert.assertSame(parentResult.getChild(), parentResult.getChild().getParent().getChild());
+  }
+
 }
