@@ -14,30 +14,26 @@
  * limitations under the License.
  */
 
-package org.jboss.errai.validation.client;
+package org.jboss.errai.validation.client.dynamic;
 
-import javax.inject.Inject;
-import javax.validation.Validator;
+import javax.inject.Provider;
+import javax.inject.Singleton;
 
-import org.jboss.errai.ioc.client.api.EntryPoint;
-import org.jboss.errai.validation.client.dynamic.DynamicValidator;
+import org.jboss.errai.ioc.client.api.IOCProvider;
 
 /**
- * Module used for integration testing.
+ * {@link IOCProvider} to make {@link DynamicValidator} instances injectable.
  * 
  * @author Christian Sadilek <csadilek@redhat.com>
  */
-@EntryPoint
-public class ModuleWithInjectedValidator {
+@IOCProvider
+@Singleton
+public class DynamicValidatorProvider implements Provider<DynamicValidator> {
 
-  @Inject
-  private Validator validator;
-  
-  @Inject
-  private DynamicValidator dynamicValidator;
-
-  public Validator getValidator() {
-    return validator;
+  @Override
+  public DynamicValidator get() {
+    return DynamicValidator.getInstance();
   }
-  
 }
+
+
