@@ -22,6 +22,7 @@ import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 import org.jboss.errai.ui.nav.client.local.Page;
+import org.jboss.errai.ui.nav.client.local.api.PageScoped;
 
 /**
  * @author Mike Brock
@@ -30,7 +31,8 @@ import org.jboss.errai.ui.nav.client.local.Page;
 public class PageNavIOCExtension implements IOCExtensionConfigurator {
   @Override
   public void configure(IOCProcessingContext context, InjectionContext injectionContext) {
-    injectionContext.mapElementType(WiringElementType.DependentBean, Page.class);
+    injectionContext.mapElementType(WiringElementType.PseudoScopedBean, Page.class);
+    injectionContext.mapElementType(WiringElementType.NormalScopedBean, PageScoped.class);
   }
 
   @Override

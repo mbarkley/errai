@@ -33,7 +33,6 @@ import org.jboss.errai.ui.nav.client.local.testpages.ApplicationScopedPage;
 import org.jboss.errai.ui.nav.client.local.testpages.DependentLifecycleCountingPage;
 import org.jboss.errai.ui.nav.client.local.testpages.EntryPointPage;
 import org.jboss.errai.ui.nav.client.local.testpages.ExplicitlyDependentScopedPage;
-import org.jboss.errai.ui.nav.client.local.testpages.ImplicitlyDependentScopedPage;
 import org.jboss.errai.ui.nav.client.local.testpages.NonCompositePage;
 import org.jboss.errai.ui.nav.client.local.testpages.NonCompositePageWithLifecycleMethods;
 import org.jboss.errai.ui.nav.client.local.testpages.PageA;
@@ -249,16 +248,6 @@ public class PageLifecycleTest extends AbstractErraiCDITest {
     // go somewhere else; doesn't matter where
     navigation.goTo(PageWithExtraState.class, ImmutableMultimap.<String, String>of());
     assertEquals(1, ExplicitlyDependentScopedPage.getPreDestroyCallCount());
-  }
-
-  public void testImplicitlyDependentScopedPageIsDestroyedAfterHiding() throws Exception {
-    assertEquals(0, ImplicitlyDependentScopedPage.getPreDestroyCallCount());
-    navigation.goTo(ImplicitlyDependentScopedPage.class, ImmutableMultimap.<String, String>of());
-    assertEquals(0, ImplicitlyDependentScopedPage.getPreDestroyCallCount());
-
-    // go somewhere else; doesn't matter where
-    navigation.goTo(PageWithExtraState.class, ImmutableMultimap.<String, String>of());
-    assertEquals(1, ImplicitlyDependentScopedPage.getPreDestroyCallCount());
   }
 
   public void testApplicationScopedPageIsNotDestroyedAfterHiding() throws Exception {

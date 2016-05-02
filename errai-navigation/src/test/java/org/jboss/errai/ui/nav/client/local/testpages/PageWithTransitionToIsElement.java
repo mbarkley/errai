@@ -16,6 +16,7 @@
 
 package org.jboss.errai.ui.nav.client.local.testpages;
 
+import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
 
 import org.jboss.errai.ui.nav.client.local.Page;
@@ -26,6 +27,7 @@ import com.google.gwt.user.client.ui.SimplePanel;
 /**
  * @author Max Barkley <mbarkley@redhat.com>
  */
+@Dependent
 @Page
 public class PageWithTransitionToIsElement extends SimplePanel {
 

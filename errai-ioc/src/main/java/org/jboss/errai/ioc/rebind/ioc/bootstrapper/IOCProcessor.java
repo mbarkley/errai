@@ -39,6 +39,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -832,16 +833,21 @@ public class IOCProcessor {
     for (final Annotation anno : annotated.getAnnotations()) {
       final Class<? extends Annotation> annoType = anno.annotationType();
       if (scopeAnnoTypes.contains(annoType)) {
-        return annoType;
+        pq.add(annoType);
       } else if (annoType.isAnnotationPresent(Stereotype.class)) {
         final Class<? extends Annotation> stereotypeScope = getDirectScope(MetaClassFactory.get(annoType));
         if (stereotypeScope != null) {
-          return stereotypeScope;
+          pq.add(stereotypeScope);
         }
       }
     }
 
-    return null;
+    if (pq.isEmpty()) {
+      return null;
+    }
+    else {
+      return pq.poll();
+    }
   }
 
   /**

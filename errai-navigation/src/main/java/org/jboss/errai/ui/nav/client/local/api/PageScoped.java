@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ * Copyright (C) 2016 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,27 @@
  * limitations under the License.
  */
 
-package org.jboss.errai.ui.nav.client.local.testpages;
+package org.jboss.errai.ui.nav.client.local.api;
 
-import javax.enterprise.context.Dependent;
-import javax.inject.Inject;
+import static java.lang.annotation.ElementType.FIELD;
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.ElementType.TYPE;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-import org.jboss.errai.ui.nav.client.local.Page;
-import org.jboss.errai.ui.nav.client.local.TransitionTo;
+import java.lang.annotation.Documented;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
-import com.google.gwt.user.client.ui.SimplePanel;
+import javax.enterprise.context.NormalScope;
 
 /**
+ *
  * @author Max Barkley <mbarkley@redhat.com>
  */
-@Page
-@Dependent
-public class PageWithTransitionToNonComposite extends SimplePanel {
-
-  @Inject
-  public TransitionTo<NonCompositePage> transition;
+@Documented
+@Target({ TYPE, METHOD, FIELD })
+@Retention(RUNTIME)
+@NormalScope
+public @interface PageScoped {
 
 }

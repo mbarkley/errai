@@ -17,9 +17,7 @@
 package org.jboss.errai.ui.nav.client.local;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.Queue;
 
 import javax.annotation.PostConstruct;
@@ -33,7 +31,6 @@ import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.client.container.Proxy;
 import org.jboss.errai.ioc.client.lifecycle.api.Access;
-import org.jboss.errai.ioc.client.lifecycle.api.LifecycleCallback;
 import org.jboss.errai.ioc.client.lifecycle.api.StateChange;
 import org.jboss.errai.ioc.client.lifecycle.impl.AccessImpl;
 import org.jboss.errai.ui.nav.client.local.api.NavigationControl;
@@ -49,8 +46,6 @@ import org.slf4j.Logger;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.Multimap;
 import com.google.gwt.core.client.GWT;
-import com.google.gwt.event.logical.shared.AttachEvent;
-import com.google.gwt.event.logical.shared.AttachEvent.Handler;
 import com.google.gwt.event.logical.shared.ValueChangeEvent;
 import com.google.gwt.event.logical.shared.ValueChangeHandler;
 import com.google.gwt.user.client.Window;
@@ -122,8 +117,6 @@ public class Navigation {
   private PageNavigationErrorHandler navigationErrorHandler;
 
   private HandlerRegistration historyHandlerRegistration;
-
-  private Map<IsWidget, HandlerRegistration> attachHandlerRegistrations = new HashMap<IsWidget, HandlerRegistration>();
 
   @Inject
   private Logger logger;
@@ -393,81 +386,24 @@ public class Navigation {
    * Call navigation and page related lifecycle methods. If the {@link Access} is fired successfully, load the new page.
    */
   private <C> void maybeShowPage(final Request<C> request, final boolean fireEvent) {
-    request.pageNode.produceContent(component -> {
-      if (component == null) {
-        throw new NullPointerException("Target page " + request.pageNode + " returned a null content widget");
-      }
+    maybeAttachContentPanel();
+    currentPageToken = request.state;
 
-      final C unwrappedComponent = Factory.maybeUnwrapProxy(component);
-      final Widget widget;
-      if (unwrappedComponent instanceof IsWidget) {
-        widget = ((IsWidget) unwrappedComponent).asWidget();
-      }
-      else if (unwrappedComponent instanceof IsElement) {
-        widget = ElementWrapperWidget.getWidget(((IsElement) unwrappedComponent).getElement());
-      }
-      else if (TemplateWidgetMapper.containsKey(unwrappedComponent)) {
-        widget = TemplateWidgetMapper.get(unwrappedComponent);
-      }
-      else {
-        throw new RuntimeException("Page must implement IsWidget or be @Templated.");
-      }
-
-      maybeAttachContentPanel();
-      currentPageToken = request.state;
-
-      if ((unwrappedComponent instanceof Composite) && (getCompositeWidget((Composite) unwrappedComponent) == null)) {
-        final HandlerRegistration reg = widget.addAttachHandler(new Handler() {
-          @Override
-          public void onAttachOrDetach(AttachEvent event) {
-            if (event.isAttached() && currentWidget != unwrappedComponent) {
-              pageHiding(unwrappedComponent, widget, request, fireEvent);
-            }
+    try {
+      final NavigationControl control = new NavigationControl(() -> {
+        hideCurrentPage();
+        PageScopedContext.getInstance().setCurrentPage(request.pageNode.contentType().getName());
+        request.pageNode.produceContent(component -> {
+          final C componentToShow = Factory.maybeUnwrapProxy(component);
+          final Widget widgetToShow = getWidgetForComponent(componentToShow);
+          if (componentToShow instanceof Proxy) {
+            throw new RuntimeException("Was passed in a proxy, but should always receive an unwrapped widget.");
           }
-        });
-        attachHandlerRegistrations.put(widget, reg);
-      }
-      else {
-        pageHiding(unwrappedComponent, widget, request, fireEvent);
-      }
-    });
-  }
-
-  private <C, W extends IsWidget> void pageHiding(final C component, final W componentWidget, final Request<C> request, final boolean fireEvent) {
-    if (component instanceof Proxy) {
-      throw new RuntimeException("Was passed in a proxy, but should always receive an unwrapped widget.");
-    }
-
-    HandlerRegistration reg = attachHandlerRegistrations.remove(component);
-    if (reg != null) {
-      reg.removeHandler();
-    }
-
-    final NavigationControl control = new NavigationControl(new Runnable() {
-      @Override
-      public void run() {
-        final Access<C> accessEvent = new AccessImpl<C>();
-        accessEvent.fireAsync(component, new LifecycleCallback() {
-
-          @Override
-          public void callback(final boolean success) {
+          new AccessImpl<C>().fireAsync(componentToShow, success -> {
             if (success) {
               locked = true;
               try {
-                hideCurrentPage();
-                request.pageNode.pageShowing(component, request.state);
-
-                // Fire IOC lifecycle event to indicate that the state of the
-                // bean has changed.
-                // TODO make this smarter and only fire state change event when
-                // fields actually changed.
-                stateChangeEvent.fireAsync(component);
-
-                setCurrentPage(request.pageNode);
-                currentWidget = componentWidget;
-                currentComponent = component;
-                navigatingContainer.setWidget(componentWidget);
-                request.pageNode.pageShown(component, request.state);
+                showPage(request, componentToShow, widgetToShow);
               } finally {
                 locked = false;
               }
@@ -475,19 +411,56 @@ public class Navigation {
               handleQueuedRequests(request, fireEvent);
             }
             else {
-              request.pageNode.destroy(component);
+              request.pageNode.destroy(componentToShow);
             }
-          }
+          });
         });
-      }
-    });
+      });
 
-    if (currentPage != null && currentWidget != null && currentComponent != null && currentWidget.asWidget() == navigatingContainer.getWidget()) {
-      currentPage.pageHiding(Factory.maybeUnwrapProxy(currentComponent), control);
+      if (currentPage != null && currentWidget != null && currentComponent != null
+              && currentWidget.asWidget() == navigatingContainer.getWidget()) {
+        currentPage.pageHiding(Factory.maybeUnwrapProxy(currentComponent), control);
+      }
+      else {
+        control.proceed();
+      }
+    } catch (RuntimeException e) {
+      locked = false;
+      throw e;
+    }
+  }
+
+  private <C> void showPage(final Request<C> request, final C componentToShow, final Widget widgetToShow) {
+    request.pageNode.pageShowing(componentToShow, request.state);
+
+    // Fire IOC lifecycle event to indicate that the state of the
+    // bean has changed.
+    // TODO make this smarter and only fire state change event when
+    // fields actually changed.
+    stateChangeEvent.fireAsync(componentToShow);
+
+    setCurrentPage(request.pageNode);
+    currentWidget = widgetToShow;
+    currentComponent = componentToShow;
+    navigatingContainer.setWidget(widgetToShow);
+    request.pageNode.pageShown(componentToShow, request.state);
+  }
+
+  private <C> Widget getWidgetForComponent(final C unwrappedComponent) {
+    final Widget widget;
+    if (unwrappedComponent instanceof IsWidget) {
+      widget = ((IsWidget) unwrappedComponent).asWidget();
+    }
+    else if (unwrappedComponent instanceof IsElement) {
+      widget = ElementWrapperWidget.getWidget(((IsElement) unwrappedComponent).getElement());
+    }
+    else if (TemplateWidgetMapper.containsKey(unwrappedComponent)) {
+      widget = TemplateWidgetMapper.get(unwrappedComponent);
     }
     else {
-      control.proceed();
+      throw new RuntimeException("Page must implement IsWidget, IsElement, or be @Templated.");
     }
+    return widget;
   }
 
   /**

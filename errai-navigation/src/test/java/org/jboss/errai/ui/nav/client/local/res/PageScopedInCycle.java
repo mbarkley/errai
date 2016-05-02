@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ * Copyright (C) 2016 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,35 @@
  * limitations under the License.
  */
 
-package org.jboss.errai.ui.nav.client.local.testpages;
+package org.jboss.errai.ui.nav.client.local.res;
 
-import javax.enterprise.context.Dependent;
+import java.util.Random;
+
 import javax.inject.Inject;
 
-import org.jboss.errai.ui.nav.client.local.Page;
-import org.jboss.errai.ui.nav.client.local.TransitionTo;
-
-import com.google.gwt.user.client.ui.SimplePanel;
+import org.jboss.errai.ui.nav.client.local.api.PageScoped;
+import org.jboss.errai.ui.nav.client.local.testpages.CycleWithPageScoped;
 
 /**
+ *
  * @author Max Barkley <mbarkley@redhat.com>
  */
-@Page
-@Dependent
-public class PageWithTransitionToNonComposite extends SimplePanel {
+@PageScoped
+public class PageScopedInCycle {
+
+  private static final Random rand = new Random(12345);
+
+  private final int id = rand.nextInt();
 
   @Inject
-  public TransitionTo<NonCompositePage> transition;
+  private CycleWithPageScoped page;
+
+  public CycleWithPageScoped getPage() {
+    return page;
+  }
+
+  public int getId() {
+    return id;
+  }
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ * Copyright (C) 2016 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,23 @@
  * limitations under the License.
  */
 
-package org.jboss.errai.ui.nav.client.local.testpages;
+package org.jboss.errai.ui.nav.client.local.res;
 
-import javax.enterprise.context.Dependent;
+import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
-import org.jboss.errai.ui.nav.client.local.Page;
-import org.jboss.errai.ui.nav.client.local.TransitionTo;
-
-import com.google.gwt.user.client.ui.SimplePanel;
-
 /**
+ *
  * @author Max Barkley <mbarkley@redhat.com>
  */
-@Page
-@Dependent
-public class PageWithTransitionToNonComposite extends SimplePanel {
+@ApplicationScoped
+public class ApplicationScopedWithPageScopedDep {
 
   @Inject
-  public TransitionTo<NonCompositePage> transition;
+  private PageScopedA pageScopedA;
+
+  public PageScopedA getPageScopedA() {
+    return pageScopedA;
+  }
 
 }

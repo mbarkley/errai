@@ -1,5 +1,5 @@
-/*
- * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+/**
+ * Copyright (C) 2016 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,26 +14,34 @@
  * limitations under the License.
  */
 
-package org.jboss.errai.ui.nav.client.local.testpages;
+package org.jboss.errai.ui.nav.client.local.res;
+
+import java.util.HashSet;
+import java.util.Set;
 
 import javax.annotation.PreDestroy;
 
-import org.jboss.errai.ui.nav.client.local.Page;
+import org.jboss.errai.ui.nav.client.local.api.PageScoped;
 
-import com.google.gwt.user.client.ui.Label;
+/**
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
+@PageScoped
+public class PageScopedA {
 
-@Page
-public class ImplicitlyDependentScopedPage extends Label {
+  private static int instanceCount = 0;
 
-  private static int preDestroyCallCount = 0;
+  public static Set<Integer> numsOfDestroyed = new HashSet<>();
+
+  private int instanceNum = ++instanceCount;
+
+  public int getInstanceNum() {
+    return instanceNum;
+  }
 
   @PreDestroy
-  private void preDestroy() {
-    preDestroyCallCount++;
+  private void tearDown() {
+    numsOfDestroyed.add(instanceNum);
   }
-
-  public static int getPreDestroyCallCount() {
-    return preDestroyCallCount;
-  }
-
 }

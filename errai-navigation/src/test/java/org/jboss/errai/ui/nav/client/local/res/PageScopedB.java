@@ -1,5 +1,5 @@
-/*
- * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+/**
+ * Copyright (C) 2016 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,25 @@
  * limitations under the License.
  */
 
-package org.jboss.errai.ui.nav.client.local;
+package org.jboss.errai.ui.nav.client.local.res;
 
 import javax.inject.Inject;
 
-import org.jboss.errai.ioc.client.api.EntryPoint;
-import org.jboss.errai.ui.nav.client.local.testpages.PageWithTransitionToSomeUniquePageRole;
+import org.jboss.errai.ui.nav.client.local.api.PageScoped;
+import org.jboss.errai.ui.nav.client.local.testpages.DepScopedPageWithCycleViaPageScoped;
 
-@EntryPoint
-public class TransitionToRoleTestApp {
+/**
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
+@PageScoped
+public class PageScopedB {
 
   @Inject
-  PageWithTransitionToSomeUniquePageRole testPage;
+  private DepScopedPageWithCycleViaPageScoped page;
+
+  public DepScopedPageWithCycleViaPageScoped getPage() {
+    return page;
+  }
 
 }

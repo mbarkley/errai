@@ -21,6 +21,7 @@ import java.util.IdentityHashMap;
 import java.util.Set;
 
 import javax.annotation.PreDestroy;
+import javax.enterprise.context.Dependent;
 
 import org.jboss.errai.ui.nav.client.local.Page;
 import org.jboss.errai.ui.nav.client.local.res.NonCompositePageRole;
@@ -35,6 +36,7 @@ import com.google.gwt.dom.client.Document;
  */
 @Page(role = NonCompositePageRole.class)
 @Templated
+@Dependent
 public class NonCompositePage {
 
   private static final Set<NonCompositePage> destroyed = Collections.newSetFromMap(new IdentityHashMap<NonCompositePage, Boolean>());

@@ -1,5 +1,5 @@
-/*
- * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+/**
+ * Copyright (C) 2016 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,27 +16,34 @@
 
 package org.jboss.errai.ui.nav.client.local.testpages;
 
-import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
 
+import org.jboss.errai.common.client.api.IsElement;
+import org.jboss.errai.common.client.dom.Div;
+import org.jboss.errai.common.client.dom.HTMLElement;
 import org.jboss.errai.ui.nav.client.local.Page;
-import org.jboss.errai.ui.nav.client.local.TransitionAnchor;
-import org.jboss.errai.ui.nav.client.local.TransitionTo;
+import org.jboss.errai.ui.nav.client.local.res.PageScopedB;
 
-import com.google.gwt.user.client.ui.SimplePanel;
-
-@Dependent
+/**
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
 @Page
-public class PageWithLinkToIsWidget extends SimplePanel {
+public class DepScopedPageWithCycleViaPageScoped implements IsElement {
 
-  @Inject private TransitionTo<PageIsWidget> transitionToIsWidget;
-  @Inject private TransitionAnchor<PageIsWidget> linkToIsWidget;
+  @Inject
+  private Div element;
 
-  public TransitionTo<PageIsWidget> getTransitionToIsWidget() {
-    return transitionToIsWidget;
+  @Inject
+  private PageScopedB pageScopedB;
+
+  @Override
+  public HTMLElement getElement() {
+    return element;
   }
 
-  public TransitionAnchor<PageIsWidget> getLinkToIsWidget() {
-    return linkToIsWidget;
+  public PageScopedB getPageScopedB() {
+    return pageScopedB;
   }
+
 }
