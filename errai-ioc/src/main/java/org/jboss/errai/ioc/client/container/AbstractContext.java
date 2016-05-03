@@ -81,10 +81,12 @@ public abstract class AbstractContext implements Context {
   protected <T> Proxy<T> getOrCreateProxy(final String factoryName) {
     @SuppressWarnings("unchecked")
     Proxy<T> proxy = (Proxy<T>) proxies.get(factoryName);
-    if (proxy == null && !proxies.containsKey(factoryName)) {
+    if (proxy == null) {
       final Factory<T> factory = getFactory(factoryName);
       proxy = factory.createProxy(this);
-      proxies.put(factoryName, proxy);
+      if (proxy != null) {
+        proxies.put(factoryName, proxy);
+      }
     }
 
     return proxy;
