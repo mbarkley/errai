@@ -30,6 +30,9 @@ import javax.inject.Qualifier;
 import org.jboss.errai.ui.nav.client.local.UniquePageRole;
 
 /**
+ * A qualifier for {@link Anchor} elements linking to Errai Navigation {@link Page Pages} by {@link UniquePageRole}. An
+ * injected anchor with this qualifier has an {@link EventListener} registered for "click" events that navigates to the
+ * Errai Navigation page with the unique page role specified by the qualifier {@link #value()}.
  *
  * @author Max Barkley <mbarkley@redhat.com>
  */
@@ -39,7 +42,9 @@ import org.jboss.errai.ui.nav.client.local.UniquePageRole;
 @Target({ PARAMETER, FIELD })
 public @interface TransitionToRole {
 
-  @Nonbinding
-  Class<? extends UniquePageRole> value();
+  /**
+   * The class of an Errai Navigation {@link UniquePageRole}.
+   */
+  @Nonbinding Class<? extends UniquePageRole> value();
 
 }

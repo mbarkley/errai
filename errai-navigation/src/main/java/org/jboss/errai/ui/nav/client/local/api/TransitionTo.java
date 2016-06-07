@@ -27,7 +27,14 @@ import java.lang.annotation.Target;
 import javax.enterprise.util.Nonbinding;
 import javax.inject.Qualifier;
 
+import org.jboss.errai.common.client.dom.Anchor;
+import org.jboss.errai.common.client.dom.EventListener;
+import org.jboss.errai.ui.nav.client.local.Page;
+
 /**
+ * A qualifier for {@link Anchor} elements linking to Errai Navigation {@link Page Pages}. An injected anchor with this
+ * qualifier has an {@link EventListener} registered for "click" events that navigates to the Errai Navigation page
+ * specified by the qualifier {@link #value()}.
  *
  * @author Max Barkley <mbarkley@redhat.com>
  */
@@ -37,7 +44,9 @@ import javax.inject.Qualifier;
 @Target({ PARAMETER, FIELD })
 public @interface TransitionTo {
 
-  @Nonbinding
-  Class<?> value();
+  /**
+   * The class of an Errai Navigation {@link Page}.
+   */
+  @Nonbinding Class<?> value();
 
 }
