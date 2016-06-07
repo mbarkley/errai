@@ -28,6 +28,7 @@ import static org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType.Depe
 
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,11 +40,14 @@ import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
 import org.jboss.errai.codegen.builder.impl.StatementBuilder;
+import org.jboss.errai.codegen.exception.GenerationException;
+import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.common.client.dom.Anchor;
 import org.jboss.errai.common.client.dom.Event;
 import org.jboss.errai.common.client.dom.EventListener;
 import org.jboss.errai.common.client.dom.Window;
+import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.ioc.client.api.IOCExtension;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.AbstractBodyGenerator;
@@ -59,12 +63,15 @@ import org.jboss.errai.ioc.rebind.ioc.graph.impl.FactoryNameGenerator;
 import org.jboss.errai.ioc.rebind.ioc.graph.impl.InjectableHandle;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ui.nav.client.local.Navigation;
-import org.jboss.errai.ui.nav.client.local.api.TransitionToRole;
+import org.jboss.errai.ui.nav.client.local.Page;
 import org.jboss.errai.ui.nav.client.local.UniquePageRole;
 import org.jboss.errai.ui.nav.client.local.api.TransitionTo;
+import org.jboss.errai.ui.nav.client.local.api.TransitionToRole;
 
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
+import com.google.gwt.core.ext.GeneratorContext;
 
 /**
  *
@@ -100,6 +107,7 @@ public class TransitionProviderIOCExtension implements IOCExtensionConfigurator 
     };
 
   private final Map<Class<?>, DefaultCustomFactoryInjectable> injectables = new HashMap<>();
+  private final Multimap<Class<? extends UniquePageRole>, MetaClass> pagesByRole = HashMultimap.create();
 
   @Override
   public void configure(final IOCProcessingContext context, final InjectionContext injectionContext) {
@@ -113,19 +121,35 @@ public class TransitionProviderIOCExtension implements IOCExtensionConfigurator 
     final InjectableHandle transitionToRoleHandle = new InjectableHandle(MetaClassFactory.get(Anchor.class),
             qualifierFactory.forSource(() -> new Annotation[] { TRANSITION_TO_ROLE }));
 
+    scanForUniquePageRoles(context.getGeneratorContext());
     registerProvider(injectionContext, transitionToHandle);
     registerProvider(injectionContext, transitionToRoleHandle);
   }
 
+  private void scanForUniquePageRoles(final GeneratorContext generatorContext) {
+    final Collection<MetaClass> pages = ClassScanner.getTypesAnnotatedWith(Page.class, generatorContext);
+    pages
+      .stream()
+      .filter(type -> type.getAnnotation(Page.class).role().length > 0)
+      .forEach(type -> {
+        final Page anno = type.getAnnotation(Page.class);
+        Arrays
+          .stream(anno.role())
+          .filter(role -> UniquePageRole.class.isAssignableFrom(role))
+          .map(role -> role.<UniquePageRole>asSubclass(UniquePageRole.class))
+          .forEach(role -> pagesByRole.put(role, type));
+      });
+  }
+
   private void registerProvider(final InjectionContext injectionContext, final InjectableHandle transitionToHandle) {
     injectionContext.registerExactTypeInjectableProvider(transitionToHandle, (injectionSite, nameGenerator) ->
-      getOrCreateInjectable(transitionToHandle, injectionSite, nameGenerator)
+      getOrCreateInjectable(transitionToHandle, injectionSite, nameGenerator, injectionContext)
     );
   }
 
   private DefaultCustomFactoryInjectable getOrCreateInjectable(final InjectableHandle handle, final InjectionSite injectionSite,
-          final FactoryNameGenerator nameGenerator) {
-    final Class<?> targetType = getTargetType(injectionSite);
+          final FactoryNameGenerator nameGenerator, final InjectionContext injectionContext) {
+    final Class<?> targetType = assertTargetType(injectionSite, injectionContext);
     DefaultCustomFactoryInjectable injectable = injectables.get(targetType);
     if (injectable == null) {
       injectable = new DefaultCustomFactoryInjectable(handle, nameGenerator.generateFor(handle, ExtensionProvided),
@@ -135,17 +159,46 @@ public class TransitionProviderIOCExtension implements IOCExtensionConfigurator 
     return injectable;
   }
 
-  private Class<?> getTargetType(final InjectionSite injectionSite) {
+  private Class<?> assertTargetType(final InjectionSite injectionSite, final InjectionContext injectionContext) {
     if (injectionSite.isAnnotationPresent(TransitionTo.class)) {
-      return injectionSite.getAnnotation(TransitionTo.class).value();
+      return assertIsPage(injectionSite);
     }
     else if (injectionSite.isAnnotationPresent(TransitionToRole.class)) {
-      return injectionSite.getAnnotation(TransitionToRole.class).value();
+      return assertRoleExistsAndIsValid(injectionSite, injectionContext);
     }
     else {
       throw new IllegalStateException(
               String.format("This extension provider should only be called for anchors with %s or %s.",
                       TransitionTo.class.getSimpleName(), TransitionToRole.class.getSimpleName()));
+    }
+  }
+
+  private Class<? extends UniquePageRole> assertRoleExistsAndIsValid(final InjectionSite injectionSite, final InjectionContext injectionContext) {
+    final Class<? extends UniquePageRole> candidateRole = injectionSite.getAnnotation(TransitionToRole.class).value();
+    if (pagesByRole.get(candidateRole).size() == 1) {
+      return candidateRole;
+    }
+    else if (pagesByRole.get(candidateRole).isEmpty()) {
+      throw new GenerationException(
+              String.format("An @%s Anchor was found for the role %s but no @%s exists with that role.",
+                      TransitionToRole.class.getSimpleName(), candidateRole.getName(), Page.class.getSimpleName()));
+    }
+    else {
+      throw new GenerationException(
+              String.format("An @%s Anchor was found for the role %s but multiple @%ss pages exist with that role: %s",
+                      TransitionToRole.class.getSimpleName(), candidateRole.getName(), Page.class.getSimpleName(),
+                      pagesByRole.get(candidateRole).toString()));
+    }
+  }
+
+  private Class<?> assertIsPage(final InjectionSite injectionSite) {
+    final Class<?> candidate = injectionSite.getAnnotation(TransitionTo.class).value();
+    if (!candidate.isAnnotationPresent(Page.class)) {
+      throw new IllegalArgumentException(String.format("They type %s is not a valid value for @%s. A @%s is required.",
+              candidate.getName(), TransitionTo.class.getSimpleName(), Page.class.getSimpleName()));
+    }
+    else {
+      return candidate;
     }
   }
 
