@@ -108,6 +108,7 @@
     <module>errai-annotation-processors</module>
     <module>errai-forge-addon</module>
     <module>errai-api</module>
+    <module>errai-app-flow</module>
   </modules>
 
   <!-- These must be here in this order because of missing guava-gwt snapshots in the JBoss Public Repository. -->
