@@ -11,5 +11,6 @@
   <modules>
    <module>errai-app-flow-api</module>
    <module>errai-app-flow-client</module>
+   <module>errai-app-flow-cdi-api</module>
   </modules>
 </project>

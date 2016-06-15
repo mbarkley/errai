@@ -116,6 +116,11 @@
 
     <dependency>
       <groupId>org.jboss.errai</groupId>
+      <artifactId>errai-app-flow-cdi-api</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jboss.errai</groupId>
       <artifactId>errai-app-flow-client</artifactId>
       <scope>provided</scope>
     </dependency>

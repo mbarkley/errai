@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (C) 2016 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +14,31 @@
  * limitations under the License.
  */
 
+package org.jboss.errai.flow.cdi.api.example;
 
-package org.jboss.errai.flow.api;
+import javax.inject.Inject;
 
-public interface FlowOutput<M> {
+import org.jboss.errai.flow.api.Unit;
+import org.jboss.errai.flow.cdi.api.Begin;
+import org.jboss.errai.flow.cdi.api.FlowInput;
+import org.jboss.errai.flow.cdi.api.FlowOutput;
+import org.jboss.errai.flow.cdi.api.Step;
 
-  void submit(M model);
+/**
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
+@Step
+public class Updater {
+
+  @Inject
+  private FlowInput<Entity> input;
+
+  @Inject
+  private FlowOutput<Unit> output;
+
+  @Begin
+  private void start() {
+  }
 
 }

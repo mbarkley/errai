@@ -15,10 +15,10 @@
  */
 
 
-package org.jboss.errai.flow.api;
+package org.jboss.errai.flow.cdi.api;
 
-public interface FlowInput<M> {
+public interface FlowOutput<M> {
 
-  M get();
+  void submit(M model);
 
 }

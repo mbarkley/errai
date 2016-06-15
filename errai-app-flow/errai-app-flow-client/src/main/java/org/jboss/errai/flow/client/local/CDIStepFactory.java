@@ -24,9 +24,9 @@ import java.util.function.Consumer;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Produces;
 
-import org.jboss.errai.flow.api.FlowInput;
-import org.jboss.errai.flow.api.FlowOutput;
 import org.jboss.errai.flow.api.Step;
+import org.jboss.errai.flow.cdi.api.FlowInput;
+import org.jboss.errai.flow.cdi.api.FlowOutput;
 
 @ApplicationScoped
 public class CDIStepFactory {

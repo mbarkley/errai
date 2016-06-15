@@ -24,9 +24,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-import org.jboss.errai.flow.api.FlowInput;
-import org.jboss.errai.flow.api.FlowOutput;
 import org.jboss.errai.flow.api.Step;
+import org.jboss.errai.flow.cdi.api.FlowInput;
+import org.jboss.errai.flow.cdi.api.FlowOutput;
 import org.jboss.errai.flow.client.local.CDIStepFactory;
 import org.jboss.errai.flow.util.Ref;
 import org.junit.Before;
