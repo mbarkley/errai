@@ -32,9 +32,10 @@ import javax.inject.Qualifier;
 @Qualifier
 @Target({TYPE, METHOD})
 @Retention(RUNTIME)
-public @interface Stage {
+public @interface Transition {
+  Class<?> target() default Dynamic.class;
 
-  Class<?> step();
-  boolean initial() default false;
+  public class Dynamic {
 
+  }
 }

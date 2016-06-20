@@ -5,6 +5,7 @@
 <module rename-to="app">
   <inherits name="org.jboss.errai.enterprise.All" />
   <inherits name="org.jboss.errai.flow.AppFlowAPI" />
+  <inherits name="org.jboss.errai.flow.cdi.AppFlowAPI" />
   <inherits name="org.jboss.errai.flow.AppFlow" />
 
   <set-property name="gwt.logging.enabled" value="TRUE"/>

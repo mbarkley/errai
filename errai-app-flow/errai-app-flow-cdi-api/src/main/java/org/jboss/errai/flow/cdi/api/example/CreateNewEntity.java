@@ -16,8 +16,10 @@
 
 package org.jboss.errai.flow.cdi.api.example;
 
+import org.jboss.errai.flow.api.CrudOperation;
 import org.jboss.errai.flow.cdi.api.Flow;
 import org.jboss.errai.flow.cdi.api.Stage;
+import org.jboss.errai.flow.cdi.api.Transition;
 
 /**
  *
@@ -26,9 +28,47 @@ import org.jboss.errai.flow.cdi.api.Stage;
 @Flow
 public interface CreateNewEntity {
 
-  @Stage
-  interface FormStage {
-
+  @Stage(step = Loader.class, initial = true)
+  @Transition(target = ListStage.class)
+  interface LoadStage {
   }
 
+  @Stage(step = EntityList.class)
+  interface ListStage {
+    @Transition
+    default Class<?> transition(final CrudOperation op) {
+      switch (op) {
+      case CREATE:
+        return SaveFlow.class;
+      case UPDATE:
+        return UpdateFlow.class;
+      default:
+        return CreateNewEntity.class;
+      }
+    }
+  }
+
+  @Flow
+  interface SaveFlow {
+    @Stage(step = EntityForm.class, initial = true)
+    @Transition(target = Save.class)
+    interface Form {
+    }
+
+    @Stage(step = Saver.class)
+    interface Save {
+    }
+  }
+
+  @Flow
+  interface UpdateFlow {
+    @Stage(step = EntityForm.class, initial = true)
+    @Transition(target = Update.class)
+    interface Form {
+    }
+
+    @Stage(step = Updater.class)
+    interface Update {
+    }
+  }
 }
