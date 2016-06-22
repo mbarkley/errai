@@ -16,11 +16,16 @@
 
 package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
 
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
+import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
 import static org.jboss.errai.codegen.util.Stmt.castTo;
+import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
 import static org.jboss.errai.codegen.util.Stmt.loadLiteral;
 import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.jboss.errai.codegen.Statement;
@@ -28,6 +33,7 @@ import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
+import org.jboss.errai.ioc.client.api.Disposer;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
@@ -46,32 +52,54 @@ public class ContextualFactoryBodyGenerator extends AbstractBodyGenerator {
   @Override
   protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
           final Injectable injectable, final DependencyGraph graph, final InjectionContext injectionContext) {
-    return singletonList(invokeContextualProvider(injectable).returnValue());
+    final List<Statement> stmts = new ArrayList<>(2);
+    final Injectable providerInjectable = getProviderInjectable(injectable);
+
+    final MetaClass paramterizedProviderType = parameterizedAs(ContextualTypeProvider.class, typeParametersOf(injectable.getInjectedType()));
+    stmts.add(declareFinalVariable("provider", paramterizedProviderType, lookupProviderStmt(providerInjectable, paramterizedProviderType)));
+    stmts.add(declareFinalVariable("instance", injectable.getInjectedType(), invokeProviderStmt(loadVariable("provider"))));
+    if (providerInjectable.getInjectedType().isAssignableTo(Disposer.class)) {
+      stmts.add(loadVariable("this").invoke("setReference", loadVariable("instance"), "disposer", loadVariable("provider")));
+    }
+    stmts.add(loadVariable("instance").returnValue());
+
+    return stmts;
   }
 
-  private ContextualStatementBuilder invokeContextualProvider(final Injectable depInjectable) {
-    final Injectable providerInjectable = getProviderInjectable(depInjectable);
-    final MetaClass providerType = providerInjectable.getInjectedType();
-    if (providerType.isAssignableTo(ContextualTypeProvider.class)) {
-      return invokeProviderStmt(providerInjectable, providerType);
+  @Override
+  protected List<Statement> generateDestroyInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
+          final Injectable injectable, final DependencyGraph graph, final InjectionContext injectionContext) {
+    final Injectable provider = getProviderInjectable(injectable);
+    if (provider.getInjectedType().isAssignableTo(Disposer.class)) {
+      return singletonList(castTo(Disposer.class,
+              loadVariable("this").invoke("getReferenceAs", loadVariable("instance"), "disposer", Disposer.class))
+                      .invoke("dispose", loadVariable("instance")));
     }
     else {
-      throw new RuntimeException("Unrecognized contextual provider type " + providerType.getFullyQualifiedName());
+      return emptyList();
     }
   }
 
-  private ContextualStatementBuilder invokeProviderStmt(final Injectable providerInjectable, final MetaClass providerType) {
-    final ContextualStatementBuilder injectedValue;
-    injectedValue = castTo(providerType,
-            loadVariable("contextManager").invoke("getInstance", loadLiteral(providerInjectable.getFactoryName())))
-                    .invoke("provide", loadVariable("typeArgs"), loadVariable("qualifiers"));
-    return injectedValue;
+  private ContextualStatementBuilder invokeProviderStmt(final ContextualStatementBuilder provider) {
+    return provider.invoke("provide", loadVariable("typeArgs"), loadVariable("qualifiers"));
+  }
+
+  private ContextualStatementBuilder lookupProviderStmt(final Injectable providerInjectable, final MetaClass paramterizedProviderType) {
+    final ContextualStatementBuilder provider = castTo(paramterizedProviderType,
+            loadVariable("contextManager").invoke("getInstance", loadLiteral(providerInjectable.getFactoryName())));
+    return provider;
   }
 
   private Injectable getProviderInjectable(final Injectable depInjectable) {
     for (final Dependency dep : depInjectable.getDependencies()) {
       if (dep.getDependencyType().equals(DependencyType.ProducerMember)) {
-        return dep.getInjectable();
+        final MetaClass providerType = dep.getInjectable().getInjectedType();
+        if (providerType.isAssignableTo(ContextualTypeProvider.class)) {
+          return dep.getInjectable();
+        }
+        else {
+          throw new RuntimeException("Unrecognized contextual provider type " + providerType.getFullyQualifiedName());
+        }
       }
     }
 
