@@ -32,10 +32,10 @@ public interface Event {
   @JsOverlay static final short AT_TARGET = 2;
   @JsOverlay static final short BUBBLING_PHASE = 3;
 
-  @JsProperty boolean getBubbles();
-  @JsProperty boolean getCancelable();
+  @JsProperty(name = "bubbles") boolean isBubbles();
+  @JsProperty(name = "cancelable") boolean isCancelable();
   @JsProperty EventTarget getCurrentTarget();
-  @JsProperty boolean getDefaultPrevented();
+  @JsProperty(name = "defaultPrevented") boolean isDefaultPrevented();
   @JsProperty short getEventPhase();
   @JsProperty EventTarget getTarget();
   @JsProperty double getTimeStamp();
