@@ -23,4 +23,6 @@
     <inherits name="org.jboss.errai.bus.ErraiBus"/>
 
     <servlet path='/in.erraiBus' class='org.jboss.errai.bus.server.servlet.DefaultBlockingServlet'/>
+    <set-property name="gwt.logging.enabled" value="TRUE"/>
+    <set-property name="gwt.logging.logLevel" value="INFO"/>
 </module>
