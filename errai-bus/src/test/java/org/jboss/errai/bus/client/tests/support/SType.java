@@ -16,7 +16,7 @@
 
 package org.jboss.errai.bus.client.tests.support;
 
-import org.jboss.errai.bus.client.tests.util.FloatUtil;
+import org.jboss.errai.bus.common.FloatUtil;
 import org.jboss.errai.common.client.api.annotations.Portable;
 
 import java.util.*;

@@ -93,6 +93,7 @@ import org.jboss.errai.bus.client.tests.support.TestingTick;
 import org.jboss.errai.bus.client.tests.support.TestingTickCache;
 import org.jboss.errai.bus.client.tests.support.TreeNodeContainer;
 import org.jboss.errai.bus.client.tests.support.User;
+import org.jboss.errai.bus.common.AbstractErraiTest;
 import org.jboss.errai.common.client.api.RemoteCallback;
 import org.jboss.errai.marshalling.client.Marshalling;
 

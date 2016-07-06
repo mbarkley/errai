@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.jboss.errai.bus.client.tests.util;
+package org.jboss.errai.bus.common;
 
 import static java.lang.Math.abs;
 import static java.lang.Math.floor;

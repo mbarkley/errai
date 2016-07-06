@@ -51,7 +51,8 @@
             </goals>
             <configuration>
               <includes>
-                <include>**/AbstractErraiTest.*</include>
+                <include>org/jboss/errai/bus/TestCommon.gwt.xml</include>
+                <include>org/jboss/errai/bus/common/**/*</include>
               </includes>
             </configuration>
           </execution>

@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package org.jboss.errai.bus.client.tests;
+package org.jboss.errai.bus.common;
 
 import static java.lang.Math.abs;
-import static org.jboss.errai.bus.client.tests.util.FloatUtil.DEFAULT_PRECISION;
-import static org.jboss.errai.bus.client.tests.util.FloatUtil.maxSignifigantDigitIndex;
-import static org.jboss.errai.bus.client.tests.util.FloatUtil.mostSignifigantDigitIndex;
+import static org.jboss.errai.bus.common.FloatUtil.DEFAULT_PRECISION;
+import static org.jboss.errai.bus.common.FloatUtil.maxSignifigantDigitIndex;
+import static org.jboss.errai.bus.common.FloatUtil.mostSignifigantDigitIndex;
 
 import java.util.List;
 import java.util.Map;
