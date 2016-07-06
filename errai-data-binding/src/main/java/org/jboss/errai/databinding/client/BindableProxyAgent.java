@@ -37,6 +37,8 @@ import org.jboss.errai.databinding.client.api.StateSync;
 import org.jboss.errai.databinding.client.api.handler.list.BindableListChangeHandler;
 import org.jboss.errai.databinding.client.api.handler.property.PropertyChangeEvent;
 import org.jboss.errai.databinding.client.api.handler.property.PropertyChangeHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
@@ -88,6 +90,8 @@ import com.google.gwt.user.client.ui.Widget;
  */
 @SuppressWarnings({ "rawtypes", "unchecked" })
 public final class BindableProxyAgent<T> implements HasPropertyChangeHandlers {
+  private static final Logger logger = LoggerFactory.getLogger(BindableProxyAgent.class);
+
   final Multimap<String, Binding> bindings = LinkedHashMultimap.create();
   final Map<String, PropertyType> propertyTypes = new HashMap<String, PropertyType>();
   final Map<String, DataBinder> binders = new HashMap<String, DataBinder>();
@@ -157,7 +161,11 @@ public final class BindableProxyAgent<T> implements HasPropertyChangeHandlers {
    */
   public Binding bind(final Object component, final String property, final Converter providedConverter,
           final boolean bindOnKeyUp, final StateSync initialState) {
+    logger.debug("Binding property {} to component {}", property, component);
+
     final Converter converter = findConverter(property, getPropertyType(property), component, providedConverter);
+    logger.debug("Using converter: {} <--> {}", converter.getModelType().getSimpleName(), converter.getComponentType().getSimpleName());
+
     final String lastSubProperty = property.substring(property.lastIndexOf('.')+1);
 
     final Optional<Supplier<Object>> uiGetter = maybeCreateUIGetter(component);
@@ -451,6 +459,7 @@ public final class BindableProxyAgent<T> implements HasPropertyChangeHandlers {
           Supplier<Map<Class<? extends GwtEvent>, HandlerRegistration>> registrar) {
 
     registrar = mergeToLeft(registrar, () -> {
+      logger.debug("Adding ValueBox keyup handler to {}", component);
       final HandlerRegistration keyUpHandlerReg = ((ValueBoxBase) component)
               .addKeyUpHandler(event -> modelUpdater.accept(((ValueBoxBase) component).getText()));
 
@@ -465,6 +474,7 @@ public final class BindableProxyAgent<T> implements HasPropertyChangeHandlers {
           Supplier<Map<Class<? extends GwtEvent>, HandlerRegistration>> registrar) {
 
     registrar = mergeToLeft(registrar, () -> {
+      logger.debug("Adding value change handler to {}", component);
       final HandlerRegistration valueHandlerReg = ((HasValue) component).addValueChangeHandler(event -> {
         final Object value = ((HasValue) component).getValue();
         modelUpdater.accept(value);
@@ -480,6 +490,7 @@ public final class BindableProxyAgent<T> implements HasPropertyChangeHandlers {
           Supplier<Map<Class<? extends GwtEvent>, HandlerRegistration>> registrar) {
 
     registrar = mergeToLeft(registrar, () -> {
+      logger.debug("Adding native change event listener to {}", component);
       final JavaScriptObject listener = wrap(() -> uiGetter.ifPresent(getter -> modelUpdater.accept(getter.get())));
       addChangeEventListener(component, listener);
 
@@ -495,8 +506,17 @@ public final class BindableProxyAgent<T> implements HasPropertyChangeHandlers {
           Supplier<Map<Class<? extends GwtEvent>, HandlerRegistration>> registrar) {
 
     registrar = mergeToLeft(registrar, () -> {
-      final JavaScriptObject listener = wrap(() -> uiGetter.ifPresent(getter -> modelUpdater.accept(getter.get())));
+      final JavaScriptObject listener = wrap(() -> {
+        logger.debug("keyup listener invoked for {}", component);
+        uiGetter.ifPresent(getter -> {
+          final Object value = getter.get();
+          logger.debug("keyup listener invoked with UI value {}", value);
+          modelUpdater.accept(value);
+        });
+      });
+      logger.debug("Adding native keyup listener to {}...", component);
       addKeyUpEventListener(component, listener);
+      logger.debug("Added native keyup listener to {}", component);
 
       final HandlerRegistration hr = () -> removeKeyUpEventListener(component, listener);
       return Collections.singletonMap(ValueChangeEvent.class, hr);

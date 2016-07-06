@@ -23,9 +23,10 @@ import jsinterop.annotations.JsFunction;
  * @author Max Barkley <mbarkley@redhat.com>
  * @see <a href="https://developer.mozilla.org/en-US/docs/Web/API/EventListener">Web API</a>
  */
+@FunctionalInterface
 @JsFunction
 public interface EventListener {
 
-  void call(Event event);
+  void handleEvent(Event event);
 
 }
