@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
+import com.google.gwt.core.client.JavaScriptException;
 import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.dom.client.Element;
 import com.google.gwt.dom.client.InputElement;
@@ -260,10 +261,25 @@ public final class BindableProxyAgent<T> implements HasPropertyChangeHandlers {
     try {
       proxy.set(property, newValue);
     } catch (final Throwable t) {
-      throw new RuntimeException("Error while setting property [" + property + "] to [" + newValue
-              + "] converted from [" + uiValue + "] with converter [" + converter.getModelType().getName() + " -> "
-              + converter.getComponentType().getName() + "].", t);
+      if (newValue == null && isCausedByNullOrUndefined(t)) {
+        /*
+         * Don't fail here because likely this is an error from trying to unbox a null value to a primitive.
+         * XXX Maybe we should check for boxed types before trying to set the property.
+         */
+        logger.warn("Encountered a null while trying to set the property [" + property + "] to ["
+                + newValue + "].", t);
+      }
+      else {
+        throw new RuntimeException("Error while setting property [" + property + "] to [" + newValue
+        + "] converted from [" + uiValue + "] with converter [" + converter.getComponentType().getName() + " -> "
+        + converter.getModelType().getName() + "].", t);
+      }
     }
+  }
+
+  private boolean isCausedByNullOrUndefined(final Throwable t) {
+    return t instanceof NullPointerException
+            || (t instanceof JavaScriptException && t.getMessage().contains("null"));
   }
 
   private Class<?> getPropertyType(final String property) {
