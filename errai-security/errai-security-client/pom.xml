@@ -68,6 +68,11 @@
       <groupId>org.jboss.errai</groupId>
       <artifactId>errai-jaxrs-client</artifactId>
     </dependency>
+
+    <dependency>
+      <groupId>org.glassfish</groupId>
+      <artifactId>javax.el</artifactId>
+    </dependency>
     
     <dependency>
       <groupId>org.hibernate.javax.persistence</groupId>
