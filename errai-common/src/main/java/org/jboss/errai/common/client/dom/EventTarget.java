@@ -25,7 +25,7 @@ import jsinterop.annotations.JsType;
  */
 @JsType(isNative = true)
 public interface EventTarget {
-  void addEventListener(String type, EventListener listener, boolean useCapture);
-  void removeEventListener(String type, EventListener listener, boolean useCapture);
+  void addEventListener(String type, EventListener<?> listener, boolean useCapture);
+  void removeEventListener(String type, EventListener<?> listener, boolean useCapture);
   boolean dispatchEvent(Event evt);
 }
