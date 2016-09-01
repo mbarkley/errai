@@ -16,6 +16,8 @@
 
 package org.jboss.errai.common.client.dom;
 
+import org.jboss.errai.common.client.api.annotations.BrowserEvent;
+
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
@@ -26,6 +28,7 @@ import jsinterop.annotations.JsType;
  * @see <a href="https://developer.mozilla.org/en-US/docs/Web/API/Event">Web API</a>
  */
 @JsType(isNative = true)
+@BrowserEvent
 public interface Event {
   @JsOverlay static final short NONE = 0;
   @JsOverlay static final short CAPTURING_PHASE = 1;

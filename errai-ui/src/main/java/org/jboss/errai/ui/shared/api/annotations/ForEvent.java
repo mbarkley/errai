@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package org.jboss.errai.common.client.api.annotations;
+package org.jboss.errai.ui.shared.api.annotations;
 
-import static java.lang.annotation.ElementType.TYPE;
+import static java.lang.annotation.ElementType.PARAMETER;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 import java.lang.annotation.Documented;
@@ -27,11 +27,11 @@ import java.lang.annotation.Target;
  *
  * @author Max Barkley <mbarkley@redhat.com>
  */
-@Retention(RUNTIME)
 @Documented
-@Target(TYPE)
-public @interface BrowserEvent {
+@Retention(RUNTIME)
+@Target(PARAMETER)
+public @interface ForEvent {
 
-  String[] value() default {};
+  String[] value();
 
 }
