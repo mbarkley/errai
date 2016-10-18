@@ -30,7 +30,10 @@ import static org.jboss.errai.codegen.util.Stmt.nestedCall;
 import static org.jboss.errai.codegen.util.Stmt.newObject;
 import static org.jboss.errai.ioc.util.GeneratedNamesUtil.qualifiedClassNameToShortenedIdentifier;
 
+import java.io.IOException;
 import java.lang.annotation.Annotation;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -76,7 +79,6 @@ import org.jboss.errai.common.client.api.annotations.BrowserEvent;
 import org.jboss.errai.common.client.ui.ElementWrapperWidget;
 import org.jboss.errai.common.client.ui.HasValue;
 import org.jboss.errai.ioc.client.api.CodeDecorator;
-import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.client.container.DestructionCallback;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
@@ -95,6 +97,10 @@ import org.jboss.errai.ui.shared.api.annotations.ForEvent;
 import org.jboss.errai.ui.shared.api.annotations.SinkNative;
 import org.jboss.errai.ui.shared.api.annotations.Templated;
 import org.jboss.errai.ui.shared.api.style.StyleBindingsRegistry;
+import org.lesscss.HttpResource;
+import org.lesscss.LessCompiler;
+import org.lesscss.LessException;
+import org.lesscss.LessSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,6 +108,7 @@ import com.google.common.base.Strings;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.dom.client.Element;
 import com.google.gwt.dom.client.NativeEvent;
+import com.google.gwt.dom.client.StyleInjector;
 import com.google.gwt.event.dom.client.DomEvent;
 import com.google.gwt.event.dom.client.DomEvent.Type;
 import com.google.gwt.resources.client.ClientBundle;
@@ -111,7 +118,6 @@ import com.google.gwt.resources.client.TextResource;
 import com.google.gwt.user.client.Event;
 import com.google.gwt.user.client.EventListener;
 import com.google.gwt.user.client.ui.Composite;
-import com.google.gwt.user.client.ui.RootPanel;
 import com.google.gwt.user.client.ui.Widget;
 
 import jsinterop.annotations.JsType;
@@ -225,12 +231,15 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
 
     if (!constructed.containsKey(declaringClass)) {
       final String templateVarName = "templateFor" + decorable.getDecorableDeclaringType().getName();
+      final String styleSheetPath = getTemplateStyleSheetPath(declaringClass);
+      final boolean lessStyleSheet = styleSheetPath.endsWith(".less");
 
       /*
        * Generate this component's ClientBundle resource if necessary
        */
-      if (!customProvider || styleSheet) {
-        generateTemplateResourceInterface(decorable, declaringClass, customProvider, styleSheet);
+      final boolean generateCssBundle = styleSheet && !lessStyleSheet;
+      if (!customProvider || generateCssBundle) {
+        generateTemplateResourceInterface(decorable, declaringClass, customProvider, generateCssBundle);
 
       /*
        * Instantiate the ClientBundle Template resource
@@ -241,8 +250,25 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
           .initializeWith(
               Stmt.invokeStatic(GWT.class, "create", constructed.get(declaringClass))));
 
-        if (styleSheet)
+        if (generateCssBundle)
           initStmts.add(Stmt.loadVariable(templateVarName).invoke("getStyle").invoke("ensureInjected"));
+      }
+
+      /*
+       * Compile LESS stylesheet to CSS and generate StyleInjector code
+       */
+      if (styleSheet && lessStyleSheet) {
+        try {
+          final URL lessURL = Thread.currentThread().getContextClassLoader().getResource(styleSheetPath);
+          final HttpResource lessResource = new HttpResource(lessURL.toURI());
+          final LessSource source = new LessSource(lessResource);
+          final LessCompiler compiler = new LessCompiler();
+          final String compiledCss = compiler.compile(source);
+
+          initStmts.add(invokeStatic(StyleInjector.class, "inject", loadLiteral(compiledCss)));
+        } catch (URISyntaxException | IOException | LessException e) {
+          throw new RuntimeException("Error while attempting to compile the LESS stylesheet [" + styleSheetPath + "].", e);
+        }
       }
 
       /*
@@ -756,15 +782,15 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
   /**
    * Possibly create an inner interface {@link ClientBundle} for the template's HTML or CSS resources.
    * @param customProvider
-   * @param styleSheet
+   * @param generateCssBundle
    */
-  private void generateTemplateResourceInterface(final Decorable decorable, final MetaClass type, final boolean customProvider, final boolean styleSheet) {
+  private void generateTemplateResourceInterface(final Decorable decorable, final MetaClass type, final boolean customProvider, final boolean generateCssBundle) {
     final ClassDefinitionBuilderInterfaces<ClassStructureBuilderAbstractMethodOption> ifaceDef = ClassBuilder
             .define(getTemplateTypeName(type)).publicScope().interfaceDefinition();
     if (!customProvider) {
       ifaceDef.implementsInterface(Template.class);
     }
-    if (styleSheet) {
+    if (generateCssBundle) {
       ifaceDef.implementsInterface(TemplateStyleSheet.class);
     }
 
@@ -787,32 +813,38 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
       }).finish();
     }
 
-    if (styleSheet) {
-      componentTemplateResource.publicMethod(CssResource.class, "getStyle").annotatedWith(new Source() {
-
-        @Override
-        public Class<? extends Annotation> annotationType() {
-          return Source.class;
-        }
-
-        @Override
-        public String[] value() {
-          return new String[] { getTemplateStyleSheetPath(type) };
-        }
-
-      }, new CssResource.NotStrict() {
-
-        @Override
-        public Class<? extends Annotation> annotationType() {
-          return CssResource.NotStrict.class;
-        }
-
-      }).finish();
+    if (generateCssBundle) {
+      addCssResourceMethod(componentTemplateResource, getTemplateStyleSheetPath(type));
     }
 
     decorable.getFactoryMetaClass().addInnerClass(new InnerClass(componentTemplateResource.getClassDefinition()));
 
     getConstructedTemplateTypes(decorable).put(type, componentTemplateResource.getClassDefinition());
+  }
+
+  private void addCssResourceMethod(
+          final ClassStructureBuilder<ClassStructureBuilderAbstractMethodOption> componentTemplateResource,
+          final String templateStyleSheetPath) {
+    componentTemplateResource.publicMethod(CssResource.class, "getStyle").annotatedWith(new Source() {
+
+      @Override
+      public Class<? extends Annotation> annotationType() {
+        return Source.class;
+      }
+
+      @Override
+      public String[] value() {
+        return new String[] { templateStyleSheetPath };
+      }
+
+    }, new CssResource.NotStrict() {
+
+      @Override
+      public Class<? extends Annotation> annotationType() {
+        return CssResource.NotStrict.class;
+      }
+
+    }).finish();
   }
 
   public static String getTemplateStyleSheetPath(final MetaClass type) {
