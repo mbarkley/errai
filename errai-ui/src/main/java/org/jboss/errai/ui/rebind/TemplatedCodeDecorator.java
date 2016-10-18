@@ -147,21 +147,20 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
     final Templated anno = (Templated) decorable.getAnnotation();
     final Class<?> templateProvider = anno.provider();
     final boolean customProvider = templateProvider != Templated.DEFAULT_PROVIDER.class;
-    final boolean defaultStyleSheetPath = "".equals(anno.stylesheet());
-    final String styleSheetPath = getTemplateStyleSheetPath(declaringClass);
-    final boolean styleSheet = (Thread.currentThread().getContextClassLoader().getResource(styleSheetPath) != null);
+    final Optional<String> styleSheetPath = getTemplateStyleSheetPath(declaringClass);
+    final boolean explicitStyleSheetPresent = styleSheetPath.filter(path -> Thread.currentThread().getContextClassLoader().getResource(path) != null).isPresent();
 
     if (declaringClass.isAssignableTo(Composite.class)) {
       logger.warn("The @Templated class, {}, extends Composite. This will not be supported in future versions.", declaringClass.getFullyQualifiedName());
     }
-    if (!defaultStyleSheetPath && !styleSheet) {
+    if (styleSheetPath.isPresent() && !explicitStyleSheetPresent) {
       throw new GenerationException("@Templated class [" + declaringClass.getFullyQualifiedName()
               + "] declared a stylesheet [" + styleSheetPath + "] that could not be found.");
     }
 
     final List<Statement> initStmts = new ArrayList<>();
 
-    generateTemplatedInitialization(decorable, controller, initStmts, customProvider, styleSheet);
+    generateTemplatedInitialization(decorable, controller, initStmts, customProvider);
 
     if (customProvider) {
       final Statement init =
@@ -223,23 +222,22 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
   private void generateTemplatedInitialization(final Decorable decorable,
                                                final FactoryController controller,
                                                final List<Statement> initStmts,
-                                               final boolean customProvider,
-                                               final boolean styleSheet) {
+                                               final boolean customProvider) {
 
     final Map<MetaClass, BuildMetaClass> constructed = getConstructedTemplateTypes(decorable);
     final MetaClass declaringClass = decorable.getDecorableDeclaringType();
 
     if (!constructed.containsKey(declaringClass)) {
       final String templateVarName = "templateFor" + decorable.getDecorableDeclaringType().getName();
-      final String styleSheetPath = getTemplateStyleSheetPath(declaringClass);
-      final boolean lessStyleSheet = styleSheetPath.endsWith(".less");
+      final Optional<String> resolvedStylesheetPath = getResolvedStyleSheetPath(getTemplateStyleSheetPath(declaringClass), declaringClass);
+      final boolean lessStylesheet = resolvedStylesheetPath.filter(path -> path.endsWith(".less")).isPresent();
 
       /*
        * Generate this component's ClientBundle resource if necessary
        */
-      final boolean generateCssBundle = styleSheet && !lessStyleSheet;
+      final boolean generateCssBundle = resolvedStylesheetPath.isPresent() && !lessStylesheet;
       if (!customProvider || generateCssBundle) {
-        generateTemplateResourceInterface(decorable, declaringClass, customProvider, generateCssBundle);
+        generateTemplateResourceInterface(decorable, declaringClass, customProvider, resolvedStylesheetPath.filter(path -> path.endsWith(".css")));
 
       /*
        * Instantiate the ClientBundle Template resource
@@ -257,9 +255,9 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
       /*
        * Compile LESS stylesheet to CSS and generate StyleInjector code
        */
-      if (styleSheet && lessStyleSheet) {
+      if (resolvedStylesheetPath.isPresent() && lessStylesheet) {
         try {
-          final URL lessURL = Thread.currentThread().getContextClassLoader().getResource(styleSheetPath);
+          final URL lessURL = Thread.currentThread().getContextClassLoader().getResource(resolvedStylesheetPath.get());
           final HttpResource lessResource = new HttpResource(lessURL.toURI());
           final LessSource source = new LessSource(lessResource);
           final LessCompiler compiler = new LessCompiler();
@@ -267,7 +265,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
 
           initStmts.add(invokeStatic(StyleInjector.class, "inject", loadLiteral(compiledCss)));
         } catch (URISyntaxException | IOException | LessException e) {
-          throw new RuntimeException("Error while attempting to compile the LESS stylesheet [" + styleSheetPath + "].", e);
+          throw new RuntimeException("Error while attempting to compile the LESS stylesheet [" + resolvedStylesheetPath.get() + "].", e);
         }
       }
 
@@ -330,6 +328,27 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
           loadVariable(dataFieldElementsVarName), fieldsMap, loadVariable(dataFieldMetasVarName));
 
       generateEventHandlerMethodClasses(decorable, controller, initStmts, dataFieldElementsVarName, fieldsMap);
+    }
+  }
+
+  private Optional<String> getResolvedStyleSheetPath(final Optional<String> declaredStylesheetPath,
+          final MetaClass declaringClass) {
+    if (declaredStylesheetPath.isPresent()) {
+      return declaredStylesheetPath;
+    }
+    else {
+      final String simpleName = declaringClass.getName();
+      final String unsuffixedPath = declaringClass.getPackageName().replace('.', '/') + "/" + simpleName;
+      final boolean cssSheetExists = (Thread.currentThread().getContextClassLoader().getResource(unsuffixedPath + ".css") != null);
+      if (cssSheetExists) {
+        return Optional.of(unsuffixedPath + ".css");
+      }
+      final boolean lessSheetExists = (Thread.currentThread().getContextClassLoader().getResource(unsuffixedPath + ".less") != null);
+      if (lessSheetExists) {
+        return Optional.of(unsuffixedPath + ".less");
+      }
+
+      return Optional.empty();
     }
   }
 
@@ -784,13 +803,13 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
    * @param customProvider
    * @param generateCssBundle
    */
-  private void generateTemplateResourceInterface(final Decorable decorable, final MetaClass type, final boolean customProvider, final boolean generateCssBundle) {
+  private void generateTemplateResourceInterface(final Decorable decorable, final MetaClass type, final boolean customProvider, final Optional<String> cssPath) {
     final ClassDefinitionBuilderInterfaces<ClassStructureBuilderAbstractMethodOption> ifaceDef = ClassBuilder
             .define(getTemplateTypeName(type)).publicScope().interfaceDefinition();
     if (!customProvider) {
       ifaceDef.implementsInterface(Template.class);
     }
-    if (generateCssBundle) {
+    if (cssPath.isPresent()) {
       ifaceDef.implementsInterface(TemplateStyleSheet.class);
     }
 
@@ -813,9 +832,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
       }).finish();
     }
 
-    if (generateCssBundle) {
-      addCssResourceMethod(componentTemplateResource, getTemplateStyleSheetPath(type));
-    }
+    cssPath.ifPresent(path -> addCssResourceMethod(componentTemplateResource, path));
 
     decorable.getFactoryMetaClass().addInnerClass(new InnerClass(componentTemplateResource.getClassDefinition()));
 
@@ -847,16 +864,21 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
     }).finish();
   }
 
-  public static String getTemplateStyleSheetPath(final MetaClass type) {
+  public static Optional<String> getTemplateStyleSheetPath(final MetaClass type) {
     final Templated anno = type.getAnnotation(Templated.class);
-    final boolean defaultPath = "".equals(anno.stylesheet());
-    final String rawPath = (defaultPath ? type.getName() + ".css" : anno.stylesheet());
-    final boolean absolute = rawPath.startsWith("/");
 
-    if (absolute) {
-      return rawPath.substring(1);
-    } else {
-      return type.getPackageName().replace('.', '/') + "/" + rawPath;
+    if (anno.stylesheet().isEmpty()) {
+      return Optional.empty();
+    }
+    else {
+      final String rawPath = anno.stylesheet();
+      final boolean absolute = rawPath.startsWith("/");
+
+      if (absolute) {
+        return Optional.of(rawPath.substring(1));
+      } else {
+        return Optional.of(type.getPackageName().replace('.', '/') + "/" + rawPath);
+      }
     }
   }
 

@@ -18,7 +18,6 @@ package org.jboss.errai.ui.test.basic.client;
 
 import static org.jboss.errai.ui.shared.TemplateUtil.asElement;
 
-import org.jboss.errai.common.client.dom.Window;
 import org.jboss.errai.enterprise.client.cdi.AbstractErraiCDITest;
 import org.jboss.errai.ioc.client.IOCUtil;
 import org.jboss.errai.ioc.client.container.IOC;
@@ -27,6 +26,7 @@ import org.jboss.errai.ui.shared.TemplateWidget;
 import org.jboss.errai.ui.shared.TemplateWidgetMapper;
 import org.jboss.errai.ui.test.basic.client.res.BasicComponent;
 import org.jboss.errai.ui.test.basic.client.res.BasicComponentUsingDataFields;
+import org.jboss.errai.ui.test.basic.client.res.LessStyledComponent;
 import org.jboss.errai.ui.test.basic.client.res.LessStyledComponentAbsolute;
 import org.jboss.errai.ui.test.basic.client.res.LessStyledComponentRelative;
 import org.jboss.errai.ui.test.basic.client.res.LessStyledComponentWithImport;
@@ -50,6 +50,15 @@ public class BasicTemplateTest extends AbstractErraiCDITest {
   @Override
   public String getModuleName() {
     return getClass().getName().replaceAll("client.*$", "Test");
+  }
+
+  @Override
+  protected void gwtTearDown() throws Exception {
+    super.gwtTearDown();
+    /*
+     * This acts as a reset for the LESS stylesheet tests. Without this, the tests are not independent.
+     */
+    StyleInjector.inject(".styled {\n color: black;\n background-color: black;\n}");
   }
 
   @Test
@@ -243,6 +252,20 @@ public class BasicTemplateTest extends AbstractErraiCDITest {
   public void testStyleSheetWithAbsolutePath() throws Exception {
     final StyledTemplatedBean bean = IOC.getBeanManager().lookupBean(StyledComponentWithAbsoluteSheetPath.class).getInstance();
     styledBeanAssertions(bean, "margin", "10px");
+  }
+
+  @Test
+  public void testLessStyleSheetWithDefaultPath() throws Exception {
+    try {
+      final LessStyledComponent bean = IOCUtil.getInstance(LessStyledComponent.class);
+      StyleInjector.flush();
+      assertTrue("Element does not have correct CSS class.", bean.styled.getClassList().contains("styled"));
+      assertEquals("rgb(255,0,0)", getPropertyValue(bean.styled, "color").replaceAll("\\s+", ""));
+    } catch (final AssertionError ae) {
+      throw ae;
+    } catch (final Throwable t) {
+      throw new AssertionError(t);
+    }
   }
 
   @Test
