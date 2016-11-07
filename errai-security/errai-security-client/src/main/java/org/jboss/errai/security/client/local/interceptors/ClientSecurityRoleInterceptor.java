@@ -23,10 +23,11 @@ import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
 
 import org.jboss.errai.common.client.api.ErrorCallback;
-import org.jboss.errai.common.client.api.RemoteCallback;
 import org.jboss.errai.common.client.api.interceptor.FeatureInterceptor;
 import org.jboss.errai.common.client.api.interceptor.RemoteCallContext;
 import org.jboss.errai.common.client.api.interceptor.RemoteCallInterceptor;
+import org.jboss.errai.enterprise.client.jaxrs.api.ResponseCallback;
+import org.jboss.errai.enterprise.client.jaxrs.api.interceptor.RestCallContext;
 import org.jboss.errai.security.client.local.api.SecurityContext;
 import org.jboss.errai.security.shared.api.Role;
 import org.jboss.errai.security.shared.api.annotation.RestrictedAccess;
@@ -78,23 +79,19 @@ RemoteCallInterceptor<RemoteCallContext> {
     if (securityContext.isUserCacheValid()) {
       if (securityContext.hasCachedUser()) {
         if (securityContext.getCachedUser().getRoles().containsAll(requiredRoleNames)) {
-          callContext.proceed(new RemoteCallback<Object>() {
-
-            @Override
-            public void callback(final Object response) {
-              callContext.setResult(response);
+          final ErrorCallback<?> errorCallback = (message, throwable) -> {
+            if (throwable instanceof UnauthenticatedException) {
+              securityContext.invalidateCache();
             }
-          }, new ErrorCallback<Object>() {
 
-            @Override
-            public boolean error(Object message, Throwable throwable) {
-              if (throwable instanceof UnauthenticatedException) {
-                securityContext.invalidateCache();
-              }
-
-              return true;
-            }
-          });
+            return true;
+          };
+          if (callContext instanceof RestCallContext) {
+            ((RestCallContext) callContext).proceed((ResponseCallback) response -> callContext.setResult(response), errorCallback);
+          }
+          else {
+            callContext.proceed(response -> callContext.setResult(response), errorCallback);
+          }
         }
         else {
           throw new UnauthorizedException();
@@ -109,8 +106,8 @@ RemoteCallInterceptor<RemoteCallContext> {
     }
   }
 
-  private RestrictedAccess getRestrictedAccessAnnotation(Annotation[] annotations) {
-    for (Annotation annotation : annotations) {
+  private RestrictedAccess getRestrictedAccessAnnotation(final Annotation[] annotations) {
+    for (final Annotation annotation : annotations) {
       if (annotation instanceof RestrictedAccess) {
         return (RestrictedAccess) annotation;
       }
