@@ -24,12 +24,14 @@ import org.jboss.errai.bus.client.api.BusErrorCallback;
 import org.jboss.errai.bus.client.api.base.MessageBuilder;
 import org.jboss.errai.bus.client.api.messaging.Message;
 import org.jboss.errai.common.client.api.Caller;
-import org.jboss.errai.common.client.api.RemoteCallback;
 import org.jboss.errai.common.client.api.NoOpCallback;
+import org.jboss.errai.common.client.api.RemoteCallback;
 import org.jboss.errai.common.client.api.extension.InitVotes;
 import org.jboss.errai.enterprise.client.jaxrs.JaxrsModule;
+import org.jboss.errai.enterprise.client.jaxrs.api.ResponseCallback;
 import org.jboss.errai.enterprise.client.jaxrs.api.RestClient;
 import org.jboss.errai.enterprise.client.jaxrs.api.RestErrorCallback;
+import org.jboss.errai.ioc.client.IOCUtil;
 import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.security.client.local.res.Counter;
@@ -45,6 +47,8 @@ import org.jboss.errai.security.shared.exception.UnauthorizedException;
 import org.jboss.errai.security.shared.service.AuthenticationService;
 import org.junit.Test;
 
+import com.google.gwt.http.client.Request;
+import com.google.gwt.http.client.Response;
 import com.google.gwt.user.client.Timer;
 
 /**
@@ -163,7 +167,7 @@ public class RestSecurityInterceptorTest extends AbstractSecurityInterceptorTest
         MessageBuilder.createCall(new RemoteCallback<User>() {
 
           @Override
-          public void callback(User response) {
+          public void callback(final User response) {
             backup.cancel();
             restCallHelper(callback, null).user();
             testUntil(TIME_LIMIT, new Runnable() {
@@ -176,7 +180,7 @@ public class RestSecurityInterceptorTest extends AbstractSecurityInterceptorTest
         }, new BusErrorCallback() {
 
           @Override
-          public boolean error(Message message, Throwable throwable) {
+          public boolean error(final Message message, final Throwable throwable) {
             backup.cancel();
             fail("Precondition failed: Couldn't log in.");
             return false;
@@ -222,13 +226,13 @@ public class RestSecurityInterceptorTest extends AbstractSecurityInterceptorTest
       public void run() {
         MessageBuilder.createCall(new RemoteCallback<User>() {
           @Override
-          public void callback(User response) {
+          public void callback(final User response) {
             activeUserCache.invalidateCache();
             restCallHelper(callback, errorCallback).admin();
           }
         }, new BusErrorCallback() {
           @Override
-          public boolean error(Message message, Throwable throwable) {
+          public boolean error(final Message message, final Throwable throwable) {
             fail("Precondition failed: could not log in.");
             return false;
           }
@@ -266,6 +270,48 @@ public class RestSecurityInterceptorTest extends AbstractSecurityInterceptorTest
           }
         });
       }
+    });
+  }
+
+  @Test
+  public void testResponseCallbackWithRestServiceReturningMarshalledObjectDoesNotCauseClassCastException() throws Exception {
+    delayTestFinish((int) TIME_LIMIT);
+    final Timer failTimer = new Timer() {
+      @Override
+      public void run() {
+        fail("Timeout");
+      }
+    };
+    failTimer.schedule((int) (TIME_LIMIT - 500));
+    final Runnable cleanup = () -> {
+      failTimer.cancel();
+    };
+
+    InitVotes.registerOneTimeInitCallback(() -> {
+      MessageBuilder.createCall((final User user) -> {
+        assertEquals("john", user.getIdentifier());
+        assertTrue(activeUserCache.hasUser());
+        final RestSecurityTestModule module = IOCUtil.getInstance(RestSecurityTestModule.class);
+        // This cannot be a lambda. Must be an anonymous class to reproduce.
+        final ResponseCallback callback = new ResponseCallback() {
+          @Override
+          public void callback(final Response response) {
+            cleanup.run();
+            finishTest();
+          }
+        };
+        module.restCaller.call(callback, new RestErrorCallback() {
+
+          @Override
+          public boolean error(final Request message, final Throwable throwable) {
+            cleanup.run();
+            throw new AssertionError("Error invoking payload method.", throwable);
+          }
+        }).testUserPayload();
+      }, (message, error) -> {
+        cleanup.run();
+        throw new AssertionError(error);
+      }, AuthenticationService.class).login("john", "123");
     });
   }
 

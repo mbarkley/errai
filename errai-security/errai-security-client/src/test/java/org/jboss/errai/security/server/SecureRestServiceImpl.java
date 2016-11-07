@@ -17,6 +17,8 @@
 package org.jboss.errai.security.server;
 
 import org.jboss.errai.security.client.shared.SecureRestService;
+import org.jboss.errai.security.shared.api.identity.User;
+import org.jboss.errai.security.shared.api.identity.UserImpl;
 
 public class SecureRestServiceImpl implements SecureRestService {
 
@@ -30,6 +32,11 @@ public class SecureRestServiceImpl implements SecureRestService {
 
   @Override
   public void anybody() {
+  }
+
+  @Override
+  public User testUserPayload() {
+    return new UserImpl("test");
   }
 
 }
