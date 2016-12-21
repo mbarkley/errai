@@ -31,8 +31,12 @@ import org.jboss.errai.bus.client.api.SessionEndEvent;
 import org.jboss.errai.bus.client.api.SessionEndListener;
 import org.jboss.errai.bus.client.api.laundry.LaundryListProviderFactory;
 import org.jboss.errai.bus.server.api.SessionProvider;
+import org.jboss.errai.bus.server.service.ErraiConfigAttribs;
+import org.jboss.errai.bus.server.service.ErraiServiceConfigurator;
+import org.jboss.errai.bus.server.util.SecureHashUtil;
 import org.jboss.errai.bus.server.util.ServerLaundryList;
 import org.jboss.errai.common.client.api.Assert;
+import org.jboss.errai.common.client.framework.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +46,12 @@ import org.slf4j.LoggerFactory;
 public class HttpSessionProvider implements SessionProvider<HttpSession> {
 
   private static final Logger log = LoggerFactory.getLogger(HttpSessionProvider.class);
+  private boolean csrfTokenEnabled;
+
+  @Override
+  public void init(final ErraiServiceConfigurator config) {
+    csrfTokenEnabled = ErraiConfigAttribs.ENABLE_CSRF_BUS_TOKEN.getBoolean(config);
+  }
 
   @Override
   public QueueSession createOrGetSession(final HttpSession externSessRef, final String remoteQueueID) {
@@ -52,6 +62,9 @@ public class HttpSessionProvider implements SessionProvider<HttpSession> {
     else {
       sc = new SessionsContainer();
       externSessRef.setAttribute(SessionsContainer.class.getName(), sc);
+    }
+    if (csrfTokenEnabled && externSessRef.getAttribute(Constants.CSRF_TOKEN_ATTRIBUTE_NAME) == null) {
+      externSessRef.setAttribute(Constants.CSRF_TOKEN_ATTRIBUTE_NAME, SecureHashUtil.nextSecureHash());
     }
 
     QueueSession qs = sc.getSession(remoteQueueID);
@@ -72,6 +85,7 @@ public class HttpSessionProvider implements SessionProvider<HttpSession> {
   }
 
   public static class SessionsContainer implements Serializable {
+    private static final long serialVersionUID = 1L;
     private transient final Map<String, Object> sharedAttributes = new HashMap<String, Object>();
     private transient final Map<String, QueueSession> queueSessions = new HashMap<String, QueueSession>();
 
@@ -99,6 +113,7 @@ public class HttpSessionProvider implements SessionProvider<HttpSession> {
   }
 
   private static class HttpSessionWrapper implements QueueSession, Serializable {
+    private static final long serialVersionUID = 1L;
     private final SessionsContainer container;
     private final String parentSessionId;
     private final String remoteQueueID;
