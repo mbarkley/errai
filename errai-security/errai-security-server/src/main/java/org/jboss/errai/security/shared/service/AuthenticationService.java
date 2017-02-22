@@ -18,6 +18,8 @@ package org.jboss.errai.security.shared.service;
 
 import org.jboss.errai.bus.server.annotations.Remote;
 import org.jboss.errai.codegen.util.Implementations;
+import org.jboss.errai.security.shared.api.identity.Credential;
+import org.jboss.errai.security.shared.api.identity.Identifier;
 import org.jboss.errai.security.shared.api.identity.User;
 import org.jboss.errai.security.shared.exception.AuthenticationException;
 
@@ -31,7 +33,7 @@ public interface AuthenticationService {
 
   /**
    * Login with the given username and password, throwing an exception if the login fails.
-   * 
+   *
    * @param username The username to log in with.
    * @param password The password to authenticate with.
    * @return The logged in {@link User}.
@@ -40,7 +42,30 @@ public interface AuthenticationService {
   public User login(String username, String password);
 
   /**
-   * @return True iff the user is currently logged in.
+   * Login with the given identifier and credential, throwing an exception if the login fails.
+   *
+   * @param id An identifier for a user, such as a username or email address.
+   * @param credential A credential for proving a user's identity, such as a password or a public key.
+   * @return The logged in {@link User}.
+   * @throws Implementations should throw an {@link AuthenticationException} if authentication fails.
+   */
+  public User login(Identifier id, Credential credential);
+
+  /**
+   * Authenticate a user with the given identifier and credential, throwing an exception if the authentication fails.
+   * Unlike {@link #login(Identifier, Credential)}, this does not change the state of the currently logged in user.
+   * This method can be called to test the authenticity of an {@link Identifier}-{@link Credential} pair without attempting a login.
+   *
+   *
+   * @param id An identifier for a user, such as a username or email address.
+   * @param credential A credential for proving a user's identity, such as a password or a public key.
+   * @return A user associated with the given identifier and credentials {@link User}.
+   * @throws Implementations should throw an {@link AuthenticationException} if authentication fails.
+   */
+  public User authenticate(Identifier id, Credential credential);
+
+  /**
+   * @return True iff a user is currently logged in.
    */
   public boolean isLoggedIn();
 
@@ -51,7 +76,7 @@ public interface AuthenticationService {
 
   /**
    * Get the currently authenticated user.
-   * 
+   *
    * @return The currently authenticated user. Never returns {@code null}. If no
    *         user is logged in, returns {@link User#ANONYMOUS}.
    */
