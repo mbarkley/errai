@@ -26,6 +26,7 @@ import org.jboss.errai.ui.shared.TemplateWidget;
 import org.jboss.errai.ui.shared.TemplateWidgetMapper;
 import org.jboss.errai.ui.test.basic.client.res.BasicComponent;
 import org.jboss.errai.ui.test.basic.client.res.BasicComponentUsingDataFields;
+import org.jboss.errai.ui.test.basic.client.res.InfiniteLoopReproducer;
 import org.jboss.errai.ui.test.basic.client.res.LessStyledComponent;
 import org.jboss.errai.ui.test.basic.client.res.LessStyledComponentAbsolute;
 import org.jboss.errai.ui.test.basic.client.res.LessStyledComponentRelative;
@@ -309,6 +310,13 @@ public class BasicTemplateTest extends AbstractErraiCDITest {
     } catch (final Throwable t) {
       throw new AssertionError(t);
     }
+  }
+
+  // Regression test for ERRAI-1028
+  @Test
+  public void testClearPanelInfiniteLoopReproducer() throws Exception {
+    final InfiniteLoopReproducer bean = IOCUtil.getInstance(InfiniteLoopReproducer.class);
+    bean.reproduce();
   }
 
   private void styledBeanAssertions(final StyledTemplatedBean bean, final String propertyName, final String propertyValue) {
