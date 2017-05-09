@@ -35,6 +35,8 @@ import org.jboss.errai.databinding.client.DeclarativeBindingModuleUsingBinder;
 import org.jboss.errai.databinding.client.DeclarativeBindingModuleUsingModel;
 import org.jboss.errai.databinding.client.DeclarativeBindingModuleUsingParams;
 import org.jboss.errai.databinding.client.DeclarativeBindingModuleWithKeyUpEvent;
+import org.jboss.errai.databinding.client.DeclarativeEnumBinding;
+import org.jboss.errai.databinding.client.EnumModel;
 import org.jboss.errai.databinding.client.HasBoundIsElement;
 import org.jboss.errai.databinding.client.InjectedDataBinderModuleBoundOnKeyUp;
 import org.jboss.errai.databinding.client.ListOfStringWidget;
@@ -47,6 +49,7 @@ import org.jboss.errai.databinding.client.TakesValueCheckInputPresenter;
 import org.jboss.errai.databinding.client.TestModel;
 import org.jboss.errai.databinding.client.TestModelTakesValueWidget;
 import org.jboss.errai.databinding.client.TestModelWidget;
+import org.jboss.errai.databinding.client.TestModelWithEnum;
 import org.jboss.errai.databinding.client.TestModelWithList;
 import org.jboss.errai.databinding.client.TestModelWithNestedConfiguredBindable;
 import org.jboss.errai.databinding.client.TestModelWithoutBindableAnnotation;
@@ -61,6 +64,7 @@ import org.jboss.errai.databinding.client.scan.TestModelBindable;
 import org.jboss.errai.databinding.client.scan.TestModelWithoutBindableA;
 import org.jboss.errai.databinding.client.scan.TestModelWithoutBindableB;
 import org.jboss.errai.databinding.client.scan.TestModelWithoutBindableC;
+import org.jboss.errai.ioc.client.IOCUtil;
 import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ioc.client.test.AbstractErraiIOCTest;
@@ -1526,5 +1530,21 @@ public class DataBindingIntegrationTest extends AbstractErraiIOCTest {
     view.value.setValue("bar");
     invokeEventListeners(view.value, "keyup");
     assertEquals(view.value.getValue(), model.getValue());
+  }
+
+  @Test
+  public void testDeclarativeEnumBinding() throws Exception {
+    final DeclarativeEnumBinding bean = IOCUtil.getInstance(DeclarativeEnumBinding.class);
+    final TestModelWithEnum model = bean.binder.getModel();
+    model.setEnumValue(EnumModel.A);
+
+    // Preconditions
+    assertNotNull(model);
+    assertEquals(EnumModel.A, model.getEnumValue());
+
+    // Test
+    assertEquals(model.getEnumValue(), bean.enumValue.getValue());
+    bean.enumValue.setValue(EnumModel.B);
+    assertEquals(model.getEnumValue(), bean.enumValue.getValue());
   }
 }
