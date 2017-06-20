@@ -16,6 +16,7 @@
 
 package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 
+import static org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ReachabilityStrategy.Aggressive;
 import static org.jboss.errai.ioc.rebind.ioc.graph.impl.ResolutionPriority.getMatchingPriority;
 
 import java.lang.annotation.Annotation;
@@ -328,16 +329,22 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
   private void removeUnreachableInjectables(final ReachabilityStrategy strategy) {
     logger.debug("Removing unreachable injectables from dependency graph using {} strategy.", strategy);
     final Set<String> reachableNames = new HashSet<>();
+    final Set<String> aggressiveReachableNames = new HashSet<>();
     final Queue<Injectable> processingQueue = new LinkedList<>();
     final Predicate<Injectable> reachabilityRoot = reachabilityRootPredicate(strategy);
+    final Predicate<Injectable> aggressivePredicate = reachabilityRootPredicate(Aggressive);
     for (final Injectable injectable : injectablesByName.values()) {
       if (reachabilityRoot.test(injectable)
               && !reachableNames.contains(injectable.getFactoryName())
               && !InjectableType.Disabled.equals(injectable.getInjectableType())) {
+        final boolean aggressivelyReachable = aggressivePredicate.test(injectable);
         processingQueue.add(injectable);
         do {
           final Injectable processedInjectable = processingQueue.poll();
           reachableNames.add(processedInjectable.getFactoryName());
+          if (aggressivelyReachable) {
+            aggressiveReachableNames.add(processedInjectable.getFactoryName());
+          }
           logger.trace("Marked as reachable: {}", processedInjectable);
           for (final Dependency dep : processedInjectable.getDependencies()) {
             final Injectable resolvedDep = GraphUtil.getResolvedDependency(dep, processedInjectable);
@@ -352,6 +359,13 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
     final int initialSize = injectablesByName.size();
     injectablesByName.keySet().retainAll(reachableNames);
     logger.debug("Removed {} unreachable injectables.", initialSize - injectablesByName.size());
+    reachableNames.removeAll(aggressiveReachableNames);
+    logger.debug("Kept {} possibly unused injectables.", reachableNames.size());
+    if (logger.isTraceEnabled()) {
+      reachableNames
+        .stream()
+        .forEach(name -> logger.trace("\tKept {}", name));
+    }
   }
 
   private Predicate<Injectable> reachabilityRootPredicate(final ReachabilityStrategy strategy) {
