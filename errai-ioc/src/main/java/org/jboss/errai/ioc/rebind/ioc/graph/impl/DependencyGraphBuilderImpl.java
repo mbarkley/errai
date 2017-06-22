@@ -16,6 +16,7 @@
 
 package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 
+import static org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType.Reachability;
 import static org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ReachabilityStrategy.Aggressive;
 import static org.jboss.errai.ioc.rebind.ioc.graph.impl.ResolutionPriority.getMatchingPriority;
 
@@ -71,6 +72,9 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
   private final QualifierFactory qualFactory;
   private final Map<InjectableHandle, InjectableReference> injectableReferences = new HashMap<>();
   private final Multimap<MetaClass, InjectableReference> directInjectableReferencesByAssignableTypes = HashMultimap.create();
+  private final Multimap<Injectable, InjectableReference> dynamicallyReachable = HashMultimap.create();
+  private final List<DependencyCallback> callbacks = new ArrayList<>();
+
   private final Map<String, Injectable> injectablesByName = new HashMap<>();
   private final List<InjectableImpl> specializations = new ArrayList<>();
   private final FactoryNameGenerator nameGenerator = new FactoryNameGenerator();
@@ -79,6 +83,11 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
   public DependencyGraphBuilderImpl(final QualifierFactory qualFactory, final boolean async) {
     this.qualFactory = qualFactory;
     this.async = async;
+  }
+
+  @Override
+  public void addDependencyCallback(final DependencyCallback callback) {
+    callbacks.add(callback);
   }
 
   @Override
@@ -152,7 +161,7 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
     return injectableReference;
   }
 
-  private void addDependency(final Injectable injectable, final Dependency dependency) {
+  private void addDependency(final Injectable injectable, final BaseDependency dependency) {
     assert (injectable instanceof InjectableImpl);
     if (InjectableType.Disabled.equals(injectable.getInjectableType())
             && (!DependencyType.ProducerMember.equals(dependency.getDependencyType())
@@ -162,7 +171,12 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
     }
 
     final InjectableImpl injectableAsImpl = (InjectableImpl) injectable;
-    injectableAsImpl.dependencies.add(BaseDependency.class.cast(dependency));
+    injectableAsImpl.dependencies.add(dependency);
+    callbacks
+      .stream()
+      .filter(cb -> cb.test(dependency.injectable.type, dependency.injectable.qualifier, dependency.dependencyType))
+            .forEach(cb -> cb.callback(this, injectable, dependency.injectable.type, dependency.injectable.qualifier,
+                    dependency.dependencyType));
   }
 
   @Override
@@ -333,7 +347,14 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
     final Queue<Injectable> processingQueue = new LinkedList<>();
     final Predicate<Injectable> reachabilityRoot = reachabilityRootPredicate(strategy);
     final Predicate<Injectable> aggressivePredicate = reachabilityRootPredicate(Aggressive);
-    for (final Injectable injectable : injectablesByName.values()) {
+    final List<Injectable> allInjectables = new ArrayList<>(injectablesByName.values());
+    allInjectables.sort((o1, o2) -> {
+      final int v1 = aggressivePredicate.test(o1) ? -1 : 1;
+      final int v2 = aggressivePredicate.test(o2) ? -1 : 1;
+
+      return v1 - v2;
+    });
+    for (final Injectable injectable : allInjectables) {
       if (reachabilityRoot.test(injectable)
               && !reachableNames.contains(injectable.getFactoryName())
               && !InjectableType.Disabled.equals(injectable.getInjectableType())) {
@@ -351,6 +372,16 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
             if (!reachableNames.contains(resolvedDep.getFactoryName())) {
               processingQueue.add(resolvedDep);
             }
+          }
+          for (final InjectableReference reachableRef : dynamicallyReachable.get(processedInjectable)) {
+            final Multimap<ResolutionPriority, InjectableImpl> allReachable = traverseLinks(reachableRef);
+            allReachable
+              .entries()
+              .stream()
+              .filter(e -> e.getKey().isDynamicallyReachable())
+              .map(e -> e.getValue())
+              .filter(reachable -> !reachableNames.contains(reachable.getFactoryName()))
+              .forEach(processingQueue::add);
           }
         } while (processingQueue.size() > 0);
       }
@@ -569,14 +600,11 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
   private void linkInjectableReferences() {
     logger.debug("Linking {} references in dependencies...", injectableReferences.size());
     final Set<InjectableReference> linked = new HashSet<>(injectableReferences.size());
-    for (final Injectable injectable : injectablesByName.values()) {
-      for (final Dependency dep : injectable.getDependencies()) {
-        final BaseDependency baseDep = BaseDependency.as(dep);
-        if (!linked.contains(baseDep.injectable)) {
-          logger.debug("Processing dependency: {}", baseDep);
-          linkInjectableReference(baseDep.injectable);
-          linked.add(baseDep.injectable);
-        }
+    for (final InjectableReference ref : injectableReferences.values()) {
+      if (!linked.contains(ref)) {
+        logger.debug("Processing reference: {}", ref);
+        linkInjectableReference(ref);
+        linked.add(ref);
       }
     }
   }
@@ -602,10 +630,20 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
   }
 
   @Override
+  public void addDynamicallyReachableDependency(final Injectable injectable, final MetaClass type, final Qualifier qualifier) {
+    final InjectableReference injectableReference = lookupInjectableReference(type, qualifier);
+    dynamicallyReachable.put(injectable, injectableReference);
+    callbacks
+      .stream()
+      .filter(cb -> cb.test(type, qualifier, Reachability))
+      .forEach(cb -> cb.callback(this, injectable, type, qualifier, Reachability));
+  }
+
+  @Override
   public void addFieldDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier,
           final MetaField dependentField) {
     final InjectableReference injectableReference = lookupInjectableReference(type, qualifier);
-    final FieldDependency dep = new FieldDependencyImpl(injectableReference, dependentField);
+    final FieldDependencyImpl dep = new FieldDependencyImpl(injectableReference, dependentField);
     addDependency(concreteInjectable, dep);
   }
 
@@ -613,7 +651,7 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
   public void addConstructorDependency(final Injectable concreteInjectable, final MetaClass type,
           final Qualifier qualifier, final int paramIndex, final MetaParameter param) {
     final InjectableReference injectableReference = lookupInjectableReference(type, qualifier);
-    final ParamDependency dep = new ParamDependencyImpl(injectableReference, DependencyType.Constructor, paramIndex,
+    final ParamDependencyImpl dep = new ParamDependencyImpl(injectableReference, DependencyType.Constructor, paramIndex,
             param);
     addDependency(concreteInjectable, dep);
   }
@@ -622,7 +660,7 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
   public void addProducerParamDependency(final Injectable concreteInjectable, final MetaClass type,
           final Qualifier qualifier, final int paramIndex, final MetaParameter param) {
     final InjectableReference injectableReference = lookupInjectableReference(type, qualifier);
-    final ParamDependency dep = new ParamDependencyImpl(injectableReference, DependencyType.ProducerParameter,
+    final ParamDependencyImpl dep = new ParamDependencyImpl(injectableReference, DependencyType.ProducerParameter,
             paramIndex, param);
     addDependency(concreteInjectable, dep);
   }
@@ -631,7 +669,7 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
   public void addProducerMemberDependency(final Injectable concreteInjectable, final MetaClass type,
           final Qualifier qualifier, final MetaClassMember producingMember) {
     final InjectableReference injectableReference = lookupInjectableReference(type, qualifier);
-    final ProducerInstanceDependency dep = new ProducerInstanceDependencyImpl(injectableReference,
+    final ProducerInstanceDependencyImpl dep = new ProducerInstanceDependencyImpl(injectableReference,
             DependencyType.ProducerMember, producingMember);
     addDependency(concreteInjectable, dep);
   }
@@ -639,7 +677,7 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
   @Override
   public void addProducerMemberDependency(final Injectable producedInjectable, final MetaClass producerType, final MetaClassMember member) {
     final InjectableReference abstractInjectable = createStaticMemberInjectable(producerType, member);
-    final ProducerInstanceDependency dep = new ProducerInstanceDependencyImpl(
+    final ProducerInstanceDependencyImpl dep = new ProducerInstanceDependencyImpl(
             abstractInjectable, DependencyType.ProducerMember, member);
     addDependency(producedInjectable, dep);
   }
@@ -648,14 +686,14 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
   public void addSetterMethodDependency(final Injectable concreteInjectable, final MetaClass type,
           final Qualifier qualifier, final MetaMethod setter) {
     final InjectableReference injectableReference = lookupInjectableReference(type, qualifier);
-    final SetterParameterDependency dep = new SetterParameterDependencyImpl(injectableReference, setter);
+    final SetterParameterDependencyImpl dep = new SetterParameterDependencyImpl(injectableReference, setter);
     addDependency(concreteInjectable, dep);
   }
 
   @Override
   public void addDisposesMethodDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier, final MetaMethod disposer) {
     final InjectableReference injectableReference = lookupInjectableReference(type, qualifier);
-    final DisposerMethodDependency dep = new DisposerMethodDependencyImpl(injectableReference, disposer);
+    final DisposerMethodDependencyImpl dep = new DisposerMethodDependencyImpl(injectableReference, disposer);
     addDependency(concreteInjectable, dep);
   }
 
@@ -663,7 +701,7 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
   public void addDisposesParamDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier,
           final Integer index, final MetaParameter param) {
     final InjectableReference injectableReference = lookupInjectableReference(type, qualifier);
-    final ParamDependency dep = new ParamDependencyImpl(injectableReference, DependencyType.DisposerParameter, index,
+    final ParamDependencyImpl dep = new ParamDependencyImpl(injectableReference, DependencyType.DisposerParameter, index,
             param);
     addDependency(concreteInjectable, dep);
   }

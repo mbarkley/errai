@@ -116,6 +116,15 @@ public interface DependencyGraphBuilder {
           Predicate<List<InjectableHandle>> pathPredicate, InjectableProvider provider,
           WiringElementType... wiringTypes);
 
+  interface DependencyCallback {
+    boolean test(MetaClass type, Qualifier qualifier, DependencyType kind);
+    void callback(DependencyGraphBuilder builder, Injectable injectable, MetaClass depType, Qualifier depQualifier, DependencyType kind);
+  }
+
+  void addDependencyCallback(DependencyCallback callback);
+
+  void addDynamicallyReachableDependency(Injectable injectable, MetaClass type, Qualifier qualifier);
+
   /**
    * Create a dependency for a field injection point in a bean class.
    *
@@ -254,7 +263,7 @@ public interface DependencyGraphBuilder {
    * @author Max Barkley <mbarkley@redhat.com>
    */
   public static enum DependencyType {
-    Constructor, Field, ProducerMember, ProducerParameter, SetterParameter, DisposerMethod, DisposerParameter
+    Constructor, Field, ProducerMember, ProducerParameter, SetterParameter, DisposerMethod, DisposerParameter, Reachability
   }
 
   /**

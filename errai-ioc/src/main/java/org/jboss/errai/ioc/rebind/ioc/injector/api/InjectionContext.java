@@ -46,6 +46,7 @@ import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessor;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.QualifierFactory;
 import org.jboss.errai.ioc.rebind.ioc.graph.impl.DefaultQualifierFactory;
 import org.jboss.errai.ioc.rebind.ioc.graph.impl.FactoryNameGenerator;
@@ -77,8 +78,9 @@ public class InjectionContext {
   private final Multimap<WiringElementType, Class<? extends Annotation>> elementBindings = HashMultimap.create();
   private final Multimap<InjectableHandle, InjectableProvider> injectableProviders = HashMultimap.create();
   private final Multimap<InjectableHandle, InjectableProvider> exactTypeInjectableProviders = HashMultimap.create();
+  private final Collection<DependencyGraphBuilder.DependencyCallback> dependencyCallbacks = new ArrayList<>();
 
-  private final Collection<ExtensionTypeCallback> extensionTypeCallbacks = new ArrayList<ExtensionTypeCallback>();
+  private final Collection<ExtensionTypeCallback> extensionTypeCallbacks = new ArrayList<>();
 
   private final boolean async;
 
@@ -94,7 +96,7 @@ public class InjectionContext {
   private final Multimap<Class<? extends Annotation>, Class<? extends Annotation>> metaAnnotationAliases
       = HashMultimap.create();
 
-  private final Map<String, Object> attributeMap = new HashMap<String, Object>();
+  private final Map<String, Object> attributeMap = new HashMap<>();
 
 
   private InjectionContext(final Builder builder) {
@@ -113,9 +115,9 @@ public class InjectionContext {
     private IOCProcessingContext processingContext;
     private boolean async;
     private QualifierFactory qualifierFactory;
-    private final HashSet<String> enabledAlternatives = new HashSet<String>();
-    private final HashSet<String> whitelist = new HashSet<String>();
-    private final HashSet<String> blacklist = new HashSet<String>();
+    private final HashSet<String> enabledAlternatives = new HashSet<>();
+    private final HashSet<String> whitelist = new HashSet<>();
+    private final HashSet<String> blacklist = new HashSet<>();
 
     public static Builder create() {
       return new Builder();
@@ -156,6 +158,14 @@ public class InjectionContext {
 
       return new InjectionContext(this);
     }
+  }
+
+  public void registerDependencyCallback(final DependencyGraphBuilder.DependencyCallback callback) {
+    dependencyCallbacks.add(callback);
+  }
+
+  public Collection<DependencyGraphBuilder.DependencyCallback> getDependencyCallbacks() {
+    return Collections.unmodifiableCollection(dependencyCallbacks);
   }
 
   /**
@@ -390,7 +400,7 @@ public class InjectionContext {
       }
     }
 
-    final Set<Annotation> annotationSet = new HashSet<Annotation>();
+    final Set<Annotation> annotationSet = new HashSet<>();
 
     fillInStereotypes(annotationSet, hasAnnotations.getAnnotations(), false);
 
@@ -407,7 +417,7 @@ public class InjectionContext {
                                         boolean filterScopes) {
 
     final List<Class<? extends Annotation>> stereotypes
-        = new ArrayList<Class<? extends Annotation>>();
+        = new ArrayList<>();
 
     for (final Annotation a : from) {
       final Class<? extends Annotation> aClass = a.annotationType();

@@ -162,7 +162,7 @@ final class GraphUtil {
     return message.toString();
   }
 
-  static String ambiguousDependencyMessage(final BaseDependency dep, final Injectable concrete, final List<InjectableImpl> resolved) {
+  static String ambiguousDependencyMessage(final BaseDependency dep, final Injectable concrete, final List<Injectable> resolved) {
     final StringBuilder messageBuilder = new StringBuilder();
     messageBuilder.append("Ambiguous resolution for ")
                   .append(dep.dependencyType.toString().toLowerCase())

@@ -116,6 +116,7 @@ import org.jboss.errai.ioc.client.container.async.DefaultRunAsyncCallback;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyCallback;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ReachabilityStrategy;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
@@ -193,6 +194,10 @@ public class IOCProcessor {
     runExtensionCallbacks(allMetaClasses);
     log.debug("Ran {} extension callbacks on all types {} types.", injectionContext.getExtensionTypeCallbacks().size(), allMetaClasses.size());
 
+    final Collection<DependencyCallback> dependencyCallbacks = injectionContext.getDependencyCallbacks();
+    registerDependencyCallbacks(graphBuilder, dependencyCallbacks);
+    log.debug("Registered {} dependency callbacks.", injectionContext.getExtensionTypeCallbacks().size(), dependencyCallbacks.size());
+
     addAllInjectableProviders(graphBuilder);
     processDependencies(allMetaClasses, graphBuilder);
     log.debug("Added {} classes to dependency graph in {}ms", allMetaClasses.size(), System.currentTimeMillis() - start);
@@ -227,6 +232,12 @@ public class IOCProcessor {
     registerFactoriesBody.finish();
     bootstrapContainer(processingContext, dependencyGraph, scopeContextSet, contextLocalVarInvocation, contextManagerFieldName);
     log.debug("Processed factory GWT.create calls in {}ms", System.currentTimeMillis() - start);
+  }
+
+  private void registerDependencyCallbacks(final DependencyGraphBuilder graphBuilder,
+          final Collection<DependencyCallback> dependencyCallbacks) {
+    dependencyCallbacks
+      .forEach(cb -> graphBuilder.addDependencyCallback(cb));
   }
 
   private ReachabilityStrategy getReachabilityStrategy() {

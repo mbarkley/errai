@@ -48,6 +48,11 @@ public enum ResolutionPriority {
       return injectable.getWiringElementTypes().contains(WiringElementType.AlternativeBean)
               && !InjectableType.Disabled.equals(injectable.getInjectableType());
     }
+
+    @Override
+    public boolean isDynamicallyReachable() {
+      return true;
+    }
   },
   /**
    * Category for {@link WindowScoped} {@link jsinterop.annotations.JsType} beans so that the local instance does not
@@ -58,6 +63,11 @@ public enum ResolutionPriority {
     public boolean matches(final Injectable injectable) {
       return injectable.getInjectableType().equals(InjectableType.JsType)
               && injectable.getWiringElementTypes().contains(WiringElementType.SharedSingleton);
+    }
+
+    @Override
+    public boolean isDynamicallyReachable() {
+      return true;
     }
   },
   /**
@@ -71,6 +81,10 @@ public enum ResolutionPriority {
       return matchingTypes.contains(injectable.getInjectableType())
               && !injectable.getWiringElementTypes().contains(WiringElementType.Simpleton);
     }
+    @Override
+    public boolean isDynamicallyReachable() {
+      return true;
+    }
   },
   /**
    * Category for injectables that may or may not be satisfied by separately compiled GWT modules at runtime.
@@ -79,6 +93,11 @@ public enum ResolutionPriority {
     @Override
     public boolean matches(final Injectable injectable) {
       return InjectableType.JsType.equals(injectable.getInjectableType());
+    }
+
+    @Override
+    public boolean isDynamicallyReachable() {
+      return true;
     }
   },
   /**
@@ -90,6 +109,10 @@ public enum ResolutionPriority {
     @Override
     public boolean matches(final Injectable injectable) {
       return providerTypes.contains(injectable.getInjectableType());
+    }
+    @Override
+    public boolean isDynamicallyReachable() {
+      return true;
     }
   },
   /**
@@ -103,6 +126,10 @@ public enum ResolutionPriority {
     public boolean matches(final Injectable injectable) {
       return extensionTypes.contains(injectable.getInjectableType());
     }
+    @Override
+    public boolean isDynamicallyReachable() {
+      return false;
+    }
   },
   /**
    * Category for concrete types with no explicit scopes or injection points, and that are default constructible.
@@ -111,6 +138,11 @@ public enum ResolutionPriority {
     @Override
     public boolean matches(final Injectable injectable) {
       return injectable.getWiringElementTypes().contains(WiringElementType.Simpleton);
+    }
+
+    @Override
+    public boolean isDynamicallyReachable() {
+      return false;
     }
   },
   /**
@@ -121,9 +153,16 @@ public enum ResolutionPriority {
     public boolean matches(final Injectable injectable) {
       return InjectableType.Disabled.equals(injectable.getInjectableType());
     }
+
+    @Override
+    public boolean isDynamicallyReachable() {
+      return false;
+    }
   };
 
   public abstract boolean matches(final Injectable injectable);
+
+  public abstract boolean isDynamicallyReachable();
 
   public static ResolutionPriority getMatchingPriority(final Injectable injectable) {
     for (final ResolutionPriority priority : values()) {
