@@ -45,9 +45,8 @@ import com.google.common.collect.Multimap;
 public class ManagedInstanceProvider implements ContextualTypeProvider<ManagedInstance<?>>, Disposer<ManagedInstance<?>> {
 
   @Override
-  @SuppressWarnings({ "rawtypes", "unchecked" })
   public ManagedInstance<?> provide(final Class<?>[] typeargs, final Annotation[] qualifiers) {
-    return new ManagedInstanceImpl(typeargs[0], qualifiers.length == 0 ? new Annotation[] { DEFAULT_ANNOTATION } : qualifiers);
+    return new ManagedInstanceImpl<>(typeargs[0], qualifiers.length == 0 ? new Annotation[] { DEFAULT_ANNOTATION } : qualifiers);
   }
 
   @Override

@@ -23,6 +23,7 @@ import java.util.Optional;
 import javax.enterprise.inject.Instance;
 
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.ioc.client.api.BeanDefProvider;
 import org.jboss.errai.ioc.client.api.IOCExtension;
 import org.jboss.errai.ioc.client.api.ManagedInstance;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
@@ -51,7 +52,8 @@ public class InstanceReachabilityExtension implements IOCExtensionConfigurator {
       @Override
       public boolean test(final MetaClass type, final Qualifier qualifier, final DependencyType kind) {
         return !Reachability.equals(kind) && (type.getFullyQualifiedName().equals(Instance.class.getName())
-                || type.getFullyQualifiedName().equals(ManagedInstance.class.getName()));
+                || type.getFullyQualifiedName().equals(ManagedInstance.class.getName())
+                || type.getFullyQualifiedName().equals(BeanDefProvider.class.getName()));
       }
 
       @Override
