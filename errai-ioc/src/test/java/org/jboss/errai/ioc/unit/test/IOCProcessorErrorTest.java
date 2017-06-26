@@ -25,6 +25,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.context.Dependent;
 import javax.enterprise.inject.Alternative;
 import javax.inject.Inject;
+import javax.inject.Provider;
 import javax.inject.Singleton;
 
 import org.jboss.errai.codegen.builder.BlockBuilder;
@@ -35,8 +36,12 @@ import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.impl.java.JavaReflectionClass;
 import org.jboss.errai.common.client.api.annotations.IOCProducer;
 import org.jboss.errai.ioc.client.Bootstrapper;
+import org.jboss.errai.ioc.client.api.Disposer;
 import org.jboss.errai.ioc.client.api.IOCProvider;
+import org.jboss.errai.ioc.client.api.ManagedInstance;
+import org.jboss.errai.ioc.client.api.builtin.ManagedInstanceProvider;
 import org.jboss.errai.ioc.client.container.ContextManager;
+import org.jboss.errai.ioc.client.container.IOCResolutionException;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.FactoryGenerator;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessor;
@@ -69,6 +74,7 @@ import org.jboss.errai.ioc.unit.res.JSTypeWithPrivateConstructor;
 import org.jboss.errai.ioc.unit.res.ParameterizedIface;
 import org.jboss.errai.ioc.unit.res.PseudoCycleA;
 import org.jboss.errai.ioc.unit.res.PseudoCycleB;
+import org.jboss.errai.ioc.unit.res.TypeInjectingDisposer;
 import org.jboss.errai.ioc.unit.res.TypeParameterControlModule;
 import org.jboss.errai.ioc.unit.res.TypeParameterTestModule;
 import org.jboss.errai.ioc.unit.res.UsesJSTypeWithPrivateConstructor;
@@ -498,6 +504,20 @@ public class IOCProcessorErrorTest {
       assertTrue("Error message did not mention unsatisfied dependency.",
               t.getMessage().contains(JSTypeWithPrivateConstructor.class.getSimpleName()));
     }
+  }
+
+  @Test(expected = RuntimeException.class)
+  public void managedInstanceDoesNotSatisfyDisposer() throws Exception {
+    addToMetaClassCache(
+            Object.class,
+            Iterable.class,
+            Provider.class,
+            ManagedInstance.class,
+            ManagedInstanceProvider.class,
+            Disposer.class,
+            TypeInjectingDisposer.class
+            );
+    processor.process(procContext);
   }
 
   private void assertDisabledTypeReported(final String injSiteTypeName, final String typeWithDepName, final String disabledTypeName)

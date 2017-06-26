@@ -14,25 +14,16 @@
  * limitations under the License.
  */
 
-package org.jboss.errai.ioc.client.api;
+package org.jboss.errai.ioc.unit.res;
 
-import java.lang.annotation.Annotation;
-import java.util.stream.Stream;
+import javax.enterprise.context.Dependent;
+import javax.inject.Inject;
 
-import javax.inject.Provider;
+import org.jboss.errai.ioc.client.api.Disposer;
 
-import org.jboss.errai.ioc.client.container.SyncBeanDef;
+@Dependent
+public class TypeInjectingDisposer {
 
-/**
- *
- * @author Max Barkley <mbarkley@redhat.com>
- */
-public interface BeanDefProvider<T> extends Provider<SyncBeanDef<T>>, Iterable<SyncBeanDef<T>> {
-
-  BeanDefProvider<T> select(Annotation... qualifiers);
-  <U extends T> BeanDefProvider<U> select(Class<U> subType, Annotation... qualifiers);
-  boolean isUnsatisfied();
-  boolean isAmbiguous();
-  Stream<SyncBeanDef<T>> stream();
+  @Inject public Disposer<Object> disposer;
 
 }

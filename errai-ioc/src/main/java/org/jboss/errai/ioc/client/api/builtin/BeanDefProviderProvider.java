@@ -16,7 +16,6 @@
 
 package org.jboss.errai.ioc.client.api.builtin;
 
-import static org.jboss.errai.ioc.client.IOCUtil.destroy;
 import static org.jboss.errai.ioc.client.IOCUtil.getSyncBean;
 import static org.jboss.errai.ioc.client.IOCUtil.joinQualifiers;
 import static org.jboss.errai.ioc.client.container.IOC.getBeanManager;
@@ -59,11 +58,6 @@ public class BeanDefProviderProvider implements ContextualTypeProvider<BeanDefPr
     @Override
     public SyncBeanDef<T> get() {
       return getSyncBean(type, qualifiers);
-    }
-
-    @Override
-    public void dispose(final T beanInstance) {
-      destroy(beanInstance);
     }
 
     @Override

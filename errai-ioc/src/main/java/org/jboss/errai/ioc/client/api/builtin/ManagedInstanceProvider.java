@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.enterprise.context.Dependent;
+import javax.enterprise.inject.Typed;
 
 import org.jboss.errai.ioc.client.IOCUtil;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
@@ -42,6 +43,7 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
 @IOCProvider
+@Typed({ManagedInstanceProvider.class}) // Don't want this type to be looked up as a Disposer<T>
 public class ManagedInstanceProvider implements ContextualTypeProvider<ManagedInstance<?>>, Disposer<ManagedInstance<?>> {
 
   @Override
