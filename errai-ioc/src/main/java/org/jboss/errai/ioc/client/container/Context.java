@@ -47,6 +47,8 @@ import org.jboss.errai.ioc.client.api.ScopeContext;
  */
 public interface Context {
 
+  void setInstanceAuditor(InstanceAuditor auditor);
+
   /**
    * This method will only be called once at runtime, when an application is
    * bootstrapping, before any bean instances are created.
@@ -109,7 +111,7 @@ public interface Context {
    *          which the returned bean instance is created.
    * @return An instance of a bean that must not be a {@link Proxy}.
    */
-  <T> T getActiveNonProxiedInstance(String factoryName);
+  <T> T getActiveNonProxiedInstance(String factoryName, Proxy<T> proxy);
 
   /**
    * @return A representative annotation for this {@link Context}. This is only

@@ -334,6 +334,7 @@ public class SyncBeanManagerImpl implements SyncBeanManager, BeanManagerSetup {
 
     @Override
     public Object getInstance() {
+      logger.debug("Creating instance from JS bean factory: {}", provider.getFactoryName());
       return provider.getInstance();
     }
 
@@ -386,6 +387,7 @@ public class SyncBeanManagerImpl implements SyncBeanManager, BeanManagerSetup {
 
     @Override
     public T getInstance() {
+      logger.debug("Creating bean instance: {}", this);
       final T instance = contextManager.getInstance(handle.getFactoryName());
       if (instance instanceof Proxy) {
         @SuppressWarnings("unchecked")

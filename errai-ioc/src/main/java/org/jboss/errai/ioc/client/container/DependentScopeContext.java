@@ -72,13 +72,15 @@ public class DependentScopeContext extends AbstractContext implements HasContext
 
   @Override
   public Optional<HasContextualInstanceSupport> withContextualInstanceSupport() {
-    return Optional.ofNullable(this);
+    return Optional.of(this);
   }
 
   @Override
   public <T> T getContextualInstance(final String factoryName, final Class<?>[] typeArgs, final Annotation[] qualifiers) {
     final Factory<T> factory = this.<T>getFactory(factoryName);
+    auditor.startCreatingActiveInstance(factory.getHandle(), null);
     final T instance = factory.createContextualInstance(getContextManager(), typeArgs, qualifiers);
+    auditor.finishCreatingActiveInstance(factory.getHandle(), null);
     registerInstance(maybeUnwrapProxy(instance), factory);
     return instance;
   }

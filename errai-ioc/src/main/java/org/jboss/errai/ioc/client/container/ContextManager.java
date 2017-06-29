@@ -34,6 +34,8 @@ import org.jboss.errai.ioc.client.api.LoadAsync;
  */
 public interface ContextManager {
 
+  void setInstanceAuditor(InstanceAuditor auditor);
+
   /**
    * Called for each context when the application is bootstrapping. All contexts
    * are added before any instances are requested.

@@ -28,8 +28,13 @@ import java.util.Map;
  */
 public class ContextManagerImpl implements ContextManager {
 
-  private final Map<String, Context> contextsByFactoryName = new HashMap<String, Context>();
-  private final Collection<Context> contexts = new ArrayList<Context>();
+  private final Map<String, Context> contextsByFactoryName = new HashMap<>();
+  private final Collection<Context> contexts = new ArrayList<>();
+
+  @Override
+  public void setInstanceAuditor(final InstanceAuditor auditor) {
+    contexts.forEach(ctx -> ctx.setInstanceAuditor(auditor));
+  }
 
   @Override
   public void addContext(final Context context) {
@@ -82,7 +87,7 @@ public class ContextManagerImpl implements ContextManager {
 
   @Override
   public Collection<FactoryHandle> getAllFactoryHandles() {
-    final Collection<FactoryHandle> allHandles = new ArrayList<FactoryHandle>();
+    final Collection<FactoryHandle> allHandles = new ArrayList<>();
     for (final Context context : contexts) {
       for (final Factory<?> factory : context.getAllFactories()) {
         allHandles.add(factory.getHandle());

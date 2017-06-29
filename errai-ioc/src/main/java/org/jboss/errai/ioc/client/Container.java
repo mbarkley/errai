@@ -16,6 +16,9 @@
 
 package org.jboss.errai.ioc.client;
 
+import static org.jboss.errai.ioc.client.container.InstanceAuditor.debugAuditor;
+import static org.jboss.errai.ioc.client.container.InstanceAuditor.noopAuditor;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -73,6 +76,9 @@ public class Container implements EntryPoint {
       logger.debug("Creating new {} instance...", ContextManager.class.getSimpleName());
       start = System.currentTimeMillis();
       final ContextManager contextManager = bootstrapper.bootstrapContainer();
+      contextManager.setInstanceAuditor(logger.isDebugEnabled() ?
+                                          debugAuditor() :
+                                          noopAuditor());
       logger.debug("Created {} instance in {}ms", ContextManager.class.getSimpleName(), System.currentTimeMillis() - start);
 
       logger.debug("Initializing bean manager...");

@@ -39,18 +39,18 @@ public class ProxyHelperImpl<T> implements ProxyHelper<T> {
   @Override
   public T getInstance(final Proxy<T> proxy) {
     if (instance == null) {
-      trySettingInstance();
+      trySettingInstance(proxy);
       proxy.initProxyProperties(instance);
     }
 
     return instance;
   }
 
-  private void trySettingInstance() {
+  private void trySettingInstance(final Proxy<T> proxy) {
     assertContextIsSet();
 
     if (context.isActive()) {
-      instance = context.getActiveNonProxiedInstance(factoryName);
+      instance = context.getActiveNonProxiedInstance(factoryName, proxy);
     } else {
       throw new RuntimeException("Cannot access a bean from the inactive " + context.getScope().getSimpleName() + " context.");
     }
@@ -62,7 +62,7 @@ public class ProxyHelperImpl<T> implements ProxyHelper<T> {
   }
 
   @Override
-  public void setProxyContext( final Context context ) {
+  public void setProxyContext(final Context context) {
     if (this.context != null) {
       throw new RuntimeException("Context can only be set once.");
     }

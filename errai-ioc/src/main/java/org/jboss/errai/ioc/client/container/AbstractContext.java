@@ -60,37 +60,47 @@ public abstract class AbstractContext implements Context {
   private final Logger logger = LoggerFactory.getLogger(getClass());
 
   private ContextManager contextManager;
+  protected InstanceAuditor auditor;
 
   @Override
-  public <T> T getActiveNonProxiedInstance(final String factoryName) {
+  public void setInstanceAuditor(final InstanceAuditor auditor) {
+    this.auditor = auditor;
+  }
+
+  @Override
+  public <T> T getActiveNonProxiedInstance(final String factoryName, final Proxy<T> proxy) {
     if (hasActiveInstance(factoryName)) {
-      return getActiveInstance(factoryName);
+      final T activeInstance = getActiveInstance(factoryName);
+      auditor.loadActiveInstance(factoryName, proxy, activeInstance);
+      return activeInstance;
     } else if (isCurrentlyCreatingActiveInstance(factoryName)) {
       final Factory<T> factory = this.<T>getFactory(factoryName);
       final T incomplete = factory.getIncompleteInstance();
       if (incomplete == null) {
         throw new RuntimeException("Could not obtain an incomplete instance of " + factory.getHandle().getActualType().getName() + " to break a circular injection.");
       } else {
-        logger.warn("An incomplete " + factory.getHandle().getActualType() + " was required to break a circular injection.");
+        logger.warn("An incomplete {} was required to break a circular injection.", factory.getHandle());
         return incomplete;
       }
     } else {
-      return createNewUnproxiedInstance(factoryName);
+      return createNewUnproxiedInstance(factoryName, proxy);
     }
   }
 
-  protected <T> T createNewUnproxiedInstance(final String factoryName) {
+  protected <T> T createNewUnproxiedInstance(final String factoryName, final Proxy<T> proxy) {
     final Factory<T> factory = this.<T>getFactory(factoryName);
     registerIncompleteInstance(factoryName);
+    auditor.startCreatingActiveInstance(factory.getHandle(), proxy);
     final T instance = factory.createInstance(getContextManager());
     unregisterIncompleteInstance(factoryName, instance);
     registerInstance(instance, factory);
     factory.invokePostConstructs(instance);
+    auditor.finishCreatingActiveInstance(factory.getHandle(), proxy);
     return instance;
   }
 
-  protected abstract <T> T getActiveInstance(final String factoryName);
 
+  protected abstract <T> T getActiveInstance(final String factoryName);
   protected abstract boolean hasActiveInstance(final String factoryName);
 
   private void registerIncompleteInstance(final String factoryName) {
@@ -128,7 +138,7 @@ public abstract class AbstractContext implements Context {
   public <T> T getInstance(final String factoryName) {
     final Proxy<T> proxy = getOrCreateProxy(factoryName);
     if (proxy == null) {
-      return getActiveNonProxiedInstance(factoryName);
+      return getActiveNonProxiedInstance(factoryName, proxy);
     } else {
       return proxy.asBeanType();
     }
@@ -146,7 +156,11 @@ public abstract class AbstractContext implements Context {
       proxy = factory.createProxy(this);
       if (proxy != null) {
         proxies.put(factoryName, proxy);
+        auditor.createdProxy(factory.getHandle(), proxy);
       }
+    }
+    else {
+      auditor.loadedProxy(factoryName, proxy);
     }
 
     return proxy;
@@ -171,11 +185,17 @@ public abstract class AbstractContext implements Context {
   public <T> T getNewInstance(final String factoryName) {
     final Factory<T> factory = getFactory(factoryName);
     final Proxy<T> proxy = factory.createProxy(this);
+    if (proxy != null) {
+      auditor.createdProxy(factory.getHandle(), proxy);
+    }
+
+    auditor.startCreatingActiveInstance(factory.getHandle(), proxy);
     final T instance = factory.createInstance(getContextManager());
     if (proxy != null) {
       proxy.setInstance(instance);
     }
     factory.invokePostConstructs(instance);
+    auditor.finishCreatingActiveInstance(factory.getHandle(), proxy);
     registerInstance(instance, factory);
 
     return (proxy != null) ? proxy.asBeanType() : instance;
