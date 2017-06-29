@@ -16,10 +16,20 @@
 
 package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 
-import java.util.Iterator;
-import java.util.Map;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.mapping;
+import static java.util.stream.Collectors.toList;
 
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+
+import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Fragment;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 
 import com.google.common.collect.Iterators;
@@ -49,6 +59,66 @@ class DependencyGraphImpl implements DependencyGraph {
   @Override
   public int getNumberOfInjectables() {
     return injectablesByName.size();
+  }
+
+  @Override
+  public List<Fragment> getFragments() {
+    class Rep {
+      Injectable rep;
+      Rep(final Injectable rep) {
+        this.rep = rep;
+      }
+      @Override
+      public boolean equals(final Object obj) {
+        return obj instanceof Rep && ((Rep) obj).rep.equals(rep);
+      }
+      @Override
+      public int hashCode() {
+        return rep.hashCode();
+      }
+    }
+
+    final Map<Injectable, Rep> injToFragmentRep = new HashMap<>();
+    injectablesByName
+      .values()
+      .stream()
+      .filter(inj -> EntryPoint.class.equals(inj.getScope()))
+      .forEach(inj -> {
+        final Queue<Injectable> queue = new LinkedList<>();
+        final Rep rep = new Rep(inj);
+        queue.add(inj);
+        do {
+          final Injectable cur = queue.poll();
+          final Rep prevRep = injToFragmentRep.get(cur);
+          if (prevRep == null) {
+            injToFragmentRep.put(cur, rep);
+            cur
+              .getDependencies()
+              .stream()
+              .map(dep -> GraphUtil.getResolvedDependency(dep, cur))
+              .forEach(queue::add);
+          } else if (!prevRep.equals(rep)) {
+            prevRep.rep = rep.rep;
+          }
+        } while (!queue.isEmpty());
+      });
+
+    final Map<Injectable, List<Injectable>> injectablesByRep = injToFragmentRep
+      .entrySet()
+      .stream()
+      .collect(groupingBy(e -> e.getValue().rep,
+               mapping(e -> e.getKey(),
+               toList())));
+
+    return injectablesByRep
+      .entrySet()
+      .stream()
+      .map(e -> new Fragment(prettyPrint(e.getKey().getHandle()), e.getValue()))
+      .collect(toList());
+  }
+
+  private String prettyPrint(final InjectableHandle handle) {
+    return handle.getQualifier().toString() + " " + handle.getType();
   }
 
 }

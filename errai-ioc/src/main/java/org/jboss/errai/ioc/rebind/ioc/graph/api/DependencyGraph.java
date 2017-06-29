@@ -16,6 +16,8 @@
 
 package org.jboss.errai.ioc.rebind.ioc.graph.api;
 
+import java.util.List;
+
 import org.jboss.errai.ioc.client.container.FactoryHandle;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 
@@ -38,5 +40,7 @@ public interface DependencyGraph extends Iterable<Injectable> {
    * @return The number of {@link Injectable injectables} in the graph.
    */
   int getNumberOfInjectables();
+
+  List<Fragment> getFragments();
 
 }

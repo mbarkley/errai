@@ -29,7 +29,10 @@ import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 import static org.jboss.errai.ioc.rebind.ioc.bootstrapper.AbstractBodyGenerator.getAnnotationArrayStmt;
 import static org.jboss.errai.ioc.rebind.ioc.bootstrapper.AbstractBodyGenerator.getAssignableTypesArrayStmt;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.annotation.Annotation;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -59,6 +62,7 @@ import javax.inject.Named;
 import javax.inject.Provider;
 import javax.inject.Scope;
 
+import org.apache.commons.io.FileUtils;
 import org.jboss.errai.codegen.ArithmeticExpression;
 import org.jboss.errai.codegen.ArithmeticOperator;
 import org.jboss.errai.codegen.InnerClass;
@@ -88,6 +92,7 @@ import org.jboss.errai.codegen.util.Bool;
 import org.jboss.errai.codegen.util.If;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.common.client.api.Assert;
+import org.jboss.errai.common.metadata.RebindUtils;
 import org.jboss.errai.config.rebind.EnvUtil;
 import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.ioc.client.Bootstrapper;
@@ -118,6 +123,7 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ReachabilityStrategy;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Fragment;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.QualifierFactory;
@@ -152,9 +158,14 @@ public class IOCProcessor {
 
   public static final String REACHABILITY_PROPERTY = "errai.ioc.reachability";
   public static final String PLUGIN_PROPERTY = "errai.ioc.jsinterop.support";
+  public static final String FRAGMENT_ANALYSIS = "errai.ioc.fragment.analysis";
 
   public static boolean isJsInteropSupportEnabled() {
     return Boolean.getBoolean(PLUGIN_PROPERTY);
+  }
+
+  public static boolean isFragmentAnalysisEnabled() {
+    return Boolean.getBoolean(FRAGMENT_ANALYSIS);
   }
 
   private final Set<Class<? extends Annotation>> nonSimpletonTypeAnnotations = new HashSet<>();
@@ -201,6 +212,10 @@ public class IOCProcessor {
     final DependencyGraph dependencyGraph = graphBuilder.createGraph(getReachabilityStrategy());
     log.debug("Resolved dependency graph with {} reachable injectables in {}ms", dependencyGraph.getNumberOfInjectables(), System.currentTimeMillis() - start);
 
+    if (isFragmentAnalysisEnabled()) {
+      writeFragmentAnalysis(dependencyGraph.getFragments());
+    }
+
     FactoryGenerator.resetTotalTime();
     FactoryGenerator.setDependencyGraph(dependencyGraph);
     FactoryGenerator.setInjectionContext(injectionContext);
@@ -227,6 +242,20 @@ public class IOCProcessor {
     registerFactoriesBody.finish();
     bootstrapContainer(processingContext, dependencyGraph, scopeContextSet, contextLocalVarInvocation, contextManagerFieldName);
     log.debug("Processed factory GWT.create calls in {}ms", System.currentTimeMillis() - start);
+  }
+
+  private void writeFragmentAnalysis(final List<Fragment> fragments) {
+    final StringBuilder sb = new StringBuilder();
+    fragments.forEach(frag -> sb.append(frag.toString()));
+
+    final File dir = RebindUtils.getErraiCacheDir();
+    final File fragFile = new File(dir, "fragment-analysis.txt");
+    try {
+      FileUtils.writeStringToFile(fragFile, sb.toString(), Charset.defaultCharset());
+      log.info("Wrote fragment analysis to {}", fragFile);
+    } catch (final IOException e) {
+      log.warn("Failed to write fragment analaysis to " + fragFile, e);
+    }
   }
 
   private ReachabilityStrategy getReachabilityStrategy() {
