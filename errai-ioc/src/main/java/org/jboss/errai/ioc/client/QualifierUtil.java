@@ -206,6 +206,11 @@ public class QualifierUtil {
       public String value() {
         return name;
       }
+
+      @Override
+      public String toString() {
+        return "@Named(" + name + ")";
+      }
     };
   }
 }
