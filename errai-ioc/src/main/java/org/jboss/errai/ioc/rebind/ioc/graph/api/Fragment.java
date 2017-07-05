@@ -27,8 +27,10 @@ import java.util.List;
 public class Fragment {
   private final String name;
   private final List<Injectable> injectables;
-  public Fragment(final String name, final List<Injectable> injectables) {
+  private final List<Fragment> dependencies;
+  public Fragment(final String name, final List<Injectable> injectables, final List<Fragment> dependencies) {
     this.name = name;
+    this.dependencies = dependencies;
     this.injectables = unmodifiableList(injectables);
   }
   public String getName() {
@@ -36,6 +38,9 @@ public class Fragment {
   }
   public List<Injectable> getInjectables() {
     return injectables;
+  }
+  public List<Fragment> getDependencies() {
+    return dependencies;
   }
 
   @Override
@@ -45,9 +50,14 @@ public class Fragment {
       .append(name)
       .append("\":\n");
 
+    if (!dependencies.isEmpty()) {
+      sb.append("\tDependencies:\n");
+      dependencies
+      .forEach(dep -> sb.append("\t\t").append(dep.getName()).append('\n'));
+    }
+    sb.append("\tInjectables:\n");
     injectables
-      .stream()
-      .forEach(inj -> sb.append('\t').append(inj).append("\n"));
+      .forEach(inj -> sb.append("\t\t").append(inj).append('\n'));
 
     return sb.toString();
   }

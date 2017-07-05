@@ -244,7 +244,7 @@ public class IOCProcessor {
     log.debug("Processed factory GWT.create calls in {}ms", System.currentTimeMillis() - start);
   }
 
-  private void writeFragmentAnalysis(final List<Fragment> fragments) {
+  private void writeFragmentAnalysis(final Collection<Fragment> fragments) {
     final StringBuilder sb = new StringBuilder();
     fragments.forEach(frag -> sb.append(frag.toString()));
 
