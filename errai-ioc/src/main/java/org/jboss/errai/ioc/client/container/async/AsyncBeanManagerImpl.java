@@ -26,9 +26,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import javax.enterprise.inject.Alternative;
 import javax.inject.Provider;
@@ -91,7 +93,7 @@ public class AsyncBeanManagerImpl implements AsyncBeanManager, BeanManagerSetup,
   public Collection<AsyncBeanDef> lookupBeans(final String name) {
     final Collection syncBeans = innerBeanManager.lookupBeans(name);
     final Collection beans = wrapSyncBeans(syncBeans);
-    addUnloadedBeans(beans, name);
+    addUnloadedBeans(beans, name, QualifierUtil.ANY_ANNOTATION);
 
     return beans;
   }
@@ -108,7 +110,7 @@ public class AsyncBeanManagerImpl implements AsyncBeanManager, BeanManagerSetup,
 
   @Override
   public <T> Collection<AsyncBeanDef<T>> lookupBeans(final Class<T> type) {
-    return lookupBeans(type, QualifierUtil.DEFAULT_ANNOTATION);
+    return lookupBeans(type, QualifierUtil.ANY_ANNOTATION);
   }
 
   @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -138,9 +140,9 @@ public class AsyncBeanManagerImpl implements AsyncBeanManager, BeanManagerSetup,
   }
 
   @SuppressWarnings("rawtypes")
-  private void addUnloadedBeans(final Collection<AsyncBeanDef> beans, final String name) {
+  private void addUnloadedBeans(final Collection<AsyncBeanDef> beans, final String name, final Annotation... qualifiers) {
     for (final String typeName : typeNamesByName.get(name)) {
-      addUnloadedBeans(beans, null, typeName, QualifierUtil.DEFAULT_ANNOTATION);
+      addUnloadedBeans(beans, null, typeName, qualifiers);
     }
   }
 
@@ -156,6 +158,20 @@ public class AsyncBeanManagerImpl implements AsyncBeanManager, BeanManagerSetup,
     } else {
       return (AsyncBeanDef<T>) beans.iterator().next();
     }
+  }
+
+  @Override
+  public <T> void loadBeans(final Collection<AsyncBeanDef<? extends T>> beans,
+          final Consumer<Collection<SyncBeanDef<? extends T>>> callback) {
+    final List<SyncBeanDef<? extends T>> result = new ArrayList<>(beans.size());
+    beans
+      .forEach(bean ->
+        bean.load(syncBean -> {
+          result.add(syncBean);
+          if (result.size() == beans.size()) {
+            callback.accept(result);
+          }
+        }));
   }
 
   @Override
@@ -400,7 +416,7 @@ public class AsyncBeanManagerImpl implements AsyncBeanManager, BeanManagerSetup,
 
       private void getInstanceHelper(final CreationalCallback<T> callback, final Provider<T> instanceProvider) {
         if (!loaded) {
-          load(new Runnable() {
+          UnloadedFactory.this.load(new Runnable() {
             @Override
             public void run() {
               callback.callback(instanceProvider.get());
@@ -409,6 +425,11 @@ public class AsyncBeanManagerImpl implements AsyncBeanManager, BeanManagerSetup,
         } else {
           callback.callback(instanceProvider.get());
         }
+      }
+
+      @Override
+      public void load(final Consumer<SyncBeanDef<T>> callback) {
+        UnloadedFactory.this.load(() -> callback.accept(performSyncLookup()));
       }
 
       private SyncBeanDef<T> performSyncLookup() {

@@ -18,6 +18,7 @@ package org.jboss.errai.ioc.client.container.async;
 
 import java.lang.annotation.Annotation;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import org.jboss.errai.common.client.util.CreationalCallback;
 import org.jboss.errai.ioc.client.container.SyncBeanDef;
@@ -82,6 +83,15 @@ public class SyncToAsyncBeanDef<T> implements AsyncBeanDef<T> {
   @Override
   public boolean isAssignableTo(final Class<?> type) {
     return beanDef.isAssignableTo(type);
+  }
+
+  @Override
+  public void load(final Consumer<SyncBeanDef<T>> callback) {
+    callback.accept(beanDef);
+  }
+
+  public SyncBeanDef<T> getSyncBeanDef() {
+    return beanDef;
   }
 
 }

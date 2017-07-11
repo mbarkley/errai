@@ -19,7 +19,6 @@ package org.jboss.errai.ioc.client.api.builtin;
 import javax.inject.Singleton;
 
 import org.jboss.errai.common.client.api.annotations.IOCProducer;
-import org.jboss.errai.ioc.client.api.EnabledByProperty;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ioc.client.container.SyncBeanManager;
 
@@ -27,7 +26,6 @@ import org.jboss.errai.ioc.client.container.SyncBeanManager;
  * @author Mike Brock
  */
 @Singleton
-@EnabledByProperty(value = "errai.ioc.async_bean_manager", negated = true)
 public class IOCBeanManagerProvider {
 
   @IOCProducer

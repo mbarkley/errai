@@ -16,8 +16,11 @@
 
 package org.jboss.errai.ioc.client.container.async;
 
+import java.util.function.Consumer;
+
 import org.jboss.errai.common.client.util.CreationalCallback;
 import org.jboss.errai.ioc.client.container.IOCBeanDef;
+import org.jboss.errai.ioc.client.container.SyncBeanDef;
 
 /**
  * @author Max Barkley <mbarkley@redhat.com>
@@ -29,7 +32,7 @@ public interface AsyncBeanDef<T> extends IOCBeanDef<T> {
    *
    * @return The bean instance.
    */
-  public void getInstance(CreationalCallback<T> callback);
+  void getInstance(CreationalCallback<T> callback);
 
   /**
    * Returns a new instance of the bean. Calling this method overrides the underlying scope and instantiates a new
@@ -37,5 +40,7 @@ public interface AsyncBeanDef<T> extends IOCBeanDef<T> {
    *
    * @return a new instance of the bean.
    */
-  public void newInstance(CreationalCallback<T> callback);
+  void newInstance(CreationalCallback<T> callback);
+
+  void load(Consumer<SyncBeanDef<T>> callback);
 }

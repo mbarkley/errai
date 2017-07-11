@@ -16,17 +16,20 @@
 
 package org.jboss.errai.ioc.client.container;
 
+import static java.util.stream.Collectors.toList;
+
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
+import java.util.function.Consumer;
 
 import javax.enterprise.inject.Alternative;
 
-import org.jboss.errai.common.client.util.CreationalCallback;
+import org.jboss.errai.ioc.client.QualifierUtil;
 import org.jboss.errai.ioc.client.container.async.AsyncBeanDef;
 import org.jboss.errai.ioc.client.container.async.AsyncBeanManager;
+import org.jboss.errai.ioc.client.container.async.SyncToAsyncBeanDef;
 
 /**
  * An adapter that makes the asynchronous bean manager API work with a synchronous bean manager.
@@ -82,7 +85,23 @@ public class SyncToAsyncBeanManagerAdapter implements AsyncBeanManager {
 
   @Override
   public <T> Collection<AsyncBeanDef<T>> lookupBeans(final Class<T> type) {
-    return lookupBeans(type, new Annotation[0]);
+    return lookupBeans(type, QualifierUtil.ANY_ANNOTATION);
+  }
+
+  @Override
+  public <T> void loadBeans(final Collection<AsyncBeanDef<? extends T>> beans,
+          final Consumer<Collection<SyncBeanDef<? extends T>>> callback) {
+    final List<SyncBeanDef<? extends T>> result = beans
+      .stream()
+      .map(beanDef -> (SyncBeanDef<? extends T>) (beanDef instanceof SyncToAsyncBeanDef
+              ? ((SyncToAsyncBeanDef<? extends T>) beanDef).getSyncBeanDef()
+                      : failLoad(beans)))
+      .collect(toList());
+    callback.accept(result);
+  }
+
+  private <T> SyncBeanDef<? extends T> failLoad(final Collection<AsyncBeanDef<? extends T>> beans) {
+    throw new IllegalArgumentException("Can only lazily load beans from this bean manager. Given " + beans);
   }
 
   @Override
@@ -107,59 +126,6 @@ public class SyncToAsyncBeanManagerAdapter implements AsyncBeanManager {
 
   @SuppressWarnings({ "rawtypes", "unchecked" })
   private AsyncBeanDef createAsyncBeanDef(final SyncBeanDef beanDef) {
-    final AsyncBeanDef abd = new AsyncBeanDef() {
-
-      @Override
-      public Class getType() {
-        return beanDef.getType();
-      }
-
-      @Override
-      public Class<?> getBeanClass() {
-        return beanDef.getBeanClass();
-      }
-
-      @Override
-      public Class<? extends Annotation> getScope() {
-        return beanDef.getScope();
-      }
-
-      @Override
-      public void getInstance(final CreationalCallback callback) {
-        callback.callback(beanDef.getInstance());
-      }
-
-      @Override
-      public void newInstance(final CreationalCallback callback) {
-        callback.callback(beanDef.newInstance());
-      }
-
-      @Override
-      public Set getQualifiers() {
-        return beanDef.getQualifiers();
-      }
-
-      @Override
-      public boolean matches(final Set annotations) {
-        return beanDef.matches(annotations);
-      }
-
-      @Override
-      public String getName() {
-        return beanDef.getName();
-      }
-
-      @Override
-      public boolean isActivated() {
-        return beanDef.isActivated();
-      }
-
-      @Override
-      public boolean isAssignableTo(final Class type) {
-        return beanDef.isAssignableTo(type);
-      }
-    };
-
-    return abd;
+    return new SyncToAsyncBeanDef<>(beanDef);
   }
 }

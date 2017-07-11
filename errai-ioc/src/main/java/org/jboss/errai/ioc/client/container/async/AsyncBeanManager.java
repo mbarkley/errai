@@ -18,13 +18,15 @@ package org.jboss.errai.ioc.client.container.async;
 
 import java.lang.annotation.Annotation;
 import java.util.Collection;
+import java.util.function.Consumer;
 
 import org.jboss.errai.ioc.client.container.ClientBeanManager;
+import org.jboss.errai.ioc.client.container.SyncBeanDef;
 
 /**
  * Contract for injectable client-side instances for run-time bean management in
  * asynchronous IOC mode.
- * 
+ *
  * @author Mike Brock
  * @author Max Barkley <mbarkley@redhat.com>
  * @author Christian Sadilek <csadilek@redhat.com>
@@ -86,4 +88,6 @@ public interface AsyncBeanManager extends ClientBeanManager {
    *         qualifiers match or if more than one bean  matches.
    */
   <T> AsyncBeanDef<T> lookupBean(Class<T> type, Annotation... qualifiers);
+
+  <T> void loadBeans(Collection<AsyncBeanDef<? extends T>> beans, Consumer<Collection<SyncBeanDef<? extends T>>> callback);
 }
