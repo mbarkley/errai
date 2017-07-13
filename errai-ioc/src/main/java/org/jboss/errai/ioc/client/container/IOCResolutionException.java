@@ -25,4 +25,7 @@ public class IOCResolutionException extends RuntimeException {
   public IOCResolutionException(final String message) {
     super(message);
   }
+  public IOCResolutionException(final String message, final Throwable cause) {
+    super(message, cause);
+  }
 }

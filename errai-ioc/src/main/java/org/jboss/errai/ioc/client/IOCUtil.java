@@ -47,7 +47,7 @@ public abstract class IOCUtil {
       return IOC.getBeanManager().lookupBean(type, qualifiers);
     } catch (final IOCResolutionException ex) {
       if (IOC_ENVIRONMENT.isAsync() && isUnsatisfied(type, qualifiers)) {
-        throw new RuntimeException("No bean satisfied " + prettyQualifiersAndType(type, qualifiers)
+        throw new IOCResolutionException("No bean satisfied " + prettyQualifiersAndType(type, qualifiers)
                 + ". Hint: Types loaded via Instance should not be @LoadAsync.", ex);
       }
       else {
