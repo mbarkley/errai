@@ -49,7 +49,7 @@ public abstract class BaseProviderGenerator extends AbstractBodyGenerator {
   protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
           final Injectable injectable, final DependencyGraph graph, final InjectionContext injectionContext) {
     final List<Statement> stmts = new ArrayList<>(2);
-    final Injectable providerInjectable = getProviderInjectable(injectable);
+    final Injectable providerInjectable = getProviderInjectable(graph, injectable);
 
     final MetaClass paramterizedProviderType = parameterizedAs(getProviderRawType(), typeParametersOf(injectable.getInjectedType()));
     stmts.add(declareFinalVariable("provider", paramterizedProviderType, lookupProviderStmt(providerInjectable, paramterizedProviderType)));
@@ -65,7 +65,7 @@ public abstract class BaseProviderGenerator extends AbstractBodyGenerator {
   @Override
   protected List<Statement> generateDestroyInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
           final Injectable injectable, final DependencyGraph graph, final InjectionContext injectionContext) {
-    final Injectable provider = getProviderInjectable(injectable);
+    final Injectable provider = getProviderInjectable(graph, injectable);
     if (provider.getInjectedType().isAssignableTo(Disposer.class)) {
       return singletonList(castTo(Disposer.class,
               loadVariable("this").invoke("getReferenceAs", loadVariable("instance"), "disposer", Disposer.class))
@@ -76,12 +76,12 @@ public abstract class BaseProviderGenerator extends AbstractBodyGenerator {
     }
   }
 
-  protected Injectable getProviderInjectable(final Injectable depInjectable) {
+  protected Injectable getProviderInjectable(final DependencyGraph graph, final Injectable depInjectable) {
     for (final Dependency dep : depInjectable.getDependencies()) {
       if (dep.getDependencyType().equals(DependencyType.ProducerMember)) {
-        final MetaClass providerType = dep.getInjectable().getInjectedType();
+        final MetaClass providerType = graph.getResolved(dep).getInjectedType();
         if (providerType.isAssignableTo(getProviderRawType())) {
-          return dep.getInjectable();
+          return graph.getResolved(dep);
         }
         else {
           throw new RuntimeException("Unrecognized contextual provider type " + providerType.getFullyQualifiedName());

@@ -19,6 +19,7 @@ package org.jboss.errai.ioc.rebind.ioc.graph.api;
 import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 import javax.enterprise.context.Dependent;
 import javax.inject.Named;
@@ -29,6 +30,7 @@ import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
 import org.jboss.errai.ioc.client.api.LoadAsync;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
+import org.jboss.errai.ioc.rebind.ioc.graph.impl.InjectableHandle;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 /**
@@ -80,6 +82,8 @@ public interface Injectable extends HasInjectableHandle {
    */
   Collection<WiringElementType> getWiringElementTypes();
 
+  Predicate<InjectableHandle> getMatchPredicate();
+
   /**
    * @return True iff this injectable should be loaded asynchronously (via code splitting).
    * @see LoadAsync
@@ -118,6 +122,6 @@ public interface Injectable extends HasInjectableHandle {
    *      <il>The hashContent of the MetaClasses of all dependencies.
    *    </ul>
    */
-  int hashContent();
+  int hashContent(DependencyGraph graph);
 
 }

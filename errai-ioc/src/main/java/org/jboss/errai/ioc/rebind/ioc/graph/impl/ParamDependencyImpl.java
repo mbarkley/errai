@@ -30,8 +30,8 @@ class ParamDependencyImpl extends BaseDependency implements ParamDependency {
   final int paramIndex;
   final MetaParameter parameter;
 
-  ParamDependencyImpl(final InjectableReference abstractInjectable, final DependencyType dependencyType, final int paramIndex, final MetaParameter parameter) {
-    super(abstractInjectable, dependencyType);
+  ParamDependencyImpl(final InjectableHandle injectable, final DependencyType dependencyType, final int paramIndex, final MetaParameter parameter) {
+    super(injectable, dependencyType);
     this.paramIndex = paramIndex;
     this.parameter = parameter;
   }
@@ -49,6 +49,35 @@ class ParamDependencyImpl extends BaseDependency implements ParamDependency {
   @Override
   protected HasAnnotations getAnnotated() {
     return parameter;
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + paramIndex;
+    result = prime * result + ((parameter == null) ? 0 : parameter.hashCode());
+    return result;
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    final ParamDependencyImpl other = (ParamDependencyImpl) obj;
+    if (paramIndex != other.paramIndex)
+      return false;
+    if (parameter == null) {
+      if (other.parameter != null)
+        return false;
+    }
+    else if (!parameter.equals(other.parameter))
+      return false;
+    return true;
   }
 
 }

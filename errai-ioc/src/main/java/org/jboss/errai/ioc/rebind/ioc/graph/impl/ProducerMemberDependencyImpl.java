@@ -19,18 +19,18 @@ package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
-import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ProducerInstanceDependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ProducerMemberDependency;
 
 /**
- * @see ProducerInstanceDependency
+ * @see ProducerMemberDependency
  * @author Max Barkley <mbarkley@redhat.com>
  */
-class ProducerInstanceDependencyImpl extends BaseDependency implements ProducerInstanceDependency {
+class ProducerMemberDependencyImpl extends BaseDependency implements ProducerMemberDependency {
 
   MetaClassMember producingMember;
 
-  ProducerInstanceDependencyImpl(final InjectableReference abstractInjectable, final DependencyType dependencyType, final MetaClassMember producingMember) {
-    super(abstractInjectable, dependencyType);
+  ProducerMemberDependencyImpl(final InjectableHandle injectable, final DependencyType dependencyType, final MetaClassMember producingMember) {
+    super(injectable, dependencyType);
     this.producingMember = producingMember;
   }
 
@@ -42,6 +42,32 @@ class ProducerInstanceDependencyImpl extends BaseDependency implements ProducerI
   @Override
   protected HasAnnotations getAnnotated() {
     return producingMember;
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((producingMember == null) ? 0 : producingMember.hashCode());
+    return result;
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    final ProducerMemberDependencyImpl other = (ProducerMemberDependencyImpl) obj;
+    if (producingMember == null) {
+      if (other.producingMember != null)
+        return false;
+    }
+    else if (!producingMember.equals(other.producingMember))
+      return false;
+    return true;
   }
 
 }

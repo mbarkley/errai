@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
@@ -28,21 +29,22 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
 final class CycleValidator implements Validator {
-  private final Set<Injectable> visited = new HashSet<Injectable>();
-  private final Set<Injectable> visiting = new LinkedHashSet<Injectable>();
+  private final Set<Injectable> visited = new HashSet<>();
+  private final Set<Injectable> visiting = new LinkedHashSet<>();
 
   @Override
-  public boolean canValidate(final Injectable injectable) {
+  public boolean canValidate(final DependencyGraph graph, final Injectable injectable) {
     return injectable.getWiringElementTypes().contains(WiringElementType.PseudoScopedBean) && !visited.contains(injectable);
   }
 
   @Override
-  public void validate(final Injectable injectable, final Collection<String> problems) {
-    validateDependentScopedInjectable(injectable, visiting, visited, problems, false);
+  public void validate(final DependencyGraph graph, final Injectable injectable, final Collection<String> problems) {
+    validateDependentScopedInjectable(injectable, visiting, visited, problems, false, graph);
   }
 
   private static void validateDependentScopedInjectable(final Injectable injectable, final Set<Injectable> visiting,
-          final Set<Injectable> visited, final Collection<String> problems, final boolean onlyConstuctorDeps) {
+          final Set<Injectable> visited, final Collection<String> problems, final boolean onlyConstuctorDeps,
+          final DependencyGraph graph) {
     if (InjectableType.Disabled.equals(injectable.getInjectableType())) {
       visited.add(injectable);
       return;
@@ -58,12 +60,12 @@ final class CycleValidator implements Validator {
         continue;
       }
 
-      final Injectable resolved = GraphUtil.getResolvedDependency(dep, injectable);
-      if (!visited.contains(resolved)) {
+      final Injectable resolved = graph.getResolved(dep);
+      if (resolved != null && !visited.contains(resolved)) {
         if (dep.getDependencyType().equals(DependencyType.ProducerMember)) {
-          validateDependentScopedInjectable(resolved, visiting, visited, problems, true);
+          validateDependentScopedInjectable(resolved, visiting, visited, problems, true, graph);
         } else if (resolved.getWiringElementTypes().contains(WiringElementType.PseudoScopedBean)) {
-          validateDependentScopedInjectable(resolved, visiting, visited, problems, false);
+          validateDependentScopedInjectable(resolved, visiting, visited, problems, false, graph);
         }
       }
     }

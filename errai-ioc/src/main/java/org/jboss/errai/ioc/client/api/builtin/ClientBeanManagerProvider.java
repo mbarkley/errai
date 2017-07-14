@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Red Hat, Inc. and/or its affiliates.
+ * Copyright (C) 2017 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,18 +20,28 @@ import javax.inject.Provider;
 import javax.inject.Singleton;
 
 import org.jboss.errai.ioc.client.api.IOCProvider;
+import org.jboss.errai.ioc.client.container.ClientBeanManager;
 import org.jboss.errai.ioc.client.container.IOC;
-import org.jboss.errai.ioc.client.container.async.AsyncBeanManager;
+import org.jboss.errai.ioc.client.container.IOCEnvironment;
+
+import com.google.gwt.core.shared.GWT;
 
 /**
- * @author Mike Brock
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
  */
 @Singleton
 @IOCProvider
-public class AsyncBeanManagerProvider implements Provider<AsyncBeanManager> {
+public class ClientBeanManagerProvider implements Provider<ClientBeanManager> {
 
   @Override
-  public AsyncBeanManager get() {
-    return IOC.getAsyncBeanManager();
+  public ClientBeanManager get() {
+    if (GWT.<IOCEnvironment>create(IOCEnvironment.class).isAsync()) {
+      return IOC.getAsyncBeanManager();
+    }
+    else {
+      return IOC.getBeanManager();
+    }
   }
+
 }

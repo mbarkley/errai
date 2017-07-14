@@ -22,13 +22,13 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
-import org.apache.commons.lang3.Validate;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameterizedType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ProducerMemberDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.HasInjectableHandle;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 
@@ -49,10 +49,10 @@ final class GraphUtil {
     throw new RuntimeException(message);
   }
 
-  static ProducerInstanceDependencyImpl findProducerInstanceDep(final InjectableImpl injectable) {
-    for (final BaseDependency dep : injectable.dependencies) {
-      if (dep.dependencyType.equals(DependencyType.ProducerMember)) {
-        return (ProducerInstanceDependencyImpl) dep;
+  static ProducerMemberDependency findProducerInstanceDep(final Injectable injectable) {
+    for (final Dependency dep : injectable.getDependencies()) {
+      if (dep.getDependencyType().equals(DependencyType.ProducerMember)) {
+        return (ProducerMemberDependency) dep;
       }
     }
     throw new RuntimeException("Could not find producer member.");
@@ -92,7 +92,7 @@ final class GraphUtil {
 
       private int getScore(final InjectableImpl c) {
         if (c.injectableType.equals(InjectableType.Producer)) {
-          return getDistanceFromObject(findProducerInstanceDep(c).producingMember.getDeclaringClass());
+          return getDistanceFromObject(findProducerInstanceDep(c).getProducingMember().getDeclaringClass());
         } else {
           return getDistanceFromObject(c.type);
         }
@@ -119,10 +119,6 @@ final class GraphUtil {
     return builder.toString();
   }
 
-  static Injectable getResolvedDependency(final Dependency dep, final Injectable depOwner) {
-    return Validate.notNull(dep.getInjectable(), "The dependency %s in %s should have already been resolved.", dep, depOwner);
-  }
-
   static String buildMessageFromProblems(final List<String> dependencyProblems) {
     final StringBuilder builder = new StringBuilder();
     builder.append("The following dependency problems were found:\n");
@@ -135,20 +131,13 @@ final class GraphUtil {
     return builder.toString();
   }
 
-  static InjectableReference copyInjectableReference(final InjectableReference injectable) {
-    final InjectableReference copy = new InjectableReference(injectable.type, injectable.qualifier);
-    copy.linked.addAll(injectable.linked);
-
-    return copy;
-  }
-
-  static String unsatisfiedDependencyMessage(final BaseDependency dep, final Injectable concrete,
+  static String unsatisfiedDependencyMessage(final Dependency dep, final Injectable concrete,
           final Collection<Injectable> resolvedDisabledBeans) {
     final StringBuilder message = new StringBuilder()
             .append("Unsatisfied ")
-            .append(dep.dependencyType.toString().toLowerCase())
+            .append(dep.getDependencyType().toString().toLowerCase())
             .append(" dependency ")
-            .append(dep.injectable)
+            .append(dep.getHandle())
             .append(" for ")
             .append(concrete)
             .append('.');
@@ -162,12 +151,12 @@ final class GraphUtil {
     return message.toString();
   }
 
-  static String ambiguousDependencyMessage(final BaseDependency dep, final Injectable concrete, final List<InjectableImpl> resolved) {
+  static String ambiguousDependencyMessage(final Dependency dep, final Injectable concrete, final List<Injectable> resolved) {
     final StringBuilder messageBuilder = new StringBuilder();
     messageBuilder.append("Ambiguous resolution for ")
-                  .append(dep.dependencyType.toString().toLowerCase())
+                  .append(dep.getDependencyType().toString().toLowerCase())
                   .append(" ")
-                  .append(dep.injectable)
+                  .append(dep.getHandle())
                   .append(" in ")
                   .append(concrete)
                   .append(".\n")
@@ -181,28 +170,28 @@ final class GraphUtil {
     return messageBuilder.toString();
   }
 
-  static boolean candidateSatisfiesInjectable(final InjectableReference injectableReference,
+  static boolean candidateSatisfiesInjectable(final InjectableHandle injectableHandle,
           final HasInjectableHandle candidate, final boolean considerTypeParameters) {
-    return qualifiersMatch(injectableReference, candidate)
-            && (!considerTypeParameters || typeParametersMatch(injectableReference, candidate))
-            && notSameReference(injectableReference, candidate);
+    return qualifiersMatch(injectableHandle, candidate)
+            && (!considerTypeParameters || typeParametersMatch(injectableHandle, candidate))
+            && notSameReference(injectableHandle, candidate);
   }
 
-  static boolean candidateSatisfiesInjectable(final InjectableReference injectableReference,
+  static boolean candidateSatisfiesInjectable(final InjectableHandle injectableHandle,
           final HasInjectableHandle candidate) {
-    return candidateSatisfiesInjectable(injectableReference, candidate, true);
+    return candidateSatisfiesInjectable(injectableHandle, candidate, true);
   }
 
-  private static boolean notSameReference(final InjectableReference injectableReference, final HasInjectableHandle candidate) {
+  private static boolean notSameReference(final HasInjectableHandle injectableReference, final HasInjectableHandle candidate) {
     return !candidate.equals(injectableReference);
   }
 
-  private static boolean typeParametersMatch(final InjectableReference injectableReference, final HasInjectableHandle candidate) {
-    return GraphUtil.hasAssignableTypeParameters(candidate.getInjectedType(), injectableReference.type);
+  private static boolean typeParametersMatch(final HasInjectableHandle injectableReference, final HasInjectableHandle candidate) {
+    return GraphUtil.hasAssignableTypeParameters(candidate.getInjectedType(), injectableReference.getInjectedType());
   }
 
-  private static boolean qualifiersMatch(final InjectableReference injectableReference, final HasInjectableHandle candidate) {
-    return injectableReference.qualifier.isSatisfiedBy(candidate.getQualifier());
+  private static boolean qualifiersMatch(final HasInjectableHandle reference, final HasInjectableHandle candidate) {
+    return reference.getQualifier().isSatisfiedBy(candidate.getQualifier());
   }
 
   static boolean hasAssignableTypeParameters(final MetaClass fromType, final MetaClass toType) {

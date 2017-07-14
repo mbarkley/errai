@@ -17,6 +17,7 @@
 package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.HasInjectableHandle;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 
@@ -26,7 +27,7 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
  * @see Injectable
  * @author Max Barkley <mbarkley@redhat.com>
  */
-public class InjectableHandle {
+public class InjectableHandle implements HasInjectableHandle {
   final MetaClass type;
 
   final Qualifier qualifier;
@@ -34,6 +35,11 @@ public class InjectableHandle {
   public InjectableHandle(final MetaClass type, final Qualifier qualifier) {
     this.type = type;
     this.qualifier = qualifier;
+  }
+
+  @Override
+  public InjectableHandle getHandle() {
+    return this;
   }
 
   /**
@@ -46,6 +52,7 @@ public class InjectableHandle {
   /**
    * @return The qualifier of the injectable represented by this handle.
    */
+  @Override
   public Qualifier getQualifier() {
     return qualifier;
   }

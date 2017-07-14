@@ -94,6 +94,8 @@ public abstract class MetaClass extends AbstractHasAnnotations implements MetaTy
    */
   public abstract List<MetaField> getFieldsAnnotatedWith(Class<? extends Annotation> annotation);
 
+  public abstract List<MetaField> getDeclaredFieldsAnnotatedWith(Class<? extends Annotation> annotation);
+
   public abstract List<MetaField> getFieldsWithMetaAnnotations(Class<? extends Annotation> annotations);
 
   public abstract List<MetaParameter> getParametersAnnotatedWith(Class<? extends Annotation> annotation);

@@ -18,9 +18,7 @@ package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 
 import java.lang.annotation.Annotation;
 
-import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.codegen.meta.HasAnnotations;
-import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 
@@ -30,22 +28,22 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependenc
  * @author Max Barkley <mbarkley@redhat.com>
  */
 abstract class BaseDependency implements Dependency {
-  InjectableReference injectable;
-  final DependencyType dependencyType;
+  private final InjectableHandle injectable;
+  private final DependencyType dependencyType;
 
-  BaseDependency(final InjectableReference abstractInjectable, final DependencyType dependencyType) {
-    this.injectable = abstractInjectable;
+  BaseDependency(final InjectableHandle injectable, final DependencyType dependencyType) {
+    this.injectable = injectable;
     this.dependencyType = dependencyType;
+  }
+
+  @Override
+  public InjectableHandle getHandle() {
+    return injectable;
   }
 
   @Override
   public String toString() {
     return "[dependencyType=" + dependencyType.toString() + ", reference=" + injectable.toString() + "]";
-  }
-
-  @Override
-  public Injectable getInjectable() {
-    return injectable.resolution;
   }
 
   @Override
@@ -63,15 +61,11 @@ abstract class BaseDependency implements Dependency {
     return getAnnotated().isAnnotationPresent(annotation);
   }
 
-  protected abstract HasAnnotations getAnnotated();
+  @Override
+  public abstract boolean equals(Object obj);
 
-  static BaseDependency as(final Dependency dep) {
-    if (dep instanceof BaseDependency) {
-      return (BaseDependency) dep;
-    } else {
-      throw new RuntimeException("Dependency was not an instance of " + BaseDependency.class.getSimpleName()
-              + ". Make sure you only create dependencies using methods using the "
-              + DependencyGraphBuilder.class.getSimpleName() + ".");
-    }
-  }
+  @Override
+  public abstract int hashCode();
+
+  protected abstract HasAnnotations getAnnotated();
 }

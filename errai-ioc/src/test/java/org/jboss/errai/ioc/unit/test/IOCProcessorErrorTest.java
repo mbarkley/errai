@@ -7,7 +7,11 @@ import static org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType.Norm
 import static org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType.ProducerElement;
 import static org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType.Provider;
 import static org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType.PseudoScopedBean;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
 
@@ -35,7 +39,11 @@ import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.impl.java.JavaReflectionClass;
 import org.jboss.errai.common.client.api.annotations.IOCProducer;
 import org.jboss.errai.ioc.client.Bootstrapper;
+import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
+import org.jboss.errai.ioc.client.api.Disposer;
 import org.jboss.errai.ioc.client.api.IOCProvider;
+import org.jboss.errai.ioc.client.api.ManagedInstance;
+import org.jboss.errai.ioc.client.api.builtin.ManagedInstanceProvider;
 import org.jboss.errai.ioc.client.container.ContextManager;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.FactoryGenerator;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
@@ -50,6 +58,7 @@ import org.jboss.errai.ioc.tests.wiring.client.res.TypedProducer;
 import org.jboss.errai.ioc.tests.wiring.client.res.TypedSuperInterface;
 import org.jboss.errai.ioc.tests.wiring.client.res.TypedTargetInterface;
 import org.jboss.errai.ioc.tests.wiring.client.res.TypedType;
+import org.jboss.errai.ioc.unit.res.AsyncImpl;
 import org.jboss.errai.ioc.unit.res.BeanWithAlternativeDependency;
 import org.jboss.errai.ioc.unit.res.ClassWithBadTypedAnnotation;
 import org.jboss.errai.ioc.unit.res.DepCycleA;
@@ -60,6 +69,8 @@ import org.jboss.errai.ioc.unit.res.DisabledAlternativeContextualProvider;
 import org.jboss.errai.ioc.unit.res.DisabledAlternativeProducerField;
 import org.jboss.errai.ioc.unit.res.DisabledAlternativeProducerMethod;
 import org.jboss.errai.ioc.unit.res.DisabledAlternativeProvider;
+import org.jboss.errai.ioc.unit.res.DynamicallyLoadsAsync;
+import org.jboss.errai.ioc.unit.res.IfaceWithAsyncImpl;
 import org.jboss.errai.ioc.unit.res.InjectsBeanByWrongTypes;
 import org.jboss.errai.ioc.unit.res.InjectsInstanceFieldProducedBeanByWrongTypes;
 import org.jboss.errai.ioc.unit.res.InjectsInstanceMethodProducedBeanByWrongTypes;
@@ -73,6 +84,7 @@ import org.jboss.errai.ioc.unit.res.TypeParameterControlModule;
 import org.jboss.errai.ioc.unit.res.TypeParameterTestModule;
 import org.jboss.errai.ioc.unit.res.UsesJSTypeWithPrivateConstructor;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -392,14 +404,19 @@ public class IOCProcessorErrorTest {
       throw ae;
     } catch (final Throwable t) {
       final String message = t.getMessage();
-      assertTrue("Message did not reference unsatisfied dependency for " + TypedSuperInterface.class.getName()
-              + ".\n\tMessage: " + message, message.contains(TypedSuperInterface.class.getName()));
-      assertTrue("Message did not reference unsatisfied dependency for " + TypedBaseType.class.getName()
-              + ".\n\tMessage: " + message, message.contains(TypedBaseType.class.getName()));
-      assertFalse("Message should not reference satisfied dependency " + TypedType.class.getName() + "\n\tMessage: "
-              + message, message.contains(TypedType.class.getName()));
-      assertFalse("Message should not reference satisfied dependency " + TypedTargetInterface.class.getName() + "\n\tMessage: "
-              + message, message.contains(TypedTargetInterface.class.getName()));
+      try {
+        assertTrue("Message did not reference unsatisfied dependency for " + TypedSuperInterface.class.getName()
+                + ".\n\tMessage: " + message, message.contains(TypedSuperInterface.class.getName()));
+        assertTrue("Message did not reference unsatisfied dependency for " + TypedBaseType.class.getName()
+                + ".\n\tMessage: " + message, message.contains(TypedBaseType.class.getName()));
+        assertFalse("Message should not reference satisfied dependency " + TypedType.class.getName() + "\n\tMessage: "
+                + message, message.contains(TypedType.class.getName()));
+        assertFalse("Message should not reference satisfied dependency " + TypedTargetInterface.class.getName() + "\n\tMessage: "
+                + message, message.contains(TypedTargetInterface.class.getName()));
+      } catch (final AssertionError ae) {
+        ae.initCause(t);
+        throw ae;
+      }
     }
   }
 
@@ -497,6 +514,53 @@ public class IOCProcessorErrorTest {
     } catch (final Throwable t) {
       assertTrue("Error message did not mention unsatisfied dependency.",
               t.getMessage().contains(JSTypeWithPrivateConstructor.class.getSimpleName()));
+    }
+  }
+
+  @Test
+  @Ignore
+  public void asyncBeanViaManagedInstanceInNonAsyncBeanCausesException() throws Exception {
+    addToMetaClassCache(
+            Object.class,
+            IfaceWithAsyncImpl.class,
+            AsyncImpl.class,
+            DynamicallyLoadsAsync.class,
+            ContextualTypeProvider.class,
+            Disposer.class,
+            ManagedInstance.class,
+            ManagedInstanceProvider.class
+            );
+    when(injContext.isAsync()).thenReturn(true);
+    try {
+      processor.process(procContext);
+      fail("No error was produced from implicit async dependency in " + DynamicallyLoadsAsync.class);
+    } catch (final AssertionError ae) {
+      throw ae;
+    } catch (final Throwable t) {
+      if (t.getMessage() == null
+              || !t.getMessage().contains(DynamicallyLoadsAsync.class.getSimpleName())
+              || !t.getMessage().contains(AsyncImpl.class.getSimpleName())) {
+        throw new AssertionError("Wrong error thrown.", t);
+      }
+    }
+  }
+
+  @Test
+  public void noImplicitAsyncErrorWhenAsyncIsNotEnabled() throws Exception {
+    addToMetaClassCache(
+            Object.class,
+            IfaceWithAsyncImpl.class,
+            AsyncImpl.class,
+            DynamicallyLoadsAsync.class,
+            ContextualTypeProvider.class,
+            Disposer.class,
+            ManagedInstance.class,
+            ManagedInstanceProvider.class
+            );
+    try {
+      processor.process(procContext);
+    } catch (final Throwable t) {
+      throw new AssertionError("There should be no aync errors when async disabled.", t);
     }
   }
 

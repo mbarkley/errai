@@ -26,10 +26,11 @@ import java.util.function.Predicate;
 
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
-import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ProducerInstanceDependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ProducerMemberDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
@@ -50,27 +51,32 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 class InjectableImpl extends InjectableBase implements Injectable {
   final InjectableType injectableType;
   final Collection<WiringElementType> wiringTypes;
-  final List<BaseDependency> dependencies = new ArrayList<>();
+  final List<Dependency> dependencies = new ArrayList<>();
   final Class<? extends Annotation> literalScope;
   Boolean proxiable = null;
   boolean requiresProxy = false;
   Integer hashContent = null;
   final String factoryName;
-  final Predicate<List<InjectableHandle>> pathPredicate;
+  final Predicate<InjectableHandle> matchPredicate;
 
   InjectableImpl(final MetaClass type,
                      final Qualifier qualifier,
-                     final Predicate<List<InjectableHandle>> pathPredicate,
+                     final Predicate<InjectableHandle> matchPredicate,
                      final String factoryName,
                      final Class<? extends Annotation> literalScope,
                      final InjectableType injectorType,
                      final Collection<WiringElementType> wiringTypes) {
     super(type, qualifier);
-    this.pathPredicate = pathPredicate;
+    this.matchPredicate = matchPredicate;
     this.factoryName = factoryName;
     this.literalScope = literalScope;
     this.wiringTypes = wiringTypes;
     this.injectableType = injectorType;
+  }
+
+  @Override
+  public Predicate<InjectableHandle> getMatchPredicate() {
+    return matchPredicate;
   }
 
   @Override
@@ -121,13 +127,12 @@ class InjectableImpl extends InjectableBase implements Injectable {
     case Type:
       return Optional.of(type);
     case Producer:
-    case Static:
     case Provider:
     case ContextualProvider:
       return dependencies
               .stream()
-              .filter(dep -> DependencyType.ProducerMember.equals(dep.dependencyType))
-              .map(dep -> (HasAnnotations) ((ProducerInstanceDependency) dep).getProducingMember())
+              .filter(dep -> DependencyType.ProducerMember.equals(dep.getDependencyType()))
+              .map(dep -> (HasAnnotations) ((ProducerMemberDependency) dep).getProducingMember())
               .findFirst();
     case ExtensionProvided:
     case Extension:
@@ -159,18 +164,21 @@ class InjectableImpl extends InjectableBase implements Injectable {
   }
 
   @Override
-  public int hashContent() {
+  public int hashContent(final DependencyGraph graph) {
     if (hashContent == null) {
-      hashContent = computeHashContent();
+      hashContent = computeHashContent(graph);
     }
 
     return hashContent;
   }
 
-  private int computeHashContent() {
+  private int computeHashContent(final DependencyGraph graph) {
     int hashContent = type.hashContent();
-    for (final BaseDependency dep: dependencies) {
-      hashContent ^= dep.injectable.resolution.getInjectedType().hashContent();
+    for (final Dependency dep: dependencies) {
+      final Injectable resolved = graph.getResolved(dep);
+      if (resolved != null) {
+        hashContent ^= resolved.getInjectedType().hashContent();
+      }
     }
 
     return hashContent;
@@ -200,9 +208,6 @@ class InjectableImpl extends InjectableBase implements Injectable {
       break;
     case Provider:
       injectableDescriptor = "Provider";
-      break;
-    case Static:
-      injectableDescriptor = "@Produces";
       break;
     case Type:
       injectableDescriptor = "Class";

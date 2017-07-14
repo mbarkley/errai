@@ -33,11 +33,15 @@ public interface HasInjectableHandle {
   /**
    * @return The class of the injectable.
    */
-  MetaClass getInjectedType();
+  default MetaClass getInjectedType() {
+    return getHandle().getType();
+  }
 
   /**
    * @return The qualifier of this injectable.
    */
-  Qualifier getQualifier();
+  default Qualifier getQualifier() {
+    return getHandle().getQualifier();
+  }
 
 }

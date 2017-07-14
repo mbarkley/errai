@@ -29,8 +29,8 @@ class DisposerMethodDependencyImpl extends BaseDependency implements DisposerMet
 
   final MetaMethod disposer;
 
-  DisposerMethodDependencyImpl(final InjectableReference abstractInjectable, final MetaMethod disposer) {
-    super(abstractInjectable, DependencyType.DisposerMethod);
+  DisposerMethodDependencyImpl(final InjectableHandle injectable, final MetaMethod disposer) {
+    super(injectable, DependencyType.DisposerMethod);
     this.disposer = disposer;
   }
 
@@ -42,6 +42,32 @@ class DisposerMethodDependencyImpl extends BaseDependency implements DisposerMet
   @Override
   protected HasAnnotations getAnnotated() {
     return disposer;
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((disposer == null) ? 0 : disposer.hashCode());
+    return result;
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    final DisposerMethodDependencyImpl other = (DisposerMethodDependencyImpl) obj;
+    if (disposer == null) {
+      if (other.disposer != null)
+        return false;
+    }
+    else if (!disposer.equals(other.disposer))
+      return false;
+    return true;
   }
 
 }

@@ -17,7 +17,6 @@
 package org.jboss.errai.ioc.rebind.ioc.graph.api;
 
 import java.lang.annotation.Annotation;
-import java.util.List;
 import java.util.function.Predicate;
 
 import javax.enterprise.inject.Produces;
@@ -67,7 +66,7 @@ public interface DependencyGraphBuilder {
    *          The class of the injectable.
    * @param qualifier
    *          The {@link Qualifier} of the injectable.
-   * @param pathPredicate
+   * @param matchPredicate
    *          Used to add restrictions on what dependencies are satisfied by the added injectable. This predicate is
    *          called anytime the created injectable is a candidate for a dependency. The predicate argument is the
    *          {@link InjectableHandle InjectableHandles} traversed in order to arrive at this injectable. If the
@@ -81,8 +80,8 @@ public interface DependencyGraphBuilder {
    *
    * @return The newly added {@link Injectable}.
    */
-  Injectable addInjectable(MetaClass injectedType, Qualifier qualifier, Predicate<List<InjectableHandle>> pathPredicate, Class<? extends Annotation> literalScope,
-          InjectableType injectableType, WiringElementType... wiringTypes);
+  Injectable addInjectable(MetaClass injectedType, Qualifier qualifier, Predicate<InjectableHandle> matchPredicate,
+          Class<? extends Annotation> literalScope, InjectableType injectableType, WiringElementType... wiringTypes);
 
   /**
    * Some {@link IOCExtensionConfigurator IOC extensions} need to generate
@@ -97,7 +96,7 @@ public interface DependencyGraphBuilder {
    *          The class of the injectable.
    * @param qualifier
    *          The {@link Qualifier} of the injectable.
-   * @param pathPredicate
+   * @param matchPredicate
    *          Used to add restrictions on what dependencies are satisfied by the added injectable. This predicate is
    *          called anytime the created injectable is a candidate for a dependency. The predicate argument is the
    *          {@link InjectableHandle InjectableHandles} traversed in order to arrive at this injectable. If the
@@ -113,7 +112,7 @@ public interface DependencyGraphBuilder {
    * @return The newly added extension {@link Injectable}.
    */
   Injectable addExtensionInjectable(MetaClass injectedType, Qualifier qualifier,
-          Predicate<List<InjectableHandle>> pathPredicate, InjectableProvider provider,
+          Predicate<InjectableHandle> matchPredicate, InjectableProvider provider,
           WiringElementType... wiringTypes);
 
   /**
@@ -154,16 +153,17 @@ public interface DependencyGraphBuilder {
    * @param qualifier The qualifier of the dependency.
    * @param dependentField The producer member (field or method) that must be invoked to satisfy the dependency.
    */
-  void addProducerMemberDependency(Injectable injectable, MetaClass type, Qualifier qualifier, MetaClassMember producingMember);
+  void addStaticProducerMemberDependency(Injectable injectable, MetaClassMember producingMember);
 
   /**
-   * Create a dependency for a static producer member (field or method) injection point in a bean class.
+   * Create a dependency for a producer member (field or method) injection point in a bean class.
    *
    * @param injectable The {@link Injectable} that has the dependency.
    * @param type The class of the dependency.
+   * @param qualifier The qualifier of the dependency.
    * @param dependentField The producer member (field or method) that must be invoked to satisfy the dependency.
    */
-  void addProducerMemberDependency(Injectable producedInjectable, MetaClass producerType, MetaClassMember method);
+  void addProducerMemberDependency(Injectable injectable, MetaClassMember producingMember, Injectable producer);
 
   /**
    * Create a dependency for a setter method injection point in a bean class.
@@ -245,7 +245,7 @@ public interface DependencyGraphBuilder {
    * @author Max Barkley <mbarkley@redhat.com>
    */
   public static enum InjectableType {
-    Type, JsType, Producer, Provider, ContextualProvider, Extension, ExtensionProvided, Static, Disabled
+    Type, JsType, Producer, Provider, ContextualProvider, Extension, ExtensionProvided, Disabled
   }
 
   /**
@@ -254,7 +254,7 @@ public interface DependencyGraphBuilder {
    * @author Max Barkley <mbarkley@redhat.com>
    */
   public static enum DependencyType {
-    Constructor, Field, ProducerMember, ProducerParameter, SetterParameter, DisposerMethod, DisposerParameter
+    Constructor, Field, ProducerMember, ProducerParameter, SetterParameter, DisposerMethod, DisposerParameter, Implicit
   }
 
   /**
@@ -267,14 +267,7 @@ public interface DependencyGraphBuilder {
    *
    * @author Max Barkley <mbarkley@redhat.com>
    */
-  public static interface Dependency extends HasAnnotations {
-
-    /**
-     * This will only return a meaningful value after {@link DependencyGraphBuilder#createGraph()} is called.
-     *
-     * @return The injectable that satisfied this dependency.
-     */
-    Injectable getInjectable();
+  public static interface Dependency extends HasAnnotations, HasInjectableHandle {
 
     /**
      * @return The kind of this dependency.
@@ -339,12 +332,12 @@ public interface DependencyGraphBuilder {
    * (since it is itself type injectable) and one of the produced type.
    *
    * The injectable for the produced type will then depend on the producer type
-   * via a {@link ProducerInstanceDependency}.
+   * via a {@link ProducerMemberDependency}.
    *
    * @see Dependency
    * @author Max Barkley <mbarkley@redhat.com>
    */
-  public static interface ProducerInstanceDependency extends Dependency {
+  public static interface ProducerMemberDependency extends Dependency {
 
     /**
      * @return The producer member of this dependency.
@@ -357,7 +350,7 @@ public interface DependencyGraphBuilder {
    * A dependency on a dispoer method. If a producer has a disposer method
    * satisfying the qualifiers of one of its producer, then the injectable for
    * the produced type should depend on the producer member (via a
-   * {@link ProducerInstanceDependency}) and the disposer method via this
+   * {@link ProducerMemberDependency}) and the disposer method via this
    * dependency.
    *
    * @see Dependency

@@ -29,8 +29,8 @@ class SetterParameterDependencyImpl extends BaseDependency implements SetterPara
 
   final MetaMethod method;
 
-  SetterParameterDependencyImpl(final InjectableReference abstractInjectable, final MetaMethod method) {
-    super(abstractInjectable, DependencyType.SetterParameter);
+  SetterParameterDependencyImpl(final InjectableHandle injectable, final MetaMethod method) {
+    super(injectable, DependencyType.SetterParameter);
     this.method = method;
   }
 
@@ -42,6 +42,32 @@ class SetterParameterDependencyImpl extends BaseDependency implements SetterPara
   @Override
   protected HasAnnotations getAnnotated() {
     return method;
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((method == null) ? 0 : method.hashCode());
+    return result;
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    final SetterParameterDependencyImpl other = (SetterParameterDependencyImpl) obj;
+    if (method == null) {
+      if (other.method != null)
+        return false;
+    }
+    else if (!method.equals(other.method))
+      return false;
+    return true;
   }
 
 }

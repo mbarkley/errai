@@ -19,19 +19,22 @@ package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 import java.util.Collection;
 
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 
 final class AsyncValidator implements Validator {
   @Override
-  public boolean canValidate(final Injectable injectable) {
+  public boolean canValidate(final DependencyGraph graph, final Injectable injectable) {
     return !injectable.loadAsync();
   }
 
   @Override
-  public void validate(final Injectable injectable, final Collection<String> problems) {
+  public void validate(final DependencyGraph graph, final Injectable injectable, final Collection<String> problems) {
     for (final Dependency dep : injectable.getDependencies()) {
-      if (dep.getInjectable().loadAsync()) {
-        problems.add("The bean " + injectable + " is not @LoadAsync but depends on the @LoadAsync bean " + dep.getInjectable());
+      final Injectable resolved = graph.getResolved(dep);
+      if (resolved != null && resolved.loadAsync()) {
+        problems.add("The bean " + injectable + " is not @LoadAsync but depends on the @LoadAsync bean "
+                + graph.getResolved(dep).loadAsync());
       }
     }
   }

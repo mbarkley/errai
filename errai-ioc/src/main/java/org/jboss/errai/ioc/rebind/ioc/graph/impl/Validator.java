@@ -18,9 +18,10 @@ package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 
 import java.util.Collection;
 
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 
 interface Validator {
-  boolean canValidate(Injectable injectable);
-  void validate(Injectable injectable, Collection<String> problems);
+  boolean canValidate(DependencyGraph graph, Injectable injectable);
+  void validate(DependencyGraph graph, Injectable injectable, Collection<String> problems);
 }

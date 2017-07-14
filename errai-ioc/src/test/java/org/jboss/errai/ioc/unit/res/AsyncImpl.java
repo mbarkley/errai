@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Red Hat, Inc. and/or its affiliates.
+ * Copyright (C) 2017 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,18 @@
  * limitations under the License.
  */
 
-package org.jboss.errai.ioc.client.api.builtin;
+package org.jboss.errai.ioc.unit.res;
 
-import javax.inject.Provider;
-import javax.inject.Singleton;
+import javax.enterprise.context.Dependent;
 
-import org.jboss.errai.ioc.client.api.IOCProvider;
-import org.jboss.errai.ioc.client.container.IOC;
-import org.jboss.errai.ioc.client.container.async.AsyncBeanManager;
+import org.jboss.errai.ioc.client.api.LoadAsync;
 
 /**
- * @author Mike Brock
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
  */
-@Singleton
-@IOCProvider
-public class AsyncBeanManagerProvider implements Provider<AsyncBeanManager> {
+@Dependent
+@LoadAsync
+public class AsyncImpl implements IfaceWithAsyncImpl {
 
-  @Override
-  public AsyncBeanManager get() {
-    return IOC.getAsyncBeanManager();
-  }
 }

@@ -36,8 +36,8 @@ import org.jboss.errai.cdi.specialization.client.Sparkly;
 import org.jboss.errai.cdi.specialization.client.Waste;
 import org.jboss.errai.enterprise.client.cdi.AbstractErraiCDITest;
 import org.jboss.errai.ioc.client.container.IOC;
-import org.jboss.errai.ioc.client.container.SyncBeanDef;
 import org.jboss.errai.ioc.client.container.IOCResolutionException;
+import org.jboss.errai.ioc.client.container.SyncBeanDef;
 
 /**
  * Tests for {@link javax.enterprise.inject.Specializes}
@@ -116,7 +116,7 @@ public class SpecializationIntegrationTest extends AbstractErraiCDITest {
     try {
       IOC.getBeanManager().lookupBean(Waste.class);
     }
-    catch (IOCResolutionException e) {
+    catch (final IOCResolutionException e) {
       return;
     }
 

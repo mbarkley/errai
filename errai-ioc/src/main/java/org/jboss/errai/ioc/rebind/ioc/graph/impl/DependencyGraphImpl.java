@@ -22,7 +22,6 @@ import static java.util.Spliterator.ORDERED;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
-import static org.jboss.errai.ioc.rebind.ioc.graph.impl.GraphUtil.getResolvedDependency;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -44,6 +43,7 @@ import java.util.stream.StreamSupport;
 
 import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Fragment;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.impl.DependencyGraphImpl.Graph.Component;
@@ -60,9 +60,11 @@ import com.google.gwt.thirdparty.guava.common.base.Objects;
 class DependencyGraphImpl implements DependencyGraph {
 
   private final Map<String, Injectable> injectablesByName;
+  private final Map<Dependency, Injectable> resolved;
 
-  DependencyGraphImpl(final Map<String, Injectable> injectablesByName) {
+  DependencyGraphImpl(final Map<String, Injectable> injectablesByName, final Map<Dependency, Injectable> resolved) {
     this.injectablesByName = injectablesByName;
+    this.resolved = resolved;
   }
 
   @Override
@@ -78,6 +80,11 @@ class DependencyGraphImpl implements DependencyGraph {
   @Override
   public int getNumberOfInjectables() {
     return injectablesByName.size();
+  }
+
+  @Override
+  public Injectable getResolved(final Dependency dependency) {
+    return resolved.get(dependency);
   }
 
   @Override
@@ -161,7 +168,10 @@ class DependencyGraphImpl implements DependencyGraph {
         inj
           .getDependencies()
           .stream()
-          .map(dep -> getResolvedDependency(dep, inj))
+          .flatMap(dep -> {
+            final Injectable r = getResolved(dep);
+            return (r == null) ? Stream.empty() : Stream.of(r);
+          })
           .filter(dep -> nodesByInjectable.containsKey(dep))
           .map(dep -> nodesByInjectable.get(dep))
           .forEach(dep -> rawGraph.createEdge(node, dep));

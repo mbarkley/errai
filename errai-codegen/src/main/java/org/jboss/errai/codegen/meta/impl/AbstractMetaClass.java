@@ -430,6 +430,13 @@ public abstract class AbstractMetaClass<T> extends MetaClass {
   }
 
   @Override
+  public List<MetaField> getDeclaredFieldsAnnotatedWith(final Class<? extends Annotation> annotation) {
+    return Arrays.stream(getDeclaredFields())
+            .filter(field -> field.isAnnotationPresent(annotation))
+            .collect(collectingAndThen(Collectors.toList(), l -> Collections.unmodifiableList(l)));
+  }
+
+  @Override
   public List<MetaField> getFieldsWithMetaAnnotations(final Class<? extends Annotation> annotation) {
     final List<MetaField> methods = new ArrayList<>();
     MetaClass scanTarget = this;

@@ -20,7 +20,6 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.function.Predicate;
 
 import org.jboss.errai.codegen.meta.MetaClass;
@@ -40,10 +39,10 @@ class ExtensionInjectable extends InjectableImpl {
   final Collection<InjectionSite> injectionSites = new ArrayList<>();
   final InjectableProvider provider;
 
-  ExtensionInjectable(final MetaClass type, final Qualifier qualifier, final Predicate<List<InjectableHandle>> pathPredicate,
+  ExtensionInjectable(final MetaClass type, final Qualifier qualifier, final Predicate<InjectableHandle> matchPredicate,
           final String factoryName, final Class<? extends Annotation> literalScope, final InjectableType injectorType,
           final Collection<WiringElementType> wiringTypes, final InjectableProvider provider) {
-    super(type, qualifier, pathPredicate, factoryName, literalScope, injectorType, wiringTypes);
+    super(type, qualifier, matchPredicate, factoryName, literalScope, injectorType, wiringTypes);
     this.provider = provider;
   }
 

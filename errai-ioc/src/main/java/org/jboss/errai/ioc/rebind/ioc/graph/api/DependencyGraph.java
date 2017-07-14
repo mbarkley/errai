@@ -36,6 +36,8 @@ public interface DependencyGraph extends Iterable<Injectable> {
    */
   Injectable getConcreteInjectable(String factoryName);
 
+  Injectable getResolved(Dependency dependency);
+
   /**
    * @return The number of {@link Injectable injectables} in the graph.
    */

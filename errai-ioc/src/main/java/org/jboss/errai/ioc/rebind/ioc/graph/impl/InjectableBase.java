@@ -20,9 +20,6 @@ import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 
 /**
- * Common base class for {@link InjectableImpl} and
- * {@link InjectableReference} so that they can both be stored as links in
- * abstract injectables.
  *
  * @author Max Barkley <mbarkley@redhat.com>
  */

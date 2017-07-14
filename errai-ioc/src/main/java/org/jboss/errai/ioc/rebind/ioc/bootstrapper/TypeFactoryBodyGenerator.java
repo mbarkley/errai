@@ -99,9 +99,9 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
 
     final List<Statement> createInstanceStatements = new ArrayList<>();
 
-    constructInstance(injectable, constructorDependencies, createInstanceStatements);
-    injectFieldDependencies(injectable, fieldDependencies, createInstanceStatements, bodyBlockBuilder);
-    injectSetterMethodDependencies(injectable, setterDependencies, createInstanceStatements, bodyBlockBuilder);
+    constructInstance(injectable, constructorDependencies, createInstanceStatements, graph);
+    injectFieldDependencies(graph, injectable, fieldDependencies, createInstanceStatements, bodyBlockBuilder);
+    injectSetterMethodDependencies(graph, injectable, setterDependencies, createInstanceStatements, bodyBlockBuilder);
     addInitializationStatements(createInstanceStatements);
     addReturnStatement(createInstanceStatements);
 
@@ -314,12 +314,13 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
     return postConstructs;
   }
 
-  private void injectFieldDependencies(final Injectable injectable, final Collection<Dependency> fieldDependencies,
-          final List<Statement> createInstanceStatements, final ClassStructureBuilder<?> bodyBlockBuilder) {
+  private void injectFieldDependencies(final DependencyGraph graph, final Injectable injectable,
+          final Collection<Dependency> fieldDependencies, final List<Statement> createInstanceStatements,
+          final ClassStructureBuilder<?> bodyBlockBuilder) {
     for (final Dependency dep : fieldDependencies) {
       final FieldDependency fieldDep = FieldDependency.class.cast(dep);
       final MetaField field = fieldDep.getField();
-      final Injectable depInjectable = fieldDep.getInjectable();
+      final Injectable depInjectable = graph.getResolved(fieldDep);
 
       final ContextualStatementBuilder injectedValue;
       if (depInjectable.isContextual()) {
@@ -350,12 +351,13 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
     }
   }
 
-  private void injectSetterMethodDependencies(final Injectable injectable, final Collection<Dependency> setterDependencies,
-          final List<Statement> createInstanceStatements, final ClassStructureBuilder<?> bodyBlockBuilder) {
+  private void injectSetterMethodDependencies(final DependencyGraph graph, final Injectable injectable,
+          final Collection<Dependency> setterDependencies, final List<Statement> createInstanceStatements,
+          final ClassStructureBuilder<?> bodyBlockBuilder) {
     for (final Dependency dep : setterDependencies) {
       final SetterParameterDependency setterDep = SetterParameterDependency.class.cast(dep);
       final MetaMethod setter = setterDep.getMethod();
-      final Injectable depInjectable = setterDep.getInjectable();
+      final Injectable depInjectable = graph.getResolved(setterDep);
 
       final ContextualStatementBuilder injectedValue;
       if (depInjectable.isContextual()) {
@@ -386,9 +388,9 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
   }
 
   private void constructInstance(final Injectable injectable, final Collection<Dependency> constructorDependencies,
-          final List<Statement> createInstanceStatements) {
+          final List<Statement> createInstanceStatements, final DependencyGraph graph) {
     if (constructorDependencies.size() > 0) {
-      addConstructorInjectionStatements(injectable, constructorDependencies, createInstanceStatements);
+      addConstructorInjectionStatements(injectable, constructorDependencies, createInstanceStatements, graph);
     } else {
       assignNewObjectWithZeroArgConstructor(injectable, createInstanceStatements);
     }
@@ -410,11 +412,12 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
   }
 
   private void addConstructorInjectionStatements(final Injectable injectable, final Collection<Dependency> constructorDependencies,
-          final List<Statement> createInstanceStatements) {
+          final List<Statement> createInstanceStatements, final DependencyGraph graph) {
     final Object[] constructorParameterStatements = new Object[constructorDependencies.size()];
     final List<Statement> dependentScopedRegistrationStatements = new ArrayList<>(constructorDependencies.size());
     for (final Dependency dep : constructorDependencies) {
-      processConstructorDependencyStatement(createInstanceStatements, constructorParameterStatements, dependentScopedRegistrationStatements, dep);
+      processConstructorDependencyStatement(createInstanceStatements, constructorParameterStatements,
+              dependentScopedRegistrationStatements, dep, graph);
     }
 
     createInstanceStatements.add(declareFinalVariable("instance", injectable.getInjectedType(),
@@ -423,15 +426,15 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
   }
 
   private void processConstructorDependencyStatement(final List<Statement> createInstanceStatements, final Object[] constructorParameterStatements,
-          final List<Statement> dependentScopedRegistrationStatements, final Dependency dep) {
-    final Injectable depInjectable = dep.getInjectable();
+          final List<Statement> dependentScopedRegistrationStatements, final Dependency dep, final DependencyGraph graph) {
+    final Injectable depInjectable = graph.getResolved(dep);
     final ParamDependency paramDep = ParamDependency.class.cast(dep);
 
     final ContextualStatementBuilder injectedValue = getInjectedValue(depInjectable, paramDep);
     final String paramLocalVarName = getLocalVariableName(paramDep.getParameter());
 
     createInstanceStatements.add(declareFinalVariable(paramLocalVarName, paramDep.getParameter().getType(), injectedValue));
-    if (dep.getInjectable().getWiringElementTypes().contains(WiringElementType.DependentBean)) {
+    if (graph.getResolved(dep).getWiringElementTypes().contains(WiringElementType.DependentBean)) {
       dependentScopedRegistrationStatements.add(loadVariable("this").invoke("registerDependentScopedReference",
               loadVariable("instance"), loadVariable(paramLocalVarName)));
     }

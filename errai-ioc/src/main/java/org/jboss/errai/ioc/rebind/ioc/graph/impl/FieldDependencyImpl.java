@@ -29,8 +29,8 @@ class FieldDependencyImpl extends BaseDependency implements FieldDependency {
 
   final MetaField field;
 
-  FieldDependencyImpl(final InjectableReference abstractInjectable, final MetaField field) {
-    super(abstractInjectable, DependencyType.Field);
+  FieldDependencyImpl(final InjectableHandle injectable, final MetaField field) {
+    super(injectable, DependencyType.Field);
     this.field = field;
   }
 
@@ -42,6 +42,32 @@ class FieldDependencyImpl extends BaseDependency implements FieldDependency {
   @Override
   protected HasAnnotations getAnnotated() {
     return field;
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((field == null) ? 0 : field.hashCode());
+    return result;
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    final FieldDependencyImpl other = (FieldDependencyImpl) obj;
+    if (field == null) {
+      if (other.field != null)
+        return false;
+    }
+    else if (!field.equals(other.field))
+      return false;
+    return true;
   }
 
 }

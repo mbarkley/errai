@@ -58,8 +58,8 @@ public class FactoryGenerator extends IncrementalGenerator {
   private static final String GENERATED_PACKAGE = "org.jboss.errai.ioc.client";
   private static DependencyGraph graph;
   private static InjectionContext injectionContext;
-  private static Map<String, String> generatedSourceByFactoryTypeName = new HashMap<String, String>();
-  private static Map<String, Injectable> injectablesByFactoryTypeName = new HashMap<String, Injectable>();
+  private static Map<String, String> generatedSourceByFactoryTypeName = new HashMap<>();
+  private static Map<String, Injectable> injectablesByFactoryTypeName = new HashMap<>();
 
   private static long totalTime;
 
@@ -121,7 +121,7 @@ public class FactoryGenerator extends IncrementalGenerator {
     final RebindResult retVal;
     if (pw != null) {
       final String factorySource;
-      if (isCacheUsable(typeName, injectable)) {
+      if (isCacheUsable(typeName, injectable, graph)) {
         log.debug("Reusing cached factory for " + typeName);
         factorySource = generatedSourceByFactoryTypeName.get(typeName);
       } else {
@@ -154,7 +154,7 @@ public class FactoryGenerator extends IncrementalGenerator {
     RebindUtils.writeStringToJavaSourceFileInErraiCacheDir(GENERATED_PACKAGE, factorySimpleClassName, factorySource);
   }
 
-  private boolean isCacheUsable(final String typeName, final Injectable givenInjectable) {
+  private boolean isCacheUsable(final String typeName, final Injectable givenInjectable, final DependencyGraph graph) {
     if (RebindUtils.NO_CACHE) {
       return false;
     }
@@ -162,11 +162,11 @@ public class FactoryGenerator extends IncrementalGenerator {
     final Injectable cachedInjectable = injectablesByFactoryTypeName.get(typeName);
 
     if (cachedInjectable != null) {
-      final boolean sameContent = cachedInjectable.hashContent() == givenInjectable.hashContent();
+      final boolean sameContent = cachedInjectable.hashContent(graph) == givenInjectable.hashContent(graph);
       if (log.isTraceEnabled() && !sameContent) {
         log.trace("Different hashContent for cached " + typeName);
-        traceConstituentHashContents(cachedInjectable, "cached " + typeName);
-        traceConstituentHashContents(givenInjectable, "new " + typeName);
+        traceConstituentHashContents(graph, cachedInjectable, "cached " + typeName);
+        traceConstituentHashContents(graph, givenInjectable, "new " + typeName);
       }
 
       return sameContent;
@@ -176,13 +176,13 @@ public class FactoryGenerator extends IncrementalGenerator {
     }
   }
 
-  private static void traceConstituentHashContents(final Injectable injectable, final String name) {
+  private static void traceConstituentHashContents(final DependencyGraph graph, final Injectable injectable, final String name) {
     log.trace("Begin trace of hashContent for {}", name);
-    log.trace("Combined content: {}", injectable.hashContent());
+    log.trace("Combined content: {}", injectable.hashContent(graph));
     log.trace("HashContent for injectable type: {}", injectable.getInjectedType().hashContent());
     for (final Dependency dep : injectable.getDependencies()) {
       log.trace("HashContent for {} dep of type {}: {}", dep.getDependencyType().toString(),
-              dep.getInjectable().getInjectedType(), dep.getInjectable().getInjectedType().hashContent());
+              graph.getResolved(dep).getInjectedType(), graph.getResolved(dep).getInjectedType().hashContent());
     }
     log.trace("End trace of hashContent for {}", name);
   }
