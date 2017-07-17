@@ -70,7 +70,7 @@ public abstract class AbstractErraiServlet extends HttpServlet {
     longPollingEnabled = !hostedModeTesting && ErraiConfigAttribs.DO_LONG_POLL.getBoolean(config);
     longPollTimeout = ErraiConfigAttribs.LONG_POLL_TIMEOUT.getInt(config);
     sseTimeout = ErraiConfigAttribs.SSE_TIMEOUT.getInt(config);
-    csrfSecurityCheck = (ErraiConfigAttribs.ENABLE_CSRF_BUS_TOKEN.getBoolean(config) ? CSRFTokenCheck.INSTANCE : RequestSecurityCheck.noCheck());
+    csrfSecurityCheck = (ErraiConfigAttribs.ENABLE_CSRF_BUS_TOKEN.getBoolean(config) ? CSRFTokenCheck.INSTANCE : NoSecurityCheck.get());
 
   }
 

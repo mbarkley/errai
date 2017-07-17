@@ -33,6 +33,7 @@ import org.jboss.errai.bus.server.service.ErraiConfigAttribs;
 import org.jboss.errai.bus.server.service.ErraiServiceConfigurator;
 import org.jboss.errai.bus.server.servlet.CSRFTokenCheck;
 import org.jboss.errai.bus.server.servlet.RequestSecurityCheck;
+import org.jboss.errai.bus.server.servlet.NoSecurityCheck;
 import org.jboss.errai.bus.server.util.SecureHashUtil;
 import org.jboss.errai.bus.server.util.ServerLaundryList;
 import org.jboss.errai.common.client.api.Assert;
@@ -48,13 +49,13 @@ public class HttpSessionProvider implements SessionProvider<HttpSession> {
 
   static final Map<String, SessionsContainer> containersByHttpSessionId = new HashMap<String, SessionsContainer>();
 
-  private RequestSecurityCheck csrfCheck = RequestSecurityCheck.noCheck();
+  private RequestSecurityCheck csrfCheck = NoSecurityCheck.get();
 
   @Override
   public void init(final ErraiServiceConfigurator config) {
     csrfCheck = (ErraiConfigAttribs.ENABLE_CSRF_BUS_TOKEN.getBoolean(config)
             ? CSRFTokenCheck.INSTANCE
-                    : RequestSecurityCheck.noCheck());
+                    : NoSecurityCheck.get());
   }
 
   @Override

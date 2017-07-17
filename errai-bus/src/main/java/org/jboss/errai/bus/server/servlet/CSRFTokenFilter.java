@@ -21,6 +21,9 @@ import static org.jboss.errai.common.server.FilterCacheUtil.getCharResponseWrapp
 import static org.jboss.errai.common.server.FilterCacheUtil.noCache;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -44,6 +47,7 @@ import org.slf4j.LoggerFactory;
 public class CSRFTokenFilter implements Filter {
 
   private static Logger log = LoggerFactory.getLogger(CSRFTokenFilter.class);
+  private Set<String> mutatingMethods = new HashSet<String>(Arrays.asList("POST", "PUT", "DELETE"));
 
   @Override
   public void init(final FilterConfig filterConfig) throws ServletException {
@@ -58,17 +62,14 @@ public class CSRFTokenFilter implements Filter {
           throws IOException, ServletException {
     final HttpServletRequest httpRequest = (HttpServletRequest) request;
     ensureSessionHasToken(httpRequest.getSession(false));
-
-    switch (httpRequest.getMethod().toUpperCase()) {
-    case "POST":
-    case "PUT":
-    case "DELETE": {
+    final String httpMethod = httpRequest.getMethod().toUpperCase();
+    if (mutatingMethods.contains(httpMethod)) {
       if (CSRFTokenCheck.INSTANCE.isInsecure(httpRequest, log)) {
         CSRFTokenCheck.INSTANCE.prepareResponse(httpRequest, (HttpServletResponse) response, log);
         return;
       }
     }
-    case "GET": {
+    else if ("GET".equals(httpMethod)) {
       final HttpServletResponse responseWrapper = noCache(getCharResponseWrapper((HttpServletResponse) response));
       chain.doFilter(httpRequest, responseWrapper);
       final HttpSession session = httpRequest.getSession(false);
@@ -89,7 +90,6 @@ public class CSRFTokenFilter implements Filter {
       response.getOutputStream().write(bytes);
 
       return;
-    }
     }
 
     chain.doFilter(request, response);

@@ -26,9 +26,24 @@ import org.slf4j.Logger;
  *
  * @author Max Barkley <mbarkley@redhat.com>
  */
-public interface RequestSecurityCheck {
+public class NoSecurityCheck implements RequestSecurityCheck {
 
-  boolean isInsecure(HttpServletRequest request, Logger log);
-  void prepareResponse(HttpServletRequest request, HttpServletResponse response, Logger log);
-  void prepareSession(HttpSession session, Logger log);
+  private static final RequestSecurityCheck INSTANCE = new NoSecurityCheck();
+
+  public static RequestSecurityCheck get() {
+    return INSTANCE;
+  }
+
+  private NoSecurityCheck() {}
+
+  @Override
+  public void prepareResponse(final HttpServletRequest request, final HttpServletResponse response, final Logger log) {}
+
+  @Override
+  public boolean isInsecure(final HttpServletRequest request, final Logger log) {
+    return false;
+  }
+
+  @Override
+  public void prepareSession(final HttpSession session, final Logger log) {}
 }
