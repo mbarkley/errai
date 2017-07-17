@@ -23,6 +23,8 @@ import java.util.stream.StreamSupport;
 
 import javax.inject.Named;
 
+import org.jboss.errai.codegen.meta.HasAnnotations;
+
 /**
  * A single object for holding all the qualifier annotations of an injectable or
  * an injection point.
@@ -30,7 +32,7 @@ import javax.inject.Named;
  * @see QualifierFactory
  * @author Max Barkley <mbarkley@redhat.com>
  */
-public interface Qualifier extends Iterable<Annotation> {
+public interface Qualifier extends Iterable<Annotation>, HasAnnotations {
 
   /**
    * @param other Another qualifier to compare this to.

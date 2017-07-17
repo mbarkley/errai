@@ -21,6 +21,7 @@ import java.lang.annotation.Annotation;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ResolutionCardinality;
 
 /**
  * Base implementation for all {@link Dependency dependencies}.
@@ -39,6 +40,11 @@ abstract class BaseDependency implements Dependency {
   @Override
   public InjectableHandle getHandle() {
     return injectable;
+  }
+
+  @Override
+  public ResolutionCardinality getCardinality() {
+    return ResolutionCardinality.SINGLE;
   }
 
   @Override

@@ -22,9 +22,6 @@ import java.util.Collections;
 
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
-import org.jboss.errai.codegen.meta.MetaClassMember;
-import org.jboss.errai.codegen.meta.MetaField;
-import org.jboss.errai.codegen.meta.MetaParameter;
 
 /**
  * Contains metadata for a single injection point.
@@ -36,29 +33,13 @@ public class InjectionSite implements HasAnnotations {
   private final MetaClass enclosingType;
   private final HasAnnotations annotated;
   private final Collection<Injectable> otherResolvedInjectables;
+  private final MetaClass siteType;
 
-  public InjectionSite(final MetaClass enclosingType, final HasAnnotations annotated, final Collection<Injectable> otherResolvedInjectables) {
+  public InjectionSite(final MetaClass enclosingType, final HasAnnotations annotated, final MetaClass siteType, final Collection<Injectable> otherResolvedInjectables) {
     this.enclosingType = enclosingType;
     this.annotated = annotated;
+    this.siteType = siteType;
     this.otherResolvedInjectables = Collections.unmodifiableCollection(otherResolvedInjectables);
-  }
-
-  private String annotatedName() {
-    if (annotated instanceof MetaClassMember) {
-      return ((MetaClassMember) annotated).getDeclaringClassName() + "_" + ((MetaClassMember) annotated).getName();
-    } else if (annotated instanceof MetaParameter) {
-      final MetaClassMember declaringMember = ((MetaParameter) annotated).getDeclaringMember();
-      return declaringMember.getDeclaringClassName() + "_" + declaringMember.getName() + "_" + ((MetaParameter) annotated).getName();
-    } else {
-      throw new RuntimeException("Not yet implemented!");
-    }
-  }
-
-  /**
-   * @return A unique name for this injection site.
-   */
-  public String getUniqueName() {
-    return enclosingType.getName() + "_" + annotatedName();
   }
 
   /**
@@ -87,13 +68,7 @@ public class InjectionSite implements HasAnnotations {
    * @return The exact type of this injection site.
    */
   public MetaClass getExactType() {
-    if (annotated instanceof MetaField) {
-      return ((MetaField) annotated).getType();
-    } else if (annotated instanceof MetaParameter) {
-      return ((MetaParameter) annotated).getType();
-    } else {
-      throw new RuntimeException("Not yet implemented for annotated of type " + annotated.getClass().getName());
-    }
+    return siteType;
   }
 
   /**
@@ -104,6 +79,12 @@ public class InjectionSite implements HasAnnotations {
    */
   public Collection<Injectable> getOtherResolvedInjectables() {
     return otherResolvedInjectables;
+  }
+
+  @Override
+  public String toString() {
+    return "InjectionSite [enclosingType=" + enclosingType + ", annotated=" + annotated + ", otherResolvedInjectables="
+            + otherResolvedInjectables + ", siteType=" + siteType + "]";
   }
 
 }

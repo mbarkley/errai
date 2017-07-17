@@ -20,6 +20,7 @@ import java.util.Collection;
 
 import org.jboss.errai.ioc.client.container.FactoryHandle;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Resolution;
 
 /**
  * A collection of {@link Injectable} whose {@link Dependency dependencies} have
@@ -36,7 +37,7 @@ public interface DependencyGraph extends Iterable<Injectable> {
    */
   Injectable getConcreteInjectable(String factoryName);
 
-  Injectable getResolved(Dependency dependency);
+  Resolution getResolved(Dependency dependency);
 
   /**
    * @return The number of {@link Injectable injectables} in the graph.

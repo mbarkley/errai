@@ -17,7 +17,11 @@
 package org.jboss.errai.ioc.rebind.ioc.graph.api;
 
 import java.lang.annotation.Annotation;
+import java.util.Collection;
+import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import javax.enterprise.inject.Produces;
 import javax.inject.Inject;
@@ -83,6 +87,11 @@ public interface DependencyGraphBuilder {
   Injectable addInjectable(MetaClass injectedType, Qualifier qualifier, Predicate<InjectableHandle> matchPredicate,
           Class<? extends Annotation> literalScope, InjectableType injectableType, WiringElementType... wiringTypes);
 
+  Injectable addContextualInjectable(MetaClass injectedType, Qualifier qualifier,
+          Predicate<InjectableHandle> matchPredicate, Class<? extends Annotation> literalScope,
+          InjectableType injectableType, Function<InjectionSite, Stream<InjectableHandle>> implicitDependencyProvider,
+          WiringElementType... wiringTypes);
+
   /**
    * Some {@link IOCExtensionConfigurator IOC extensions} need to generate
    * special code per injection point (such as the
@@ -123,7 +132,9 @@ public interface DependencyGraphBuilder {
    * @param qualifier The qualifier of the dependency.
    * @param dependentField The field that the dependency should be injected into.
    */
-  void addFieldDependency(Injectable injectable, MetaClass type, Qualifier qualifier, MetaField dependentField);
+  FieldDependency addFieldDependency(Injectable injectable, MetaClass type, Qualifier qualifier, MetaField dependentField);
+
+  ImplicitDependency addImplicitDependency(Injectable injectable, MetaClass type, Qualifier qualifier);
 
   /**
    * Create a dependency for a constructor injection point in a bean class.
@@ -133,7 +144,7 @@ public interface DependencyGraphBuilder {
    * @param qualifier The qualifier of the dependency.
    * @param dependentField The parameter of the constructor that the dependency should be injected into.
    */
-  void addConstructorDependency(Injectable injectable, MetaClass type, Qualifier qualifier, int paramIndex, MetaParameter param);
+  ParamDependency addConstructorDependency(Injectable injectable, MetaClass type, Qualifier qualifier, int paramIndex, MetaParameter param);
 
   /**
    * Create a dependency for a producer parameter injection point in a bean class.
@@ -143,7 +154,7 @@ public interface DependencyGraphBuilder {
    * @param qualifier The qualifier of the dependency.
    * @param dependentField The parameter of the producer method that the dependency should be injected into.
    */
-  void addProducerParamDependency(Injectable injectable, MetaClass type, Qualifier qualifier, int paramIndex, MetaParameter param);
+  ParamDependency addProducerParamDependency(Injectable injectable, MetaClass type, Qualifier qualifier, int paramIndex, MetaParameter param);
 
   /**
    * Create a dependency for a producer member (field or method) injection point in a bean class.
@@ -153,7 +164,7 @@ public interface DependencyGraphBuilder {
    * @param qualifier The qualifier of the dependency.
    * @param dependentField The producer member (field or method) that must be invoked to satisfy the dependency.
    */
-  void addStaticProducerMemberDependency(Injectable injectable, MetaClassMember producingMember);
+  ProducerMemberDependency addStaticProducerMemberDependency(Injectable injectable, MetaClassMember producingMember);
 
   /**
    * Create a dependency for a producer member (field or method) injection point in a bean class.
@@ -163,7 +174,7 @@ public interface DependencyGraphBuilder {
    * @param qualifier The qualifier of the dependency.
    * @param dependentField The producer member (field or method) that must be invoked to satisfy the dependency.
    */
-  void addProducerMemberDependency(Injectable injectable, MetaClassMember producingMember, Injectable producer);
+  ProducerMemberDependency addProducerMemberDependency(Injectable injectable, MetaClassMember producingMember, Injectable producer);
 
   /**
    * Create a dependency for a setter method injection point in a bean class.
@@ -173,7 +184,7 @@ public interface DependencyGraphBuilder {
    * @param qualifier The qualifier of the dependency.
    * @param dependentField The setter method that the dependency should be injected into.
    */
-  void addSetterMethodDependency(Injectable injectable, MetaClass type, Qualifier qualifier, MetaMethod setter);
+  SetterParameterDependency addSetterMethodDependency(Injectable injectable, MetaClass type, Qualifier qualifier, MetaMethod setter);
 
   /**
    * Create a dependency for a disposer method from a producer bean class. This
@@ -189,7 +200,7 @@ public interface DependencyGraphBuilder {
    * @param dependentField
    *          The disposer method that must be invoked.
    */
-  void addDisposesMethodDependency(Injectable injectable, MetaClass type, Qualifier qualifier, MetaMethod disposer);
+  DisposerMethodDependency addDisposesMethodDependency(Injectable injectable, MetaClass type, Qualifier qualifier, MetaMethod disposer);
 
   /**
    * Create a dependency for a disposer method parameter. This
@@ -205,7 +216,7 @@ public interface DependencyGraphBuilder {
    * @param dependentField
    *          The parameter that must have an injected value in the disposer method that must be invoked.
    */
-  void addDisposesParamDependency(Injectable injectable, MetaClass type, Qualifier qualifier, Integer index, MetaParameter param);
+  ParamDependency addDisposesParamDependency(Injectable injectable, MetaClass type, Qualifier qualifier, Integer index, MetaParameter param);
 
   /**
    * Resolve all dependencies of added injectables. This method throws exceptions if any dependencies are unsastisfied
@@ -257,6 +268,23 @@ public interface DependencyGraphBuilder {
     Constructor, Field, ProducerMember, ProducerParameter, SetterParameter, DisposerMethod, DisposerParameter, Implicit
   }
 
+  public static enum ResolutionCardinality {
+    EMPTY, SINGLE, ANY
+  }
+
+  public static interface Resolution {
+    ResolutionCardinality getCardinality();
+    Optional<Injectable> asSingle();
+    Optional<Collection<Injectable>> asAny();
+    default Stream<Injectable> stream() {
+      return asAny()
+              .map(l -> l.stream())
+              .orElseGet(() -> asSingle()
+                                .map(inj -> Stream.of(inj))
+                                .orElseGet(() -> Stream.empty()));
+    }
+  }
+
   /**
    * When a dependency is added via a graph builder method such as
    * {@link DependencyGraphBuilder#addFieldDependency(Injectable, MetaClass, Qualifier, MetaField)}
@@ -273,7 +301,10 @@ public interface DependencyGraphBuilder {
      * @return The kind of this dependency.
      */
     DependencyType getDependencyType();
+    ResolutionCardinality getCardinality();
+  }
 
+  public static interface ImplicitDependency extends Dependency {
   }
 
   /**
@@ -343,7 +374,6 @@ public interface DependencyGraphBuilder {
      * @return The producer member of this dependency.
      */
     MetaClassMember getProducingMember();
-
   }
 
   /**

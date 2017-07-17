@@ -31,6 +31,7 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependenc
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ProducerMemberDependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Resolution;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
@@ -175,9 +176,14 @@ class InjectableImpl extends InjectableBase implements Injectable {
   private int computeHashContent(final DependencyGraph graph) {
     int hashContent = type.hashContent();
     for (final Dependency dep: dependencies) {
-      final Injectable resolved = graph.getResolved(dep);
+      final Resolution resolved = graph.getResolved(dep);
       if (resolved != null) {
-        hashContent ^= resolved.getInjectedType().hashContent();
+        hashContent ^=
+          resolved
+            .stream()
+            .map(i -> i.getInjectedType().hashContent())
+            .reduce((h1, h2) -> h1 ^ h2)
+            .orElse(0);
       }
     }
 

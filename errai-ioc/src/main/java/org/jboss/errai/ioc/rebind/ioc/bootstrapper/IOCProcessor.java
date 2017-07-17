@@ -47,8 +47,10 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.Dependent;
@@ -104,6 +106,7 @@ import org.jboss.errai.ioc.client.api.EnabledByProperty;
 import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.client.api.IOCProvider;
 import org.jboss.errai.ioc.client.api.LoadAsync;
+import org.jboss.errai.ioc.client.api.ManagedInstance;
 import org.jboss.errai.ioc.client.api.ScopeContext;
 import org.jboss.errai.ioc.client.api.SharedSingleton;
 import org.jboss.errai.ioc.client.container.Context;
@@ -123,11 +126,14 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ReachabilityStrategy;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Resolution;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Fragment;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.InjectionSite;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Qualifier;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.QualifierFactory;
 import org.jboss.errai.ioc.rebind.ioc.graph.impl.DependencyGraphBuilderImpl;
+import org.jboss.errai.ioc.rebind.ioc.graph.impl.GraphUtil;
 import org.jboss.errai.ioc.rebind.ioc.graph.impl.InjectableHandle;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.ExtensionTypeCallback;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableProvider;
@@ -412,9 +418,11 @@ public class IOCProcessor {
     final Statement loader = generateFactoryLoader(injectable, factoryClass);
     curMethod.append(loadVariable("asyncBeanManagerSetup").invoke("registerAsyncBean", handle, loader));
     for (final Dependency dep : injectable.getDependencies()) {
-      if (graph.getResolved(dep).loadAsync()) {
+      final Resolution resolved = graph.getResolved(dep);
+      final Injectable resolvedInjectable = resolved.asSingle().orElseThrow(() -> GraphUtil.singleResolutionException(dep, resolved));
+      if (resolvedInjectable.loadAsync()) {
         curMethod.append(loadVariable("asyncBeanManagerSetup").invoke("registerAsyncDependency", injectable.getFactoryName(),
-                graph.getResolved(dep).getFactoryName()));
+                resolvedInjectable.getFactoryName()));
       }
     }
   }
@@ -572,7 +580,7 @@ public class IOCProcessor {
   private void registerFactoryWithContext(final Injectable injectable, final MetaClass factoryClass,
           final Map<Class<? extends Annotation>, MetaClass> scopeContexts,
           @SuppressWarnings("rawtypes") final BlockBuilder registerFactoriesBody) {
-    final Class<? extends Annotation> scope = injectable.getScope();
+    final Class<? extends Annotation> scope = Assert.notNull("Injectable has no scope: " + injectable, injectable.getScope());
     final MetaClass injectedType = injectable.getInjectedType();
     final MetaClass scopeContextImpl = Assert.notNull("No scope context for " + scope.getSimpleName(), scopeContexts.get(scope));
     final String contextVarName = getContextVarName(scopeContextImpl);
@@ -898,10 +906,29 @@ public class IOCProcessor {
     // Do not get generic return type for contextual providers
     final MetaClass providedType = providerMethod.getReturnType();
     final InjectableType injectableType = (enabled ? InjectableType.ContextualProvider : InjectableType.Disabled);
-    final Injectable providedInjectable = builder.addInjectable(providedType,
+    final Function<InjectionSite, Stream<InjectableHandle>> implicit = getImplicitDepsProvider(providerInjectable, providedType);
+    final Injectable providedInjectable = builder.addContextualInjectable(providedType,
             qualFactory.forUniversallyQualified(), exactTypePredicate(providedType), Dependent.class, injectableType,
-            WiringElementType.Provider, WiringElementType.DependentBean);
+            implicit, WiringElementType.Provider, WiringElementType.DependentBean);
     builder.addProducerMemberDependency(providedInjectable, providerMethod, providerInjectable);
+  }
+
+  private Function<InjectionSite, Stream<InjectableHandle>> getImplicitDepsProvider(final Injectable providerInjectable,
+          final MetaClass providedType) {
+    if (providedType.getFullyQualifiedName().equals(ManagedInstance.class.getName())) {
+      return site -> {
+        try {
+          final MetaClass type = (MetaClass) site.getExactType().getParameterizedType().getTypeParameters()[0];
+          final Qualifier qualifier = qualFactory.forSink(site);
+          return Stream.of(new InjectableHandle(type, qualifier));
+        } catch (final ClassCastException e) {
+          throw new RuntimeException("Type argument was not a class for " + site.toString());
+        }
+      };
+    }
+    else {
+      return null;
+    }
   }
 
   private void addProviderInjectable(final Injectable providerImplInjectable, final DependencyGraphBuilder builder,

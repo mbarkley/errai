@@ -47,7 +47,9 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependenc
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DisposerMethodDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ParamDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ProducerMemberDependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Resolution;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
+import org.jboss.errai.ioc.rebind.ioc.graph.impl.GraphUtil;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
@@ -73,7 +75,8 @@ public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
               + depsByType.get(DependencyType.ProducerMember).size() + " were found.");
     }
     final ProducerMemberDependency producerInstanceDep = (ProducerMemberDependency) depsByType.get(DependencyType.ProducerMember).iterator().next();
-    final Injectable producerInjectable = graph.getResolved(producerInstanceDep);
+    final Resolution producerResolution = graph.getResolved(producerInstanceDep);
+    final Injectable producerInjectable = producerResolution.asSingle().orElse(null);
     final MetaClassMember producingMember = producerInstanceDep.getProducingMember();
 
     if (producingMember instanceof MetaField) {
@@ -128,7 +131,10 @@ public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
       final ContextualStatementBuilder producerParamCreationStmt = generateProducerParamCreationStmt(paramDep, graph);
       final String paramVarName = getLocalVariableName(paramDep.getParameter());
       varDeclarationStmts.add(declareFinalVariable(paramVarName, paramDep.getParameter().getType(), producerParamCreationStmt));
-      if (graph.getResolved(paramDep).getWiringElementTypes().contains(WiringElementType.DependentBean)) {
+      final Resolution resolved = graph.getResolved(paramDep);
+      final Injectable resolvedInjectable = resolved.asSingle().orElseThrow(
+              () -> GraphUtil.singleResolutionException(paramDep, resolved));
+      if (resolvedInjectable.getWiringElementTypes().contains(WiringElementType.DependentBean)) {
         depScopeRegistrationStmts.add(loadVariable("this").invoke("registerDependentScopedReference",
               loadVariable("instance"), loadVariable(paramVarName)));
       }
@@ -140,17 +146,23 @@ public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
 
   private ContextualStatementBuilder generateProducerParamCreationStmt(final ParamDependency paramDep, final DependencyGraph graph) {
     ContextualStatementBuilder producerParamCreationStmt;
-    if (graph.getResolved(paramDep).isContextual()) {
+    final Resolution resolved = graph.getResolved(paramDep);
+    final Injectable resolvedInjectable = resolved
+            .asSingle()
+            .orElseThrow(() -> GraphUtil.singleResolutionException(paramDep, resolved));
+    if (resolvedInjectable.isContextual()) {
       final MetaParameter param = paramDep.getParameter();
       final MetaClass[] typeArgs = getTypeArguments(param.getType());
       final Annotation[] annotations = param.getAnnotations();
-      producerParamCreationStmt = castTo(graph.getResolved(paramDep).getInjectedType(),
+      producerParamCreationStmt = castTo(resolvedInjectable.getInjectedType(),
               loadVariable("contextManager").invoke("getContextualInstance",
-                      graph.getResolved(paramDep).getFactoryName(), typeArgs, annotations));
+                      resolvedInjectable.getFactoryName(), typeArgs, annotations));
     }
     else {
-      producerParamCreationStmt = castTo(graph.getResolved(paramDep).getInjectedType(),
-              loadVariable("contextManager").invoke("getInstance", graph.getResolved(paramDep).getFactoryName()));
+      final Resolution resolution = graph.getResolved(paramDep);
+      final Injectable resolutionInjectable = resolution.asSingle().orElseThrow(() -> GraphUtil.singleResolutionException(paramDep, resolved));
+      producerParamCreationStmt = castTo(resolutionInjectable.getInjectedType(),
+              loadVariable("contextManager").invoke("getInstance", resolutionInjectable.getFactoryName()));
     }
     return producerParamCreationStmt;
   }
@@ -224,10 +236,13 @@ public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
 
     for (final Dependency dep : disposerParams) {
       final ParamDependency paramDep = (ParamDependency) dep;
-      final ContextualStatementBuilder paramInstance = castTo(graph.getResolved(paramDep).getInjectedType(),
-              loadVariable("contextManager").invoke("getInstance", graph.getResolved(paramDep).getFactoryName()));
+      final Resolution resolved = graph.getResolved(paramDep);
+      final Injectable resolvedInjectable = resolved.asSingle()
+              .orElseThrow(() -> GraphUtil.singleResolutionException(paramDep, resolved));
+      final ContextualStatementBuilder paramInstance = castTo(resolvedInjectable.getInjectedType(),
+              loadVariable("contextManager").invoke("getInstance", resolvedInjectable.getFactoryName()));
       final ContextualStatementBuilder paramExpression;
-      if (graph.getResolved(paramDep).getWiringElementTypes().contains(WiringElementType.DependentBean)) {
+      if (resolvedInjectable.getWiringElementTypes().contains(WiringElementType.DependentBean)) {
         paramExpression = loadVariable("this").invoke("registerDependentScopedReference", loadVariable("instance"), paramInstance);
       } else {
         paramExpression = paramInstance;

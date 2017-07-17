@@ -25,6 +25,7 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Resolution;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 
@@ -60,14 +61,21 @@ final class CycleValidator implements Validator {
         continue;
       }
 
-      final Injectable resolved = graph.getResolved(dep);
-      if (resolved != null && !visited.contains(resolved)) {
-        if (dep.getDependencyType().equals(DependencyType.ProducerMember)) {
-          validateDependentScopedInjectable(resolved, visiting, visited, problems, true, graph);
-        } else if (resolved.getWiringElementTypes().contains(WiringElementType.PseudoScopedBean)) {
-          validateDependentScopedInjectable(resolved, visiting, visited, problems, false, graph);
-        }
+      if (dep.getDependencyType().equals(DependencyType.Implicit)) {
+        continue;
       }
+
+      final Resolution resolved = graph.getResolved(dep);
+      resolved
+        .stream()
+        .filter(r -> !visited.contains(r))
+        .forEach(r -> {
+          if (dep.getDependencyType().equals(DependencyType.ProducerMember)) {
+            validateDependentScopedInjectable(r, visiting, visited, problems, true, graph);
+          } else if (r.getWiringElementTypes().contains(WiringElementType.PseudoScopedBean)) {
+            validateDependentScopedInjectable(r, visiting, visited, problems, false, graph);
+          }
+        });
     }
     visiting.remove(injectable);
     visited.add(injectable);

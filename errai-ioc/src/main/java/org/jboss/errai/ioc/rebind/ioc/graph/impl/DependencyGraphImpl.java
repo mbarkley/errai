@@ -44,6 +44,7 @@ import java.util.stream.StreamSupport;
 import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Resolution;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Fragment;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.impl.DependencyGraphImpl.Graph.Component;
@@ -60,9 +61,9 @@ import com.google.gwt.thirdparty.guava.common.base.Objects;
 class DependencyGraphImpl implements DependencyGraph {
 
   private final Map<String, Injectable> injectablesByName;
-  private final Map<Dependency, Injectable> resolved;
+  private final Map<Dependency, Resolution> resolved;
 
-  DependencyGraphImpl(final Map<String, Injectable> injectablesByName, final Map<Dependency, Injectable> resolved) {
+  DependencyGraphImpl(final Map<String, Injectable> injectablesByName, final Map<Dependency, Resolution> resolved) {
     this.injectablesByName = injectablesByName;
     this.resolved = resolved;
   }
@@ -83,7 +84,7 @@ class DependencyGraphImpl implements DependencyGraph {
   }
 
   @Override
-  public Injectable getResolved(final Dependency dependency) {
+  public Resolution getResolved(final Dependency dependency) {
     return resolved.get(dependency);
   }
 
@@ -169,8 +170,13 @@ class DependencyGraphImpl implements DependencyGraph {
           .getDependencies()
           .stream()
           .flatMap(dep -> {
-            final Injectable r = getResolved(dep);
-            return (r == null) ? Stream.empty() : Stream.of(r);
+            final Resolution r = getResolved(dep);
+            if (r == null) {
+              return Stream.empty();
+            }
+            else {
+              return r.stream();
+            }
           })
           .filter(dep -> nodesByInjectable.containsKey(dep))
           .map(dep -> nodesByInjectable.get(dep))

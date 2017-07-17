@@ -32,9 +32,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.enterprise.inject.Produces;
 
@@ -44,6 +46,7 @@ import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.ioc.client.api.EntryPoint;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.CustomFactoryInjectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
@@ -73,6 +76,8 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
   private final Map<String, Injectable> injectablesByName = new HashMap<>();
   private final List<InjectableImpl> specializations = new ArrayList<>();
   private final FactoryNameGenerator nameGenerator = new FactoryNameGenerator();
+  private final Map<Injectable, Function<InjectionSite, Stream<InjectableHandle>>> contextualImplicitDepProviders = new HashMap<>();
+
   private final boolean async;
 
   public DependencyGraphBuilderImpl(final QualifierFactory qualFactory, final boolean async) {
@@ -84,11 +89,30 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
   public Injectable addInjectable(final MetaClass injectedType, final Qualifier qualifier,
           final Predicate<InjectableHandle> matchPredicate, final Class<? extends Annotation> literalScope,
           final InjectableType injectableType, final WiringElementType... wiringTypes) {
+    return doAddInjectable(injectedType, qualifier, matchPredicate, literalScope, injectableType, wiringTypes);
+  }
+
+  private Injectable doAddInjectable(final MetaClass injectedType, final Qualifier qualifier,
+          final Predicate<InjectableHandle> matchPredicate, final Class<? extends Annotation> literalScope,
+          final InjectableType injectableType, final WiringElementType... wiringTypes) {
     final InjectableImpl injectable = new InjectableImpl(injectedType, qualifier, matchPredicate,
             nameGenerator.generateFor(injectedType, qualifier, injectableType), literalScope, injectableType,
             Arrays.asList(wiringTypes));
 
     return registerNewInjectable(injectable);
+  }
+
+  @Override
+  public Injectable addContextualInjectable(final MetaClass injectedType, final Qualifier qualifier,
+          final Predicate<InjectableHandle> matchPredicate, final Class<? extends Annotation> literalScope,
+          final InjectableType injectableType,
+          final Function<InjectionSite, Stream<InjectableHandle>> implicitDependencyProvider,
+          final WiringElementType... wiringTypes) {
+    final Injectable injectable = doAddInjectable(injectedType, qualifier, matchPredicate, literalScope, injectableType,
+            wiringTypes);
+    contextualImplicitDepProviders.computeIfAbsent(injectable, i -> implicitDependencyProvider);
+
+    return injectable;
   }
 
   private Injectable registerNewInjectable(final InjectableImpl injectable) {
@@ -156,7 +180,7 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
   public DependencyGraph createGraph(final ReachabilityStrategy strategy) {
     logger.debug("Creating dependency graph...");
     resolveSpecializations();
-    final Map<Dependency, Injectable> resolved = resolveDependencies();
+    final Map<Dependency, Resolution> resolved = resolveDependencies();
     final DependencyGraphImpl graph = new DependencyGraphImpl(injectablesByName, resolved);
     validateInjectables(graph);
     removeUnreachableInjectables(graph, strategy);
@@ -287,9 +311,14 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
           reachableNames.add(processedInjectable.getFactoryName());
           logger.trace("Marked as reachable: {}", processedInjectable);
           for (final Dependency dep : processedInjectable.getDependencies()) {
-            final Injectable resolvedDep = graph.getResolved(dep);
-            if (resolvedDep != null && !reachableNames.contains(resolvedDep.getFactoryName())) {
-              processingQueue.add(resolvedDep);
+            if (!dep.getDependencyType().equals(DependencyType.Implicit)) {
+              final Resolution resolution = graph.getResolved(dep);
+              resolution
+                .stream()
+                .filter(resolvedDep -> !reachableNames.contains(resolvedDep.getFactoryName()))
+                .forEach(resolvedDep -> {
+                    processingQueue.add(resolvedDep);
+                });
             }
           }
         } while (processingQueue.size() > 0);
@@ -314,13 +343,14 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
     }
   }
 
-  private Map<Dependency, Injectable> resolveDependencies() {
+  private Map<Dependency, Resolution> resolveDependencies() {
     logger.debug("Resolving dependencies for {} injectables...", injectablesByName.size());
 
-    final Map<Dependency, Injectable> resolved = new HashMap<>();
+    final Map<Dependency, Resolution> resolved = new HashMap<>();
     final Set<String> transientInjectableNames = new HashSet<>();
     final List<String> dependencyProblems = new ArrayList<>();
     final Map<String, Injectable> customProvidedInjectables = new IdentityHashMap<>();
+    final Queue<Dependency> dependencyQueue = new LinkedList<>();
 
     resolveProducerDependencies(resolved);
     for (final Injectable injectable : injectablesByName.values()) {
@@ -328,8 +358,10 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
         transientInjectableNames.add(injectable.getFactoryName());
       }
       logger.debug("Resolving {} dependencies for: {}", injectable.getDependencies().size(), injectable);
-      for (final Dependency dep : injectable.getDependencies()) {
-        resolveDependency(dep, injectable, dependencyProblems, customProvidedInjectables, resolved);
+      dependencyQueue.addAll(injectable.getDependencies());
+      while (!dependencyQueue.isEmpty()) {
+        final Dependency dep = dependencyQueue.poll();
+        resolveDependency(dep, injectable, dependencyProblems, customProvidedInjectables, resolved, dependencyQueue::add);
       }
     }
 
@@ -343,27 +375,27 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
     return resolved;
   }
 
-  private void resolveProducerDependencies(final Map<Dependency, Injectable> resolved) {
+  private void resolveProducerDependencies(final Map<Dependency, Resolution> resolved) {
     producedByProducer
       .entries()
       .stream()
-      .forEach(e -> resolved.put(e.getValue().getDep(), e.getKey()));
+      .filter(e -> !e.getKey().getInjectableType().equals(InjectableType.Disabled))
+      .forEach(e -> resolved.put(e.getValue().getDep(), new SingleResolution(e.getKey())));
   }
 
-  private Injectable resolveDependency(final Dependency dependency, final Injectable depOwner,
+  private Resolution resolveDependency(final Dependency dependency, final Injectable depOwner,
           final Collection<String> problems, final Map<String, Injectable> customProvidedInjectables,
-          final Map<Dependency, Injectable> resolved) {
+          final Map<Dependency, Resolution> resolved, final Consumer<Dependency> newDepHandler) {
     return resolved.computeIfAbsent(dependency,
-            dep -> doResolveDependency(dep, depOwner, problems, customProvidedInjectables, resolved));
+            dep -> doResolveDependency(dep, depOwner, problems, customProvidedInjectables, resolved, newDepHandler));
   }
 
-  private Injectable doResolveDependency(final Dependency dep, final Injectable depOwner, final Collection<String> problems,
-          final Map<String, Injectable> customProvidedInjectables, final Map<Dependency, Injectable> allResolved) {
+  private Resolution doResolveDependency(final Dependency dep, final Injectable depOwner,
+          final Collection<String> problems, final Map<String, Injectable> customProvidedInjectables,
+          final Map<Dependency, Resolution> resolved2, final Consumer<Dependency> newDepHandler) {
     logger.trace("Resolving dependency: {}", dep);
-    if (InjectableType.Producer.equals(depOwner.getInjectableType())
-            && DependencyType.ProducerMember.equals(dep.getDependencyType())
-            && ((ProducerMemberDependency) dep).getProducingMember().isStatic()) {
-      return null;
+    if (dep.getCardinality().equals(ResolutionCardinality.EMPTY)) {
+      return EmptyResolution.INSTANCE;
     }
 
     final Multimap<ResolutionPriority, Injectable> resolvedByPriority = gatherMatches(dep.getHandle());
@@ -385,54 +417,92 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
       reportProblems = true;
     }
 
-    // Iterates through priorities from highest to lowest.
-    for (final ResolutionPriority priority : priorities) {
-      if (resolvedByPriority.containsKey(priority)) {
-        final Collection<Injectable> resolved = resolvedByPriority.get(priority);
-        if (resolved.size() > 1) {
-          if (reportProblems) {
-            problems.add(GraphUtil.ambiguousDependencyMessage(dep, depOwner, new ArrayList<>(resolved)));
+    if (dep.getCardinality().equals(ResolutionCardinality.SINGLE)) {
+      // Iterates through priorities from highest to lowest.
+      for (final ResolutionPriority priority : priorities) {
+        if (resolvedByPriority.containsKey(priority)) {
+          final Collection<Injectable> resolved = resolvedByPriority.get(priority);
+          if (resolved.size() > 1) {
+            if (reportProblems) {
+              problems.add(GraphUtil.ambiguousDependencyMessage(dep, depOwner, new ArrayList<>(resolved)));
+            }
+
+            return new AnyResolution(resolved);
+          } else if (resolved.size() == 1) {
+            final Injectable injectable = maybeProcessAsExtension(dep, depOwner, customProvidedInjectables,
+                    resolvedByPriority, resolved, newDepHandler);
+            logger.trace("Resolved dependency: {}", injectable);
+
+            return new SingleResolution(injectable);
           }
-
-          return null;
-        } else {
-          final Injectable injectable = maybeProcessAsExtension(dep, depOwner, customProvidedInjectables, resolvedByPriority, resolved);
-          logger.trace("Resolved dependency: {}", injectable);
-
-          return injectable;
         }
       }
-    }
 
-    if (reportProblems) {
-      final Collection<Injectable> resolvedDisabledInjectables =
-              resolvedByPriority
+      if (reportProblems) {
+        final Collection<Injectable> resolvedDisabledInjectables =
+                resolvedByPriority
                 .get(ResolutionPriority.Disabled)
                 .stream()
-                .map(inj -> getRootDisabledInjectable(inj, problems, customProvidedInjectables, allResolved))
+                .map(inj -> getRootDisabledInjectable(inj, problems, customProvidedInjectables, resolved2, newDepHandler))
                 .collect(Collectors.toList());
 
-      problems.add(GraphUtil.unsatisfiedDependencyMessage(dep, depOwner, resolvedDisabledInjectables));
+        problems.add(GraphUtil.unsatisfiedDependencyMessage(dep, depOwner, resolvedDisabledInjectables));
+      }
+      return null;
     }
+    else if (dep.getCardinality().equals(ResolutionCardinality.ANY)) {
+      final List<Injectable> allResolved = new ArrayList<>();
+      for (final ResolutionPriority priority : ResolutionPriority.implicitValues()) {
+        if (resolvedByPriority.containsKey(priority)) {
+          allResolved.addAll(resolvedByPriority.get(priority));
+        }
+      }
+      return new AnyResolution(allResolved);
+    }
+
     return null;
   }
 
   private Injectable maybeProcessAsExtension(final Dependency dep, final Injectable depOwner,
           final Map<String, Injectable> customProvidedInjectables,
           final Multimap<ResolutionPriority, Injectable> resolvedByPriority,
-          final Collection<Injectable> resolved) {
-    Injectable injectable = resolved.iterator().next();
+          final Collection<Injectable> resolved, final Consumer<Dependency> newDepHandler) {
+    final Injectable injectable = resolved.iterator().next();
     if (injectable.isExtension()) {
       final ExtensionInjectable providedInjectable = (ExtensionInjectable) injectable;
-      final Collection<Injectable> otherResolvedInjectables = new ArrayList<>(resolvedByPriority.values());
-      otherResolvedInjectables.remove(injectable);
+      final InjectionSite site = makeInjectionSite(dep, depOwner, resolvedByPriority, injectable);
+      final CustomFactoryInjectable newInjectable = providedInjectable.provider.getInjectable(site, nameGenerator);
+      customProvidedInjectables.put(newInjectable.getFactoryName(), newInjectable);
 
-      final InjectionSite site = new InjectionSite(depOwner.getInjectedType(), dep, otherResolvedInjectables);
-      injectable = providedInjectable.provider.getInjectable(site, nameGenerator);
-      customProvidedInjectables.put(injectable.getFactoryName(), injectable);
+      return newInjectable;
+    }
+    else if (injectable.isContextual()) {
+      final Function<InjectionSite, Stream<InjectableHandle>> newImplicitDeps = contextualImplicitDepProviders
+              .getOrDefault(injectable, i -> Stream.empty());
+      final InjectionSite site = makeInjectionSite(dep, depOwner, resolvedByPriority, injectable);
+      newImplicitDeps
+        .apply(site)
+        .forEach(handle -> {
+          final ImplicitDependency newDep = addImplicitDependency(depOwner, handle.getType(), handle.getQualifier());
+          newDepHandler.accept(newDep);
+        });
+
+      return injectable;
+    }
+    else {
+      return injectable;
     }
 
-    return injectable;
+  }
+
+  private InjectionSite makeInjectionSite(final Dependency dep, final Injectable depOwner,
+          final Multimap<ResolutionPriority, Injectable> resolvedByPriority, final Injectable injectable) {
+    final Collection<Injectable> otherResolvedInjectables = new ArrayList<>(resolvedByPriority.values());
+    otherResolvedInjectables.remove(injectable);
+
+    final InjectionSite site = new InjectionSite(depOwner.getInjectedType(), dep, dep.getHandle().getInjectedType(),
+            otherResolvedInjectables);
+    return site;
   }
 
   private Multimap<ResolutionPriority, Injectable> gatherMatches(final InjectableHandle injectableHandle) {
@@ -448,11 +518,17 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
   }
 
   private Injectable getRootDisabledInjectable(Injectable inj, final Collection<String> problems,
-          final Map<String, Injectable> customProvidedInjectables, final Map<Dependency, Injectable> allResolved) {
+          final Map<String, Injectable> customProvidedInjectables, final Map<Dependency, Resolution> resolved2,
+          final Consumer<Dependency> newDepHandler) {
     while (inj.getDependencies().size() == 1) {
       final Dependency dep = inj.getDependencies().iterator().next();
       if (DependencyType.ProducerMember.equals(dep.getDependencyType())) {
-        inj = resolveDependency(dep, inj, problems, customProvidedInjectables, allResolved);
+        final Resolution res = resolveDependency(dep, inj, problems, customProvidedInjectables, resolved2, newDepHandler);
+        final Injectable old = inj;
+        inj = res.asSingle().orElse(inj);
+        if (inj == old) {
+          break;
+        }
       }
     }
 
@@ -460,33 +536,44 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
   }
 
   @Override
-  public void addFieldDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier,
+  public ImplicitDependency addImplicitDependency(final Injectable injectable, final MetaClass type, final Qualifier qualifier) {
+    final InjectableHandle injectableReference = lookupInjectableHandle(type, qualifier);
+    final ImplicitDependency dep = new ImplicitDependencyImpl(injectableReference);
+    addDependency(injectable, dep);
+    return dep;
+  }
+
+  @Override
+  public FieldDependency addFieldDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier,
           final MetaField dependentField) {
     final InjectableHandle injectableReference = lookupInjectableHandle(type, qualifier);
     final FieldDependency dep = new FieldDependencyImpl(injectableReference, dependentField);
     addDependency(concreteInjectable, dep);
+    return dep;
   }
 
   @Override
-  public void addConstructorDependency(final Injectable concreteInjectable, final MetaClass type,
+  public ParamDependency addConstructorDependency(final Injectable concreteInjectable, final MetaClass type,
           final Qualifier qualifier, final int paramIndex, final MetaParameter param) {
     final InjectableHandle injectableReference = lookupInjectableHandle(type, qualifier);
     final ParamDependency dep = new ParamDependencyImpl(injectableReference, DependencyType.Constructor, paramIndex,
             param);
     addDependency(concreteInjectable, dep);
+    return dep;
   }
 
   @Override
-  public void addProducerParamDependency(final Injectable concreteInjectable, final MetaClass type,
+  public ParamDependency addProducerParamDependency(final Injectable concreteInjectable, final MetaClass type,
           final Qualifier qualifier, final int paramIndex, final MetaParameter param) {
     final InjectableHandle injectableReference = lookupInjectableHandle(type, qualifier);
     final ParamDependency dep = new ParamDependencyImpl(injectableReference, DependencyType.ProducerParameter,
             paramIndex, param);
     addDependency(concreteInjectable, dep);
+    return dep;
   }
 
   @Override
-  public void addStaticProducerMemberDependency(final Injectable concreteInjectable, final MetaClassMember producingMember) {
+  public ProducerMemberDependency addStaticProducerMemberDependency(final Injectable concreteInjectable, final MetaClassMember producingMember) {
     if (!producingMember.isStatic()) {
       throw new IllegalArgumentException(
               "Cannot use non-static member, " + producingMember + ", for static producer member dependency.");
@@ -496,10 +583,11 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
     final ProducerMemberDependency dep = new ProducerMemberDependencyImpl(injectableReference,
             DependencyType.ProducerMember, producingMember);
     addDependency(concreteInjectable, dep);
+    return dep;
   }
 
   @Override
-  public void addProducerMemberDependency(final Injectable concreteInjectable, final MetaClassMember producingMember,
+  public ProducerMemberDependency addProducerMemberDependency(final Injectable concreteInjectable, final MetaClassMember producingMember,
           final Injectable producer) {
     if (producingMember.isStatic()) {
       throw new IllegalArgumentException(
@@ -510,30 +598,34 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
             DependencyType.ProducerMember, producingMember);
     addDependency(concreteInjectable, dep);
     producedByProducer.put(producer, new Produced(concreteInjectable, dep));
+    return dep;
   }
 
   @Override
-  public void addSetterMethodDependency(final Injectable concreteInjectable, final MetaClass type,
+  public SetterParameterDependency addSetterMethodDependency(final Injectable concreteInjectable, final MetaClass type,
           final Qualifier qualifier, final MetaMethod setter) {
     final InjectableHandle injectableReference = lookupInjectableHandle(type, qualifier);
     final SetterParameterDependency dep = new SetterParameterDependencyImpl(injectableReference, setter);
     addDependency(concreteInjectable, dep);
+    return dep;
   }
 
   @Override
-  public void addDisposesMethodDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier, final MetaMethod disposer) {
+  public DisposerMethodDependency addDisposesMethodDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier, final MetaMethod disposer) {
     final InjectableHandle injectableReference = lookupInjectableHandle(type, qualifier);
     final DisposerMethodDependency dep = new DisposerMethodDependencyImpl(injectableReference, disposer);
     addDependency(concreteInjectable, dep);
+    return dep;
   }
 
   @Override
-  public void addDisposesParamDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier,
+  public ParamDependency addDisposesParamDependency(final Injectable concreteInjectable, final MetaClass type, final Qualifier qualifier,
           final Integer index, final MetaParameter param) {
     final InjectableHandle injectableReference = lookupInjectableHandle(type, qualifier);
     final ParamDependency dep = new ParamDependencyImpl(injectableReference, DependencyType.DisposerParameter, index,
             param);
     addDependency(concreteInjectable, dep);
+    return dep;
   }
 
   private static class Produced {

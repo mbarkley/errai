@@ -79,9 +79,15 @@ public abstract class BaseProviderGenerator extends AbstractBodyGenerator {
   protected Injectable getProviderInjectable(final DependencyGraph graph, final Injectable depInjectable) {
     for (final Dependency dep : depInjectable.getDependencies()) {
       if (dep.getDependencyType().equals(DependencyType.ProducerMember)) {
-        final MetaClass providerType = graph.getResolved(dep).getInjectedType();
+        final Injectable resolvedInjectable = graph
+                .getResolved(dep)
+                .asSingle()
+                .orElseThrow(() -> new IllegalStateException(
+                        "ProducerMember should have single resolved injectable. Instead has resolution type "
+                                + graph.getResolved(dep).getCardinality()));
+        final MetaClass providerType = resolvedInjectable.getInjectedType();
         if (providerType.isAssignableTo(getProviderRawType())) {
-          return graph.getResolved(dep);
+          return resolvedInjectable;
         }
         else {
           throw new RuntimeException("Unrecognized contextual provider type " + providerType.getFullyQualifiedName());

@@ -20,6 +20,7 @@ import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ProducerMemberDependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ResolutionCardinality;
 
 /**
  * @see ProducerMemberDependency
@@ -32,6 +33,11 @@ class ProducerMemberDependencyImpl extends BaseDependency implements ProducerMem
   ProducerMemberDependencyImpl(final InjectableHandle injectable, final DependencyType dependencyType, final MetaClassMember producingMember) {
     super(injectable, dependencyType);
     this.producingMember = producingMember;
+  }
+
+  @Override
+  public ResolutionCardinality getCardinality() {
+    return (producingMember.isStatic()) ? ResolutionCardinality.EMPTY : ResolutionCardinality.SINGLE;
   }
 
   @Override

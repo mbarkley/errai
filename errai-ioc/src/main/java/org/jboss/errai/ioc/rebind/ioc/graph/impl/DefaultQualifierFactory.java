@@ -242,6 +242,14 @@ public class DefaultQualifierFactory implements QualifierFactory {
     }
 
     @Override
+    public Annotation[] getAnnotations() {
+      return annotations
+              .stream()
+              .map(wrapper -> wrapper.anno)
+              .toArray(Annotation[]::new);
+    }
+
+    @Override
     public boolean isSatisfiedBy(final Qualifier other) {
       if (other instanceof Universal) {
         return true;
@@ -359,6 +367,11 @@ public class DefaultQualifierFactory implements QualifierFactory {
     @Override
     public Iterator<Annotation> iterator() {
       return Collections.<Annotation>emptyList().iterator();
+    }
+
+    @Override
+    public Annotation[] getAnnotations() {
+      return new Annotation[0];
     }
   }
 

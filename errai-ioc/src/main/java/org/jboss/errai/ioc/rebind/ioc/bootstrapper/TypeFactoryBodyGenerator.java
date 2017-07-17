@@ -58,7 +58,9 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependenc
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.FieldDependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ParamDependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Resolution;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.SetterParameterDependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.impl.GraphUtil;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
@@ -320,7 +322,8 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
     for (final Dependency dep : fieldDependencies) {
       final FieldDependency fieldDep = FieldDependency.class.cast(dep);
       final MetaField field = fieldDep.getField();
-      final Injectable depInjectable = graph.getResolved(fieldDep);
+      final Resolution resolved = graph.getResolved(fieldDep);
+      final Injectable depInjectable = resolved.asSingle().orElseThrow(() -> GraphUtil.singleResolutionException(fieldDep, resolved));
 
       final ContextualStatementBuilder injectedValue;
       if (depInjectable.isContextual()) {
@@ -357,7 +360,9 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
     for (final Dependency dep : setterDependencies) {
       final SetterParameterDependency setterDep = SetterParameterDependency.class.cast(dep);
       final MetaMethod setter = setterDep.getMethod();
-      final Injectable depInjectable = graph.getResolved(setterDep);
+      final Resolution resolution = graph.getResolved(setterDep);
+      final Injectable depInjectable = resolution.asSingle()
+              .orElseThrow(() -> GraphUtil.singleResolutionException(setterDep, resolution));
 
       final ContextualStatementBuilder injectedValue;
       if (depInjectable.isContextual()) {
@@ -427,14 +432,15 @@ class TypeFactoryBodyGenerator extends AbstractBodyGenerator {
 
   private void processConstructorDependencyStatement(final List<Statement> createInstanceStatements, final Object[] constructorParameterStatements,
           final List<Statement> dependentScopedRegistrationStatements, final Dependency dep, final DependencyGraph graph) {
-    final Injectable depInjectable = graph.getResolved(dep);
+    final Resolution resolved = graph.getResolved(dep);
+    final Injectable depInjectable = resolved.asSingle().orElseThrow(() -> GraphUtil.singleResolutionException(dep, resolved));
     final ParamDependency paramDep = ParamDependency.class.cast(dep);
 
     final ContextualStatementBuilder injectedValue = getInjectedValue(depInjectable, paramDep);
     final String paramLocalVarName = getLocalVariableName(paramDep.getParameter());
 
     createInstanceStatements.add(declareFinalVariable(paramLocalVarName, paramDep.getParameter().getType(), injectedValue));
-    if (graph.getResolved(dep).getWiringElementTypes().contains(WiringElementType.DependentBean)) {
+    if (depInjectable.getWiringElementTypes().contains(WiringElementType.DependentBean)) {
       dependentScopedRegistrationStatements.add(loadVariable("this").invoke("registerDependentScopedReference",
               loadVariable("instance"), loadVariable(paramLocalVarName)));
     }

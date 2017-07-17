@@ -29,6 +29,7 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependenc
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.ProducerMemberDependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Resolution;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.HasInjectableHandle;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 
@@ -36,11 +37,11 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
  *
  * @author Max Barkley <mbarkley@redhat.com>
  */
-final class GraphUtil {
+public final class GraphUtil {
 
   private GraphUtil() {}
 
-  static void throwDuplicateConcreteInjectableException(final String name, final Injectable first,
+  public static void throwDuplicateConcreteInjectableException(final String name, final Injectable first,
           final Injectable second) {
     final String message = "Two concrete injectables exist with the same name (" + name + "):\n"
                             + "\t" + first + "\n"
@@ -49,7 +50,7 @@ final class GraphUtil {
     throw new RuntimeException(message);
   }
 
-  static ProducerMemberDependency findProducerInstanceDep(final Injectable injectable) {
+  public static ProducerMemberDependency findProducerInstanceDep(final Injectable injectable) {
     for (final Dependency dep : injectable.getDependencies()) {
       if (dep.getDependencyType().equals(DependencyType.ProducerMember)) {
         return (ProducerMemberDependency) dep;
@@ -58,7 +59,7 @@ final class GraphUtil {
     throw new RuntimeException("Could not find producer member.");
   }
 
-  static MetaMethod getOverridenMethod(final MetaMethod specializingMethod) {
+  public static MetaMethod getOverridenMethod(final MetaMethod specializingMethod) {
     final MetaClass[] producerParams = GraphUtil.getParameterTypes(specializingMethod);
     MetaClass enclosingType = specializingMethod.getDeclaringClass();
     MetaMethod specializedMethod = null;
@@ -70,7 +71,7 @@ final class GraphUtil {
     return specializedMethod;
   }
 
-  static MetaClass[] getParameterTypes(final MetaMethod producerMethod) {
+  public static MetaClass[] getParameterTypes(final MetaMethod producerMethod) {
     final MetaClass[] paramTypes = new MetaClass[producerMethod.getParameters().length];
     for (int i = 0; i < paramTypes.length; i++) {
       paramTypes[i] = producerMethod.getParameters()[i].getType();
@@ -83,7 +84,7 @@ final class GraphUtil {
    * Required so that subtypes get all the qualifiers of supertypes when there
    * are multiple @Specializes in the hierarchy.
    */
-  static void sortSuperTypesBeforeSubtypes(final List<InjectableImpl> specializations) {
+  public static void sortSuperTypesBeforeSubtypes(final List<InjectableImpl> specializations) {
     Collections.sort(specializations, new Comparator<InjectableImpl>() {
       @Override
       public int compare(final InjectableImpl c1, final InjectableImpl c2) {
@@ -109,7 +110,7 @@ final class GraphUtil {
     });
   }
 
-  static String combineProblemMessages(final Collection<String> problems) {
+  public static String combineProblemMessages(final Collection<String> problems) {
     final StringBuilder builder = new StringBuilder("The following problems were found:\n\n");
     for (final String problem : problems) {
       builder.append(problem)
@@ -119,7 +120,7 @@ final class GraphUtil {
     return builder.toString();
   }
 
-  static String buildMessageFromProblems(final List<String> dependencyProblems) {
+  public static String buildMessageFromProblems(final List<String> dependencyProblems) {
     final StringBuilder builder = new StringBuilder();
     builder.append("The following dependency problems were found:\n");
     for (final String problem : dependencyProblems) {
@@ -131,7 +132,7 @@ final class GraphUtil {
     return builder.toString();
   }
 
-  static String unsatisfiedDependencyMessage(final Dependency dep, final Injectable concrete,
+  public static String unsatisfiedDependencyMessage(final Dependency dep, final Injectable concrete,
           final Collection<Injectable> resolvedDisabledBeans) {
     final StringBuilder message = new StringBuilder()
             .append("Unsatisfied ")
@@ -151,7 +152,7 @@ final class GraphUtil {
     return message.toString();
   }
 
-  static String ambiguousDependencyMessage(final Dependency dep, final Injectable concrete, final List<Injectable> resolved) {
+  public static String ambiguousDependencyMessage(final Dependency dep, final Injectable concrete, final List<Injectable> resolved) {
     final StringBuilder messageBuilder = new StringBuilder();
     messageBuilder.append("Ambiguous resolution for ")
                   .append(dep.getDependencyType().toString().toLowerCase())
@@ -170,14 +171,14 @@ final class GraphUtil {
     return messageBuilder.toString();
   }
 
-  static boolean candidateSatisfiesInjectable(final InjectableHandle injectableHandle,
+  public static boolean candidateSatisfiesInjectable(final InjectableHandle injectableHandle,
           final HasInjectableHandle candidate, final boolean considerTypeParameters) {
     return qualifiersMatch(injectableHandle, candidate)
             && (!considerTypeParameters || typeParametersMatch(injectableHandle, candidate))
             && notSameReference(injectableHandle, candidate);
   }
 
-  static boolean candidateSatisfiesInjectable(final InjectableHandle injectableHandle,
+  public static boolean candidateSatisfiesInjectable(final InjectableHandle injectableHandle,
           final HasInjectableHandle candidate) {
     return candidateSatisfiesInjectable(injectableHandle, candidate, true);
   }
@@ -194,14 +195,14 @@ final class GraphUtil {
     return reference.getQualifier().isSatisfiedBy(candidate.getQualifier());
   }
 
-  static boolean hasAssignableTypeParameters(final MetaClass fromType, final MetaClass toType) {
+  public static boolean hasAssignableTypeParameters(final MetaClass fromType, final MetaClass toType) {
     final MetaParameterizedType toParamType = toType.getParameterizedType();
     final Optional<MetaParameterizedType> fromParamType = GraphUtil.getFromTypeParams(fromType, toType);
 
     return toParamType == null || fromParamType.map(type -> toParamType.isAssignableFrom(type)).orElse(true);
   }
 
-  static Optional<MetaParameterizedType> getFromTypeParams(final MetaClass fromType, final MetaClass toType) {
+  public static Optional<MetaParameterizedType> getFromTypeParams(final MetaClass fromType, final MetaClass toType) {
     MetaClass parameterContainingType = null;
     if (toType.isInterface()) {
       if (fromType.getFullyQualifiedName().equals(toType.getFullyQualifiedName())) {
@@ -235,6 +236,12 @@ final class GraphUtil {
     else {
       return Optional.empty();
     }
+  }
+
+  public static IllegalStateException singleResolutionException(final Dependency dep, final Resolution resolved) {
+    return new IllegalStateException(
+            String.format("Dependency {} should have single resolved injectable but instead has {}.", dep,
+                    resolved.getCardinality()));
   }
 
 }

@@ -84,7 +84,6 @@ import org.jboss.errai.ioc.unit.res.TypeParameterControlModule;
 import org.jboss.errai.ioc.unit.res.TypeParameterTestModule;
 import org.jboss.errai.ioc.unit.res.UsesJSTypeWithPrivateConstructor;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -518,7 +517,6 @@ public class IOCProcessorErrorTest {
   }
 
   @Test
-  @Ignore
   public void asyncBeanViaManagedInstanceInNonAsyncBeanCausesException() throws Exception {
     addToMetaClassCache(
             Object.class,
@@ -539,7 +537,8 @@ public class IOCProcessorErrorTest {
     } catch (final Throwable t) {
       if (t.getMessage() == null
               || !t.getMessage().contains(DynamicallyLoadsAsync.class.getSimpleName())
-              || !t.getMessage().contains(AsyncImpl.class.getSimpleName())) {
+              || !t.getMessage().contains(AsyncImpl.class.getSimpleName())
+              || !t.getMessage().contains("implicitly depends")) {
         throw new AssertionError("Wrong error thrown.", t);
       }
     }

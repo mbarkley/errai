@@ -21,6 +21,8 @@ import java.util.Collection;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Resolution;
 
 final class AsyncValidator implements Validator {
   @Override
@@ -31,11 +33,15 @@ final class AsyncValidator implements Validator {
   @Override
   public void validate(final DependencyGraph graph, final Injectable injectable, final Collection<String> problems) {
     for (final Dependency dep : injectable.getDependencies()) {
-      final Injectable resolved = graph.getResolved(dep);
-      if (resolved != null && resolved.loadAsync()) {
-        problems.add("The bean " + injectable + " is not @LoadAsync but depends on the @LoadAsync bean "
-                + graph.getResolved(dep).loadAsync());
-      }
+      final Resolution resolved = graph.getResolved(dep);
+      resolved
+        .stream()
+        .filter(r -> r.loadAsync())
+        .forEach(r -> {
+          final String dependsAdverb = (DependencyType.Implicit.equals(dep.getDependencyType()) ? "implicitly " : "");
+                problems.add("The bean " + injectable + " is not @LoadAsync but " + dependsAdverb
+                        + "depends on the @LoadAsync bean " + r);
+              });
     }
   }
 }

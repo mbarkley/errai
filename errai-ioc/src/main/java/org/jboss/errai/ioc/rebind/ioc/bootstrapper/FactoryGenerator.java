@@ -33,6 +33,7 @@ import org.jboss.errai.ioc.rebind.ioc.graph.api.CustomFactoryInjectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Resolution;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.slf4j.Logger;
@@ -181,8 +182,14 @@ public class FactoryGenerator extends IncrementalGenerator {
     log.trace("Combined content: {}", injectable.hashContent(graph));
     log.trace("HashContent for injectable type: {}", injectable.getInjectedType().hashContent());
     for (final Dependency dep : injectable.getDependencies()) {
-      log.trace("HashContent for {} dep of type {}: {}", dep.getDependencyType().toString(),
-              graph.getResolved(dep).getInjectedType(), graph.getResolved(dep).getInjectedType().hashContent());
+      final Resolution resolved = graph.getResolved(dep);
+      resolved
+        .stream()
+        .forEach(inj -> {
+                log.trace("HashContent for {} resolution of {} dep of type {}: {}",
+                        resolved.getCardinality().toString(), dep.getDependencyType().toString(), inj.getInjectedType(),
+                        inj.getInjectedType().hashContent());
+              });
     }
     log.trace("End trace of hashContent for {}", name);
   }
