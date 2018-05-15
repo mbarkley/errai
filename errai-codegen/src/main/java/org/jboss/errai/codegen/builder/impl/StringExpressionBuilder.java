@@ -59,18 +59,7 @@ public class StringExpressionBuilder extends ExpressionBuilder<StringOperator> i
 
   @Override
   public MetaClass getType() {
-    Class<?> lhsType = null;
-    if (lhs != null) {
-      lhsType = lhs.getType().asUnboxed().asClass();
-    }
-    Class<?> rhsType = null;
-    if (rhs != null) {
-      rhsType = rhs.getType().asUnboxed().asClass();
-    }
-    return MetaClassFactory.get(promote(lhsType, rhsType));
+    return MetaClassFactory.get(String.class);
   }
 
-  private Class<?> promote(Class<?> lhs, Class<?> rhs) {
-    return String.class;
-  }
 }

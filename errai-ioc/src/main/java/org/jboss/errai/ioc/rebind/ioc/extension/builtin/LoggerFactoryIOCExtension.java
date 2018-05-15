@@ -16,17 +16,9 @@
 
 package org.jboss.errai.ioc.rebind.ioc.extension.builtin;
 
-import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
-
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.enterprise.context.Dependent;
-
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
+import org.jboss.errai.codegen.meta.MetaAnnotation;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.util.Stmt;
@@ -37,7 +29,6 @@ import org.jboss.errai.ioc.rebind.ioc.bootstrapper.FactoryBodyGenerator;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.CustomFactoryInjectable;
-import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.InjectionSite;
@@ -50,6 +41,14 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.enterprise.context.Dependent;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
 
 @IOCExtension
 public class LoggerFactoryIOCExtension implements IOCExtensionConfigurator {
@@ -67,20 +66,17 @@ public class LoggerFactoryIOCExtension implements IOCExtensionConfigurator {
     injectionContext.registerInjectableProvider(handle, new InjectableProvider() {
       @Override
       public CustomFactoryInjectable getInjectable(final InjectionSite injectionSite, final FactoryNameGenerator nameGenerator) {
-        final String loggerName;
-        if (injectionSite.isAnnotationPresent(NamedLogger.class)) {
-          loggerName = injectionSite.getAnnotation(NamedLogger.class).value();
-        }
-        else {
-          loggerName = injectionSite.getEnclosingType().getFullyQualifiedName();
-        }
+
+        final String loggerName = injectionSite.getAnnotation(NamedLogger.class)
+                .map(MetaAnnotation::<String>value)
+                .orElse(injectionSite.getEnclosingType().getFullyQualifiedName());
 
         if (!injectablesByLoggerName.containsKey(loggerName)) {
           final Statement loggerValue = invokeStatic(LoggerFactory.class, "getLogger", loggerName);
           final FactoryBodyGenerator generator = new AbstractBodyGenerator() {
             @Override
             protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
-                    final Injectable injectable, final DependencyGraph graph, final InjectionContext injectionContext) {
+                    final Injectable injectable, final InjectionContext injectionContext) {
               return Collections.singletonList(Stmt.nestedCall(loggerValue).returnValue());
             }
           };

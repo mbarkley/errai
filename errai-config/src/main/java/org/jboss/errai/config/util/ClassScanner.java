@@ -16,6 +16,20 @@
 
 package org.jboss.errai.config.util;
 
+import com.google.gwt.core.ext.GeneratorContext;
+import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaClassFactory;
+import org.jboss.errai.codegen.meta.MetaField;
+import org.jboss.errai.codegen.meta.MetaMethod;
+import org.jboss.errai.codegen.meta.MetaParameter;
+import org.jboss.errai.codegen.meta.impl.java.JavaReflectionField;
+import org.jboss.errai.codegen.meta.impl.java.JavaReflectionMethod;
+import org.jboss.errai.common.metadata.RebindUtils;
+import org.jboss.errai.common.metadata.ScannerSingleton;
+import org.jboss.errai.common.rebind.CacheStore;
+import org.jboss.errai.common.rebind.CacheUtil;
+import org.mvel2.util.NullType;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -30,21 +44,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
-
-import org.jboss.errai.codegen.meta.MetaClass;
-import org.jboss.errai.codegen.meta.MetaClassFactory;
-import org.jboss.errai.codegen.meta.MetaField;
-import org.jboss.errai.codegen.meta.MetaMethod;
-import org.jboss.errai.codegen.meta.MetaParameter;
-import org.jboss.errai.codegen.meta.impl.java.JavaReflectionField;
-import org.jboss.errai.codegen.meta.impl.java.JavaReflectionMethod;
-import org.jboss.errai.common.metadata.RebindUtils;
-import org.jboss.errai.common.metadata.ScannerSingleton;
-import org.jboss.errai.common.rebind.CacheStore;
-import org.jboss.errai.common.rebind.CacheUtil;
-import org.mvel2.util.NullType;
-
-import com.google.gwt.core.ext.GeneratorContext;
 
 /**
  * @author Mike Brock
@@ -286,7 +285,7 @@ public final class ClassScanner {
       }
     }
 
-    final Class<?> cls = root.asClass();
+    final Class<?> cls = root.unsafeAsClass();
     if (cls != null && !cls.equals(NullType.class)) {
       for (final Class<?> c : ScannerSingleton.getOrCreateInstance().getSubTypesOf(cls)) {
         if (!c.isAnonymousClass() && !c.isSynthetic()) {

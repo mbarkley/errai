@@ -52,18 +52,42 @@ public class GWTMetaClassTest extends AbstractMetaClassTest {
     f.addTestClass("org.jboss.errai.codegen.test.model.ClassWithGenericCollections");
     f.addTestClass("org.jboss.errai.codegen.test.model.ParameterizedClass");
     f.addTestClass("org.jboss.errai.codegen.test.model.ClassWithGenericMethods");
+    f.addTestClass("org.jboss.errai.codegen.test.model.ClassWithMethodsWithGenericParameters");
     f.addTestClass("org.jboss.errai.codegen.test.model.HasManyConstructors");
     f.addTestClass("org.jboss.errai.codegen.test.model.GenericSuperClass");
     f.addTestClass("org.jboss.errai.codegen.test.model.GenericArraySubclass");
     f.addTestClass("org.jboss.errai.codegen.test.model.ClassWithArrayGenerics");
+    f.addTestClass("org.jboss.errai.codegen.test.model.ClassWithAnnotations");
+    f.addTestClass("org.jboss.errai.codegen.test.model.Plain");
+    f.addTestClass("org.jboss.errai.codegen.test.model.SingleValue");
+    f.addTestClass("org.jboss.errai.codegen.test.model.MultipleValues");
+    f.addTestClass("org.jboss.errai.codegen.test.model.Nested");
+    f.addTestClass("org.jboss.errai.codegen.test.model.ClassImplementingAnnotatedInterface");
+    f.addTestClass("org.jboss.errai.codegen.test.model.ClassExtendingAnnotatedSuperClass");
+    f.addTestClass("org.jboss.errai.codegen.test.model.ClassImplementingInheritedAnnotatedInterface");
+    f.addTestClass("org.jboss.errai.codegen.test.model.ClassExtendingInheritedAnnotatedSuperClass");
+    f.addTestClass("org.jboss.errai.codegen.test.model.ClassExtendingClassExtendingInheritedAnnotatedSuperClass");
+    f.addTestClass("org.jboss.errai.codegen.test.model.AnnotatedInterface");
+    f.addTestClass("org.jboss.errai.codegen.test.model.AnnotatedSuperClass");
+    f.addTestClass("org.jboss.errai.codegen.test.model.InheritedAnnotatedInterface");
+    f.addTestClass("org.jboss.errai.codegen.test.model.InheritedAnnotatedSuperClass");
+    f.addTestClass("org.jboss.errai.codegen.test.model.InheritedAnnotation");
+    f.addTestClass("org.jboss.errai.codegen.test.model.NormalAnnotation");
+    f.addTestClass("org.jboss.errai.codegen.test.meta.method.TestGenericInterface");
+    f.addTestClass("org.jboss.errai.codegen.test.meta.method.TestConcreteInterface");
+    f.addTestClass("org.jboss.errai.codegen.test.meta.method.TestConcreteClass");
+    f.addTestClass("org.jboss.errai.codegen.test.meta.method.TestAbstractClass");
     f.addTestClass(PrimitiveFieldContainer.class.getName());
 
     mockacle = f.generateMockacle();
   }
 
   @Override
-  protected MetaClass getMetaClassImpl(Class<?> javaClass) {
+  protected MetaClass getMetaClassImpl(final Class<?> javaClass) {
+    return getMetaClass(javaClass);
+  }
 
+  static MetaClass getMetaClass(Class<?> javaClass) {
     int dims = 0;
     while (javaClass.isArray()) {
       javaClass = javaClass.getComponentType();
@@ -75,7 +99,12 @@ public class GWTMetaClassTest extends AbstractMetaClassTest {
       // This is a hack for getting a JType for a primitive
       // (I couldn't find any Source implementation that does it directly)
       final MetaClass container = GWTClass.newInstance(mockacle, PrimitiveFieldContainer.class.getName());
-      metaClass = container.getDeclaredField(javaClass.getName() + "Field").getType();
+      if ("void".equals(javaClass.getName())) {
+        metaClass = container.getDeclaredMethod("voidMethod", new MetaClass[0]).getReturnType();
+      }
+      else {
+        metaClass = container.getDeclaredField(javaClass.getName() + "Field").getType();
+      }
     }
     else {
       metaClass = GWTClass.newInstance(mockacle, javaClass.getName());

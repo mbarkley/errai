@@ -31,6 +31,7 @@ import org.jboss.errai.bus.client.api.messaging.Message;
 import org.jboss.errai.bus.client.api.messaging.MessageCallback;
 import org.jboss.errai.bus.client.api.messaging.RequestDispatcher;
 import org.jboss.errai.bus.client.framework.transports.*;
+import org.jboss.errai.bus.client.local.RpcProxyLoader;
 import org.jboss.errai.bus.client.protocols.BusCommand;
 import org.jboss.errai.bus.client.util.BusToolsCli;
 import org.jboss.errai.bus.client.util.ManagementConsole;

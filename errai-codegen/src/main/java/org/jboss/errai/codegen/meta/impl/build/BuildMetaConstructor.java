@@ -16,10 +16,6 @@
 
 package org.jboss.errai.codegen.meta.impl.build;
 
-import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.jboss.errai.codegen.Comment;
 import org.jboss.errai.codegen.Context;
 import org.jboss.errai.codegen.DefParameters;
@@ -28,6 +24,7 @@ import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.Variable;
 import org.jboss.errai.codegen.builder.Builder;
 import org.jboss.errai.codegen.builder.impl.Scope;
+import org.jboss.errai.codegen.meta.MetaAnnotation;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaConstructor;
@@ -35,6 +32,13 @@ import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.MetaType;
 import org.jboss.errai.codegen.meta.MetaTypeVariable;
 import org.jboss.errai.codegen.util.GenUtil;
+
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * @author Mike Brock <cbrock@redhat.com>
@@ -106,18 +110,8 @@ public class BuildMetaConstructor extends MetaConstructor implements Builder {
           }
 
           @Override
-          public Annotation[] getAnnotations() {
-            return new Annotation[0];
-          }
-
-          @Override
-          public boolean isAnnotationPresent(final Class<? extends Annotation> annotation) {
-            return false;
-          }
-
-          @Override
-          public <A extends Annotation> A getAnnotation(final Class<A> annotation) {
-            return null;
+          public Collection<MetaAnnotation> getAnnotations() {
+            return Collections.emptyList();
           }
         });
       }
@@ -200,8 +194,8 @@ public class BuildMetaConstructor extends MetaConstructor implements Builder {
   }
 
   @Override
-  public Annotation[] getAnnotations() {
-    return new Annotation[0];
+  public Collection<MetaAnnotation> getAnnotations() {
+    return Collections.emptyList();
   }
 
   @Override

@@ -16,13 +16,17 @@
 
 package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 
-import java.lang.annotation.Annotation;
-
-import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.codegen.meta.HasAnnotations;
+import org.jboss.errai.codegen.meta.MetaAnnotation;
+import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
+import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
+
+import java.lang.annotation.Annotation;
+import java.util.Collection;
+import java.util.Optional;
 
 /**
  * Base implementation for all {@link Dependency dependencies}.
@@ -54,12 +58,22 @@ abstract class BaseDependency implements Dependency {
   }
 
   @Override
-  public Annotation[] getAnnotations() {
+  public Optional<MetaAnnotation> getAnnotation(final Class<? extends Annotation> annotationClass) {
+    return getAnnotated().getAnnotation(annotationClass);
+  }
+
+  @Override
+  public Boolean isAnnotationPresent(final MetaClass metaClass) {
+    return getAnnotated().isAnnotationPresent(metaClass);
+  }
+
+  @Override
+  public Collection<MetaAnnotation> getAnnotations() {
     return getAnnotated().getAnnotations();
   }
 
   @Override
-  public boolean isAnnotationPresent(final Class<? extends Annotation> annotation) {
+  public Boolean isAnnotationPresent(final Class<? extends Annotation> annotation) {
     return getAnnotated().isAnnotationPresent(annotation);
   }
 

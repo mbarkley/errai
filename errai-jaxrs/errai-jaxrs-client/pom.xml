@@ -98,11 +98,9 @@
       <artifactId>errai-marshalling</artifactId>
     </dependency>
 
-    <!-- Must come after errai-common is inherited for patched JUnitShell -->
     <dependency>
       <groupId>com.google.gwt</groupId>
       <artifactId>gwt-user</artifactId>
-      <scope>provided</scope>
     </dependency>
 
     <dependency>
@@ -141,9 +139,10 @@
     </dependency>
 
     <dependency>
+      <!-- Needs provided scope for use in annotation processors -->
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
-      <scope>test</scope>
+      <scope>provided</scope>
     </dependency>
 
     <dependency>
@@ -169,6 +168,14 @@
       <artifactId>jackson-databind</artifactId>
       <scope>test</scope>
     </dependency>
+
+    <dependency>
+      <groupId>org.jboss.errai</groupId>
+      <artifactId>errai-jaxrs-export-apt</artifactId>
+      <scope>compile</scope>
+    </dependency>
+
+
   </dependencies>
 
   <profiles>
@@ -184,6 +191,7 @@
                 <additionalClasspathElement>${basedir}/${testOutputDirectory}/</additionalClasspathElement>
                 <additionalClasspathElement>${basedir}/src/main/java/</additionalClasspathElement>
                 <additionalClasspathElement>${basedir}/src/test/java/</additionalClasspathElement>
+                <additionalClasspathElement>${basedir}/target/generated-test-sources/test-annotations</additionalClasspathElement>
               </additionalClasspathElements>
               <useManifestOnlyJar>false</useManifestOnlyJar>
               <forkMode>pertest</forkMode>

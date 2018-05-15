@@ -26,6 +26,7 @@ import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.MetaParameterizedType;
 import org.jboss.errai.codegen.meta.MetaType;
+import org.jboss.errai.config.MetaClassFinder;
 import org.jboss.errai.config.rebind.EnvironmentConfigExtension;
 import org.jboss.errai.config.rebind.ExposedTypesProvider;
 import org.jboss.errai.config.util.ClassScanner;
@@ -34,11 +35,16 @@ import org.jboss.errai.config.util.ClassScanner;
  * @author Mike Brock
  */
 @EnvironmentConfigExtension
-public class RpcTypesProvider implements ExposedTypesProvider {
+public class RpcTypesProvider extends ExposedTypesProvider {
+
+  public RpcTypesProvider(final MetaClassFinder metaClassFinder) {
+    super(metaClassFinder);
+  }
+
   @Override
   public Collection<MetaClass> provideTypesToExpose() {
-    final Set<MetaClass> types = new HashSet<MetaClass>();
-    for (final MetaClass metaClass : ClassScanner.getTypesAnnotatedWith(Remote.class)) {
+    final Set<MetaClass> types = new HashSet<>();
+    for (final MetaClass metaClass : metaClassFinder().findAnnotatedWith(Remote.class)) {
       for (final MetaMethod method : metaClass.getDeclaredMethods()) {
         if (!method.getReturnType().isVoid()) {
           types.add(method.getReturnType().getErased());
@@ -62,4 +68,5 @@ public class RpcTypesProvider implements ExposedTypesProvider {
     }
     return types;
   }
+
 }

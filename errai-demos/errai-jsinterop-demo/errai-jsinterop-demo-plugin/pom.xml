@@ -46,14 +46,14 @@
     <slf4j.version>1.5.11</slf4j.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <javaee.version>3.0.1.Final</javaee.version>
-    <errai.dev.context>${project.artifactId}</errai.dev.context>    
+    <errai.dev.context>${project.artifactId}</errai.dev.context>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>org.jboss.errai</groupId>
       <artifactId>errai-ioc</artifactId>
-      <scope>provided</scope>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.jboss.errai</groupId>
@@ -151,7 +151,6 @@
       </plugin>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>2.3.2</version>
         <configuration>
           <source>1.8</source>
           <target>1.8</target>
@@ -169,6 +168,7 @@
           </execution>
         </executions>
         <configuration>
+          <module>org.jboss.errai.jsinterop.demo.Plugin</module>
           <strict>true</strict>
           <webappDirectory>../errai-jsinterop-demo-app/src/main/webapp</webappDirectory>
           <logLevel>INFO</logLevel>

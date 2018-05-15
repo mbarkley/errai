@@ -16,22 +16,7 @@
 
 package org.jboss.errai.enterprise.rebind;
 
-import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
-import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
-import static org.jboss.errai.codegen.util.Stmt.castTo;
-import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
-import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
-
-import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import javax.enterprise.event.Observes;
-import javax.enterprise.inject.Any;
-
+import jsinterop.annotations.JsType;
 import org.jboss.errai.bus.client.ErraiBus;
 import org.jboss.errai.bus.client.api.Subscription;
 import org.jboss.errai.codegen.Context;
@@ -40,24 +25,40 @@ import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.AnonymousClassStructureBuilder;
 import org.jboss.errai.codegen.builder.BlockBuilder;
 import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
+import org.jboss.errai.codegen.meta.MetaAnnotation;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
-import org.jboss.errai.config.rebind.EnvUtil;
+import org.jboss.errai.config.MetaClassFinder;
+import org.jboss.errai.config.marshalling.MarshallingConfiguration;
+import org.jboss.errai.common.client.api.annotations.LocalEvent;
+import org.jboss.errai.config.ErraiConfiguration;
 import org.jboss.errai.enterprise.client.cdi.AbstractCDIEventCallback;
-import org.jboss.errai.enterprise.client.cdi.EventQualifierSerializer;
 import org.jboss.errai.enterprise.client.cdi.JsTypeEventObserver;
 import org.jboss.errai.enterprise.client.cdi.api.CDI;
 import org.jboss.errai.ioc.client.api.CodeDecorator;
 import org.jboss.errai.ioc.client.container.Factory;
+import org.jboss.errai.ioc.util.MetaAnnotationSerializer;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 
-import jsinterop.annotations.JsType;
+import javax.enterprise.event.Observes;
+import javax.enterprise.inject.Any;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+
+import static java.util.stream.Collectors.toMap;
+import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
+import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
+import static org.jboss.errai.codegen.util.Stmt.castTo;
+import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
+import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
 
 /**
  * Generates the boiler plate for @Observes annotations use in GWT clients.<br/>
@@ -76,9 +77,9 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
 
   @Override
   public void generateDecorator(final Decorable decorable, final FactoryController controller) {
-    if (!EventQualifierSerializer.isSet()) {
-      NonGwtEventQualifierSerializerGenerator.loadAndSetEventQualifierSerializer();
-    }
+
+    final ErraiConfiguration erraiConfiguration = decorable.getInjectionContext().getProcessingContext().erraiConfiguration();
+    final MetaClassFinder metaClassFinder = decorable.getInjectionContext().getProcessingContext().metaClassFinder();
 
     final Context ctx = decorable.getCodegenContext();
     final MetaParameter parm = decorable.getAsParameter();
@@ -88,13 +89,12 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
 
     final MetaClass eventType = parm.getType().asBoxed();
     final String parmClassName = eventType.getFullyQualifiedName();
-    final List<Annotation> annotations = InjectUtil.extractQualifiers(parm);
-    final Annotation[] qualifiers = annotations.toArray(new Annotation[annotations.size()]);
-    final Set<String> qualifierNames = new HashSet<>(CDI.getQualifiersPart(qualifiers));
-    final boolean isEnclosingTypeDependent = enclosingTypeIsDependentScoped(decorable);
+    final List<MetaAnnotation> qualifiers = InjectUtil.extractQualifiers(parm);
+    final Set<String> serializedQualifiers = MetaAnnotationSerializer.getSerializedQualifiers(qualifiers);
+    final boolean isEnclosingTypeDependent = decorable.isEnclosingTypeDependent();
 
-    if (qualifierNames.contains(Any.class.getName())) {
-      qualifierNames.remove(Any.class.getName());
+    if (serializedQualifiers.contains(Any.class.getName())) {
+      serializedQualifiers.remove(Any.class.getName());
     }
 
     final MetaClass callBackType = parameterizedAs(AbstractCDIEventCallback.class, typeParametersOf(eventType));
@@ -103,10 +103,10 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
 
     BlockBuilder<AnonymousClassStructureBuilder> callBackBlock;
 
-    if (!qualifierNames.isEmpty()) {
+    if (!serializedQualifiers.isEmpty()) {
       callBackBlock = callBack.initialize();
-      for (final String qualifierName : qualifierNames) {
-        callBackBlock.append(Stmt.loadClassMember("qualifierSet").invoke("add", qualifierName));
+      for (final String serializedQualifier : serializedQualifiers) {
+        callBackBlock.append(Stmt.loadClassMember("qualifierSet").invoke("add", serializedQualifier));
       }
       callBack = callBackBlock.finish();
     }
@@ -123,7 +123,7 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
         .appendAll(callbackStatements)
         .finish()
         .publicOverridesMethod("toString")
-        ._(Stmt.load("Observer: " + parmClassName + " " + Arrays.toString(qualifiers)).returnValue());
+        ._(Stmt.load("Observer: " + parmClassName + " " + Arrays.toString(qualifiers.toArray())).returnValue());
 
     final List<Statement> initStatements = new ArrayList<>();
     final List<Statement> destroyStatements = new ArrayList<>();
@@ -135,7 +135,7 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
       subscribeMethod = "subscribeJsType";
       callBackBlock = getJsTypeSubscriptionCallback(decorable, controller);
     }
-    else if (EnvUtil.isPortableType(eventType) && !EnvUtil.isLocalEventType(eventType)) {
+    else if (MarshallingConfiguration.isPortableType(metaClassFinder, erraiConfiguration, eventType) && !eventType.isAnnotationPresent(LocalEvent.class)) {
       subscribeMethod = "subscribe";
       callBackBlock = getSubscriptionCallback(decorable, controller);
     }
@@ -154,12 +154,13 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
       initStatements.add(subscribeStatement);
     }
 
-    for (final Class<?> cls : EnvUtil.getAllPortableConcreteSubtypes(eventType.asClass())) {
-      if (!EnvUtil.isLocalEventType(cls)) {
+    for (final MetaClass cls : MarshallingConfiguration.allPortableConcreteSubtypes(erraiConfiguration,
+            metaClassFinder, eventType)) {
+      if (!cls.isAnnotationPresent(LocalEvent.class)) {
         final ContextualStatementBuilder routingSubStmt = Stmt.invokeStatic(ErraiBus.class, "get").invoke("subscribe",
-                CDI.getSubjectNameByType(cls.getName()), Stmt.loadStatic(CDI.class, "ROUTING_CALLBACK"));
+                CDI.getSubjectNameByType(cls.getFullyQualifiedName()), Stmt.loadStatic(CDI.class, "ROUTING_CALLBACK"));
         if (isEnclosingTypeDependent) {
-          final String subscrHandle = subscrVar + "For" + cls.getSimpleName();
+          final String subscrHandle = subscrVar + "For" + cls.getName();
           initStatements.add(controller.setReferenceStmt(subscrHandle, routingSubStmt));
           destroyStatements.add(
                   Stmt.nestedCall(controller.getReferenceStmt(subscrHandle, Subscription.class)).invoke("remove"));
@@ -177,27 +178,22 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
     }
   }
 
-  private boolean enclosingTypeIsDependentScoped(final Decorable decorable) {
-    return decorable.isEnclosingTypeDependent();
-  }
-
   private BlockBuilder<AnonymousClassStructureBuilder> getSubscriptionCallback(final Decorable decorable, final FactoryController controller) {
 
     final MetaParameter parm = decorable.getAsParameter();
     final MetaClass eventType = parm.getType().asBoxed();
     final String parmClassName = eventType.getFullyQualifiedName();
-    final List<Annotation> annotations = InjectUtil.extractQualifiers(parm);
-    final Annotation[] qualifiers = annotations.toArray(new Annotation[annotations.size()]);
-    final Set<String> qualifierNames = new HashSet<>(CDI.getQualifiersPart(qualifiers));
+    final List<MetaAnnotation> qualifiers = InjectUtil.extractQualifiers(parm);
+    final Set<String> serializedQualifiers = MetaAnnotationSerializer.getSerializedQualifiers(qualifiers);
 
     final MetaClass callBackType = parameterizedAs(AbstractCDIEventCallback.class, typeParametersOf(eventType));
     AnonymousClassStructureBuilder callBack = Stmt.newObject(callBackType).extend();
     BlockBuilder<AnonymousClassStructureBuilder> callBackBlock;
 
-    if (!qualifierNames.isEmpty()) {
+    if (!serializedQualifiers.isEmpty()) {
       callBackBlock = callBack.initialize();
-      for (final String qualifierName : qualifierNames) {
-        callBackBlock.append(Stmt.loadClassMember("qualifierSet").invoke("add", qualifierName));
+      for (final String serializedQualifier : serializedQualifiers) {
+        callBackBlock.append(Stmt.loadClassMember("qualifierSet").invoke("add", serializedQualifier));
       }
       callBack = callBackBlock.finish();
     }
@@ -213,7 +209,7 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
         .appendAll(fireEventStmts)
         .finish()
         .publicOverridesMethod("toString")
-        ._(Stmt.load("Observer: " + parmClassName + " " + Arrays.toString(qualifiers)).returnValue());
+        ._(Stmt.load("Observer: " + parmClassName + " " + Arrays.toString(qualifiers.toArray())).returnValue());
 
     return callBackBlock;
   }
@@ -243,4 +239,5 @@ public class ObservesExtension extends IOCDecoratorExtension<Observes> {
 
     return callBackBlock;
   }
+
 }

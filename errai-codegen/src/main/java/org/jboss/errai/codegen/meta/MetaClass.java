@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * @author Mike Brock <cbrock@redhat.com>
  */
-public abstract class MetaClass extends AbstractHasAnnotations implements MetaType, MetaGenericDeclaration {
+public abstract class MetaClass implements MetaType, MetaGenericDeclaration, HasAnnotations {
   @Override
   public abstract String getName();
 
@@ -55,11 +55,9 @@ public abstract class MetaClass extends AbstractHasAnnotations implements MetaTy
    * @throws NullPointerException
    *           if {@code annotation} is null.
    */
-  public abstract List<MetaMethod> getMethodsAnnotatedWith(Class<? extends Annotation> annotation);
+  public abstract List<MetaMethod> getMethodsAnnotatedWith(MetaClass annotation);
 
   public abstract List<MetaMethod> getDeclaredMethodsAnnotatedWith(Class<? extends Annotation> annotation);
-
-  public abstract List<MetaMethod> getMethodsWithMetaAnnotations(Class<? extends Annotation> annotation);
 
   public abstract MetaMethod[] getDeclaredMethods();
 
@@ -92,11 +90,9 @@ public abstract class MetaClass extends AbstractHasAnnotations implements MetaTy
    * @throws NullPointerException
    *           if {@code annotation} is null.
    */
-  public abstract List<MetaField> getFieldsAnnotatedWith(Class<? extends Annotation> annotation);
+  public abstract List<MetaField> getFieldsAnnotatedWith(MetaClass annotation);
 
-  public abstract List<MetaField> getFieldsWithMetaAnnotations(Class<? extends Annotation> annotations);
-
-  public abstract List<MetaParameter> getParametersAnnotatedWith(Class<? extends Annotation> annotation);
+  public abstract List<MetaParameter> getParametersAnnotatedWith(MetaClass annotation);
 
   public abstract MetaField[] getDeclaredFields();
 
@@ -236,7 +232,11 @@ public abstract class MetaClass extends AbstractHasAnnotations implements MetaTy
 
   public abstract boolean isPrimitiveWrapper();
 
-  public abstract Class<?> asClass();
+  /**
+   * @deprecated This method is not safe to use in APT environment.
+   */
+  @Deprecated
+  public abstract Class<?> unsafeAsClass();
 
   /**
    * Searches for the named field in this type, its superinterfaces, and its superclasses.
@@ -252,5 +252,11 @@ public abstract class MetaClass extends AbstractHasAnnotations implements MetaTy
   public abstract BeanDescriptor getBeanDescriptor();
 
   public abstract int hashContent();
+
+  public abstract MetaClass getDeclaringClass();
+
+  public boolean instanceOf(final Class<?> clazz) {
+    return clazz.getCanonicalName().equals(getCanonicalName());
+  }
 
 }

@@ -16,25 +16,17 @@
 
 package org.jboss.errai.ioc.tests.extensions.rebind;
 
-import static org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType.ExtensionProvided;
-import static org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType.DependentBean;
-
-import java.lang.annotation.Annotation;
-import java.util.Arrays;
-import java.util.List;
-
-import javax.enterprise.context.Dependent;
-
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
+import org.jboss.errai.codegen.meta.MetaAnnotation;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
+import org.jboss.errai.codegen.meta.impl.java.JavaReflectionAnnotation;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.api.IOCExtension;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.AbstractBodyGenerator;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.FactoryBodyGenerator;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
-import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.InjectionSite;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.QualifierFactory;
@@ -42,6 +34,15 @@ import org.jboss.errai.ioc.rebind.ioc.graph.impl.DefaultCustomFactoryInjectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.impl.InjectableHandle;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.tests.extensions.client.res.AnnoWithNonBindingAttribute;
+
+import javax.enterprise.context.Dependent;
+import java.lang.annotation.Annotation;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import static org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType.ExtensionProvided;
+import static org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType.DependentBean;
 
 /**
  *
@@ -68,20 +69,21 @@ public class NonBindingAttributeExtensionProvider implements IOCExtensionConfigu
       }
     };
     final QualifierFactory qualFactory = injectionContext.getQualifierFactory();
-    final InjectableHandle handle = new InjectableHandle(MetaClassFactory.get(String.class), qualFactory.forSource(() -> new Annotation[] { representative }));
+    final InjectableHandle handle = new InjectableHandle(MetaClassFactory.get(String.class),
+            qualFactory.forSource(() -> Collections.singleton(new JavaReflectionAnnotation(representative))));
     injectionContext.registerInjectableProvider(handle, (injectionSite, nameGenerator) ->
       new DefaultCustomFactoryInjectable(handle, nameGenerator.generateFor(handle, ExtensionProvided),
             Dependent.class, Arrays.asList(DependentBean), getGenerator(injectionSite)));
   }
 
   private FactoryBodyGenerator getGenerator(final InjectionSite injectionSite) {
-    final AnnoWithNonBindingAttribute anno = injectionSite.getAnnotation(AnnoWithNonBindingAttribute.class);
+    final MetaAnnotation anno = injectionSite.getAnnotation(AnnoWithNonBindingAttribute.class).get();
     final String value = anno.value();
 
     return new AbstractBodyGenerator() {
       @Override
       protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
-              final Injectable injectable, final DependencyGraph graph, final InjectionContext injectionContext) {
+              final Injectable injectable, final InjectionContext injectionContext) {
         return Arrays.asList(Stmt.loadLiteral(value).returnValue());
       }
     };

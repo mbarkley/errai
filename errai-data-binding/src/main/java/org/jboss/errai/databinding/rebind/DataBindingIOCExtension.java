@@ -16,24 +16,11 @@
 
 package org.jboss.errai.databinding.rebind;
 
-import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
-import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
-import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
-import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
-import static org.jboss.errai.codegen.util.Stmt.loadVariable;
-
-import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-
-import javax.enterprise.context.Dependent;
-
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
-import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.impl.java.JavaReflectionAnnotation;
+import org.jboss.errai.databinding.client.api.Bindable;
 import org.jboss.errai.databinding.client.api.DataBinder;
 import org.jboss.errai.ioc.client.api.IOCExtension;
 import org.jboss.errai.ioc.client.container.RefHolder;
@@ -42,7 +29,6 @@ import org.jboss.errai.ioc.rebind.ioc.bootstrapper.FactoryBodyGenerator;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCExtensionConfigurator;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.CustomFactoryInjectable;
-import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.InjectableType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.InjectionSite;
@@ -53,6 +39,19 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableProvider;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 import org.jboss.errai.ui.shared.api.annotations.Model;
+
+import javax.enterprise.context.Dependent;
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+
+import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
+import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
+import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
+import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
+import static org.jboss.errai.codegen.util.Stmt.loadVariable;
 
 /**
  * The purpose of this IOC extension is to provide bean instances of bindable types that are qualified with
@@ -71,7 +70,6 @@ public class DataBindingIOCExtension implements IOCExtensionConfigurator {
   @Override
   public void afterInitialization(final IOCProcessingContext context, final InjectionContext injectionContext) {
 
-    final Collection<MetaClass> allBindableTypes = DataBindingUtil.getAllBindableTypes(context.getGeneratorContext());
     final Model anno = new Model() {
       @Override
       public Class<? extends Annotation> annotationType() {
@@ -79,33 +77,12 @@ public class DataBindingIOCExtension implements IOCExtensionConfigurator {
       }
     };
 
+    final Set<MetaClass> allBindableTypes = DataBindingUtil.getAllBindableTypes(context.erraiConfiguration(),
+            context.metaClassFinder());
+
     for (final MetaClass modelBean : allBindableTypes) {
-      final InjectableHandle handle = new InjectableHandle(modelBean,
-              injectionContext.getQualifierFactory().forSource(new HasAnnotations() {
-
-                @Override
-                public boolean isAnnotationPresent(Class<? extends Annotation> annotation) {
-                  return Model.class.equals(annotation);
-                }
-
-                @Override
-                public Annotation[] getAnnotations() {
-                  return new Annotation[] {
-                      anno
-                  };
-                }
-
-                @SuppressWarnings("unchecked")
-                @Override
-                public <A extends Annotation> A getAnnotation(Class<A> annotation) {
-                  if (isAnnotationPresent(annotation)) {
-                    return (A) anno;
-                  }
-                  else {
-                    return null;
-                  }
-                }
-              }));
+      final InjectableHandle handle = new InjectableHandle(modelBean, injectionContext.getQualifierFactory()
+              .forSource(() -> Collections.singleton(new JavaReflectionAnnotation(anno))));
 
       injectionContext.registerInjectableProvider(handle, new InjectableProvider() {
 
@@ -118,9 +95,9 @@ public class DataBindingIOCExtension implements IOCExtensionConfigurator {
               final FactoryBodyGenerator generator = new AbstractBodyGenerator() {
 
                 @Override
-                protected List<Statement> generateCreateInstanceStatements(
-                        final ClassStructureBuilder<?> bodyBlockBuilder, final Injectable injectable,
-                        final DependencyGraph graph, final InjectionContext injectionContext) {
+                protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
+                        final Injectable injectable,
+                        final InjectionContext injectionContext) {
                   final List<Statement> createInstanceStmts = new ArrayList<Statement>();
                   final MetaClass binderClass = parameterizedAs(DataBinder.class, typeParametersOf(modelBean));
                   final String dataBinderVar = "dataBinder";

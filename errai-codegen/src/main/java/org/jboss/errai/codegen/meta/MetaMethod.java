@@ -16,18 +16,16 @@
 
 package org.jboss.errai.codegen.meta;
 
-import java.lang.annotation.Annotation;
+import org.jboss.errai.codegen.util.GenUtil;
+
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.jboss.errai.codegen.util.GenUtil;
-
-public abstract class MetaMethod extends AbstractHasAnnotations implements MetaClassMember, MetaGenericDeclaration {
-  @Override
-  public abstract String getName();
+public abstract class MetaMethod implements MetaClassMember, MetaGenericDeclaration, HasAnnotations {
 
   /**
    * Returns the MetaClass representing this method's return type. The returned
@@ -74,16 +72,17 @@ public abstract class MetaMethod extends AbstractHasAnnotations implements MetaC
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     return o instanceof MetaMethod && ((MetaMethod)o).hashString().equals(hashString());
   }
 
-  public List<MetaParameter> getParametersAnnotatedWith(Class<? extends Annotation> annotation) {
+  public List<MetaParameter> getParametersAnnotatedWith(final MetaClass annotation) {
     return Arrays.stream(getParameters())
             .filter(p -> p.isAnnotationPresent(annotation))
-            .collect(Collectors.collectingAndThen(Collectors.toList(), l -> Collections.unmodifiableList(l)));
+            .collect(Collectors.collectingAndThen(Collectors.toList(), Collections::unmodifiableList));
   }
 
+  @Deprecated
   public Method asMethod() {
     try {
       final Class cls = Class.forName(getDeclaringClass().getFullyQualifiedName());
@@ -100,20 +99,20 @@ public abstract class MetaMethod extends AbstractHasAnnotations implements MetaC
       return null;
     }
   }
-  
+
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    final Annotation[] annos = getAnnotations();
+    final Collection<MetaAnnotation> annos = getAnnotations();
     if (annos != null) {
-      for (final Annotation anno : annos) {
+      for (final MetaAnnotation anno : annos) {
         sb.append(anno.toString()).append(" ");
       }
     }
     sb.append(" ").append(GenUtil.scopeOf(this).getCanonicalName()).append(" ")
     .append(getReturnType()).append(" ")
     .append(getName()).append("(").append(Arrays.toString(getParameters())).append(")");
-    
+
     return sb.toString();
   }
 }

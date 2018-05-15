@@ -16,9 +16,21 @@
 
 package org.jboss.errai.codegen.meta.impl;
 
-import static java.util.stream.Collectors.collectingAndThen;
-import static org.jboss.errai.codegen.util.GenUtil.classToMeta;
-import static org.jboss.errai.codegen.util.GenUtil.getArrayDimensions;
+import org.jboss.errai.codegen.meta.BeanDescriptor;
+import org.jboss.errai.codegen.meta.MetaAnnotation;
+import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaClassFactory;
+import org.jboss.errai.codegen.meta.MetaConstructor;
+import org.jboss.errai.codegen.meta.MetaField;
+import org.jboss.errai.codegen.meta.MetaMethod;
+import org.jboss.errai.codegen.meta.MetaParameter;
+import org.jboss.errai.codegen.meta.MetaParameterizedType;
+import org.jboss.errai.codegen.meta.MetaType;
+import org.jboss.errai.codegen.meta.MetaTypeVariable;
+import org.jboss.errai.codegen.meta.MetaWildcardType;
+import org.jboss.errai.codegen.util.GenUtil;
+import org.mvel2.util.NullType;
+import org.mvel2.util.ReflectionUtil;
 
 import java.beans.Introspector;
 import java.lang.annotation.Annotation;
@@ -34,20 +46,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.jboss.errai.codegen.meta.BeanDescriptor;
-import org.jboss.errai.codegen.meta.MetaClass;
-import org.jboss.errai.codegen.meta.MetaClassFactory;
-import org.jboss.errai.codegen.meta.MetaConstructor;
-import org.jboss.errai.codegen.meta.MetaField;
-import org.jboss.errai.codegen.meta.MetaMethod;
-import org.jboss.errai.codegen.meta.MetaParameter;
-import org.jboss.errai.codegen.meta.MetaParameterizedType;
-import org.jboss.errai.codegen.meta.MetaType;
-import org.jboss.errai.codegen.meta.MetaTypeVariable;
-import org.jboss.errai.codegen.meta.MetaWildcardType;
-import org.jboss.errai.codegen.util.GenUtil;
-import org.mvel2.util.NullType;
-import org.mvel2.util.ReflectionUtil;
+import static java.util.stream.Collectors.collectingAndThen;
+import static org.jboss.errai.codegen.util.GenUtil.classToMeta;
+import static org.jboss.errai.codegen.util.GenUtil.getArrayDimensions;
 
 /**
  * @author Mike Brock <cbrock@redhat.com>
@@ -336,7 +337,7 @@ public abstract class AbstractMetaClass<T> extends MetaClass {
   }
 
   @Override
-  public final List<MetaMethod> getMethodsAnnotatedWith(final Class<? extends Annotation> annotation) {
+  public final List<MetaMethod> getMethodsAnnotatedWith(final MetaClass annotation) {
     final Map<String, List<MetaMethod>> methodsByName = new HashMap<>();
     MetaClass scanTarget = this;
     while (scanTarget != null) {
@@ -383,39 +384,11 @@ public abstract class AbstractMetaClass<T> extends MetaClass {
   public List<MetaMethod> getDeclaredMethodsAnnotatedWith(final Class<? extends Annotation> annotation) {
     return Arrays.stream(getDeclaredMethods())
       .filter(m -> m.isAnnotationPresent(annotation))
-      .collect(collectingAndThen(Collectors.toList(), l -> Collections.unmodifiableList(l)));
+      .collect(collectingAndThen(Collectors.toList(), Collections::unmodifiableList));
   }
 
   @Override
-  public List<MetaMethod> getMethodsWithMetaAnnotations(final Class<? extends Annotation> annotation) {
-    final List<MetaMethod> methods = new ArrayList<>();
-    MetaClass scanTarget = this;
-    while (scanTarget != null) {
-      for (final MetaMethod m : scanTarget.getDeclaredMethods()) {
-        for (final Annotation a : m.getAnnotations()) {
-          if (_findMetaAnnotation(a.annotationType(), annotation)) {
-            methods.add(m);
-          }
-        }
-      }
-      scanTarget = scanTarget.getSuperClass();
-    }
-
-    return methods;
-  }
-
-  private static boolean _findMetaAnnotation(final Class<? extends Annotation> root,
-                                             final Class<? extends Annotation> annotation) {
-    if (root.isAnnotationPresent(annotation)) {
-      return true;
-    }
-    else {
-      return Arrays.stream(root.getAnnotations()).anyMatch(a -> _findMetaAnnotation(a.annotationType(), annotation));
-    }
-  }
-
-  @Override
-  public final List<MetaField> getFieldsAnnotatedWith(final Class<? extends Annotation> annotation) {
+  public final List<MetaField> getFieldsAnnotatedWith(final MetaClass annotation) {
     final List<MetaField> fields = new ArrayList<>();
     MetaClass scanTarget = this;
     while (scanTarget != null) {
@@ -430,25 +403,7 @@ public abstract class AbstractMetaClass<T> extends MetaClass {
   }
 
   @Override
-  public List<MetaField> getFieldsWithMetaAnnotations(final Class<? extends Annotation> annotation) {
-    final List<MetaField> methods = new ArrayList<>();
-    MetaClass scanTarget = this;
-    while (scanTarget != null) {
-      for (final MetaField m : scanTarget.getDeclaredFields()) {
-        for (final Annotation a : m.getAnnotations()) {
-          if (_findMetaAnnotation(a.annotationType(), annotation)) {
-            methods.add(m);
-          }
-        }
-      }
-      scanTarget = scanTarget.getSuperClass();
-    }
-
-    return methods;
-  }
-
-  @Override
-  public List<MetaParameter> getParametersAnnotatedWith(final Class<? extends Annotation> annotation) {
+  public List<MetaParameter> getParametersAnnotatedWith(final MetaClass annotation) {
     final List<MetaParameter> methods = new ArrayList<>();
     MetaClass scanTarget = this;
     while (scanTarget != null) {
@@ -589,7 +544,7 @@ public abstract class AbstractMetaClass<T> extends MetaClass {
   }
 
   @Override
-  public synchronized Class<?> asClass() {
+  public synchronized Class<?> unsafeAsClass() {
     if (_asClassCache != null) {
       return _asClassCache;
     }
@@ -791,7 +746,7 @@ public abstract class AbstractMetaClass<T> extends MetaClass {
     if (contentString == null) {
       final StringBuilder sb = new StringBuilder();
       if (getAnnotations() != null) {
-        for (final Annotation a : getAnnotations()) {
+        for (final MetaAnnotation a : getAnnotations()) {
           sb.append(a.toString());
         }
       }
@@ -826,7 +781,7 @@ public abstract class AbstractMetaClass<T> extends MetaClass {
 
   public String hashString() {
     if (_hashString == null) {
-      _hashString = MetaClassName + ":" + getFullyQualifiedName();
+      _hashString = MetaClassName + ":" + getCanonicalName();
       if (getParameterizedType() != null) {
         _hashString += getParameterizedType().toString();
       }

@@ -16,41 +16,23 @@
 
 package org.jboss.errai.ui.rebind;
 
-import static java.util.Collections.singletonList;
-import static org.apache.commons.lang3.StringUtils.capitalize;
-import static org.jboss.errai.codegen.builder.impl.ObjectBuilder.newInstanceOf;
-import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
-import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
-import static org.jboss.errai.codegen.util.Stmt.castTo;
-import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
-import static org.jboss.errai.codegen.util.Stmt.declareVariable;
-import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
-import static org.jboss.errai.codegen.util.Stmt.loadLiteral;
-import static org.jboss.errai.codegen.util.Stmt.loadVariable;
-import static org.jboss.errai.codegen.util.Stmt.nestedCall;
-import static org.jboss.errai.codegen.util.Stmt.newObject;
-import static org.jboss.errai.ioc.util.GeneratedNamesUtil.qualifiedClassNameToShortenedIdentifier;
-
-import java.io.IOException;
-import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import javax.enterprise.util.TypeLiteral;
-
+import com.google.common.base.Strings;
+import com.google.gwt.core.client.GWT;
+import com.google.gwt.dom.client.Element;
+import com.google.gwt.dom.client.NativeEvent;
+import com.google.gwt.dom.client.StyleInjector;
+import com.google.gwt.event.dom.client.DomEvent;
+import com.google.gwt.event.dom.client.DomEvent.Type;
+import com.google.gwt.resources.client.ClientBundle;
+import com.google.gwt.resources.client.ClientBundle.Source;
+import com.google.gwt.resources.client.CssResource;
+import com.google.gwt.resources.client.TextResource;
+import com.google.gwt.user.client.Event;
+import com.google.gwt.user.client.EventListener;
+import com.google.gwt.user.client.ui.Composite;
+import com.google.gwt.user.client.ui.Widget;
+import jsinterop.annotations.JsType;
+import jsinterop.base.Js;
 import org.jboss.errai.codegen.Cast;
 import org.jboss.errai.codegen.InnerClass;
 import org.jboss.errai.codegen.Parameter;
@@ -65,8 +47,10 @@ import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.builder.impl.ClassBuilder;
 import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
 import org.jboss.errai.codegen.exception.GenerationException;
+import org.jboss.errai.codegen.meta.MetaAnnotation;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
+import org.jboss.errai.codegen.meta.MetaEnum;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameterizedType;
 import org.jboss.errai.codegen.meta.MetaType;
@@ -74,6 +58,7 @@ import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.codegen.meta.impl.java.JavaReflectionClass;
 import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
+import org.jboss.errai.common.apt.generator.app.ResourceFilesFinder;
 import org.jboss.errai.common.client.api.annotations.BrowserEvent;
 import org.jboss.errai.common.client.ui.ElementWrapperWidget;
 import org.jboss.errai.common.client.ui.HasValue;
@@ -103,24 +88,40 @@ import org.lesscss.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Strings;
-import com.google.gwt.core.client.GWT;
-import com.google.gwt.dom.client.Element;
-import com.google.gwt.dom.client.NativeEvent;
-import com.google.gwt.dom.client.StyleInjector;
-import com.google.gwt.event.dom.client.DomEvent;
-import com.google.gwt.event.dom.client.DomEvent.Type;
-import com.google.gwt.resources.client.ClientBundle;
-import com.google.gwt.resources.client.ClientBundle.Source;
-import com.google.gwt.resources.client.CssResource;
-import com.google.gwt.resources.client.TextResource;
-import com.google.gwt.user.client.Event;
-import com.google.gwt.user.client.EventListener;
-import com.google.gwt.user.client.ui.Composite;
-import com.google.gwt.user.client.ui.Widget;
+import javax.enterprise.util.TypeLiteral;
+import java.io.IOException;
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
-import jsinterop.annotations.JsType;
-import jsinterop.base.Js;
+import static java.util.Collections.singletonList;
+import static org.apache.commons.lang3.StringUtils.capitalize;
+import static org.jboss.errai.codegen.builder.impl.ObjectBuilder.newInstanceOf;
+import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
+import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
+import static org.jboss.errai.codegen.util.Stmt.castTo;
+import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
+import static org.jboss.errai.codegen.util.Stmt.declareVariable;
+import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
+import static org.jboss.errai.codegen.util.Stmt.loadLiteral;
+import static org.jboss.errai.codegen.util.Stmt.loadVariable;
+import static org.jboss.errai.codegen.util.Stmt.nestedCall;
+import static org.jboss.errai.codegen.util.Stmt.newArray;
+import static org.jboss.errai.codegen.util.Stmt.newObject;
+import static org.jboss.errai.ioc.util.GeneratedNamesUtil.qualifiedClassNameToShortenedIdentifier;
 
 /**
  * Generates the code required for {@link Templated} classes.
@@ -142,13 +143,17 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
 
   @Override
   public void generateDecorator(final Decorable decorable, final FactoryController controller) {
+    final ResourceFilesFinder resourceFilesFinder = decorable.getInjectionContext()
+            .getProcessingContext()
+            .resourceFilesFinder();
+
     final MetaClass declaringClass = decorable.getDecorableDeclaringType();
 
-    final Templated anno = (Templated) decorable.getAnnotation();
-    final Class<?> templateProvider = anno.provider();
-    final boolean customProvider = templateProvider != Templated.DEFAULT_PROVIDER.class;
+    final MetaAnnotation anno = decorable.getAnnotation();
+    final MetaClass templateProvider = anno.value("provider");
+    final boolean customProvider = !templateProvider.equals(MetaClassFactory.get(Templated.DEFAULT_PROVIDER.class));
     final Optional<String> styleSheetPath = getTemplateStyleSheetPath(declaringClass);
-    final boolean explicitStyleSheetPresent = styleSheetPath.filter(path -> Thread.currentThread().getContextClassLoader().getResource(path) != null).isPresent();
+    final boolean explicitStyleSheetPresent = styleSheetPath.map(resourceFilesFinder::getResource).isPresent();
 
     if (declaringClass.isAssignableTo(Composite.class)) {
       logger.warn("The @Templated class, {}, extends Composite. This will not be supported in future versions.", declaringClass.getFullyQualifiedName());
@@ -160,7 +165,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
 
     final List<Statement> initStmts = new ArrayList<>();
 
-    generateTemplatedInitialization(decorable, controller, initStmts, customProvider);
+    generateTemplatedInitialization(decorable, controller, initStmts, customProvider, resourceFilesFinder);
 
     if (customProvider) {
       final Statement init =
@@ -184,6 +189,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
     controller.addInitializationStatementsToEnd(Collections.<Statement>singletonList(invokeStatic(StyleBindingsRegistry.class, "get")
         .invoke("updateStyles", Refs.get("instance"))));
   }
+
 
   /**
    * Generates a {@link DestructionCallback} for the {@link Templated} component.
@@ -220,24 +226,28 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
    */
   @SuppressWarnings("serial")
   private void generateTemplatedInitialization(final Decorable decorable,
-                                               final FactoryController controller,
-                                               final List<Statement> initStmts,
-                                               final boolean customProvider) {
+          final FactoryController controller,
+          final List<Statement> initStmts,
+          final boolean customProvider,
+          final ResourceFilesFinder resourceFilesFinder) {
 
     final Map<MetaClass, BuildMetaClass> constructed = getConstructedTemplateTypes(decorable);
     final MetaClass declaringClass = decorable.getDecorableDeclaringType();
 
     if (!constructed.containsKey(declaringClass)) {
       final String templateVarName = "templateFor" + decorable.getDecorableDeclaringType().getName();
-      final Optional<String> resolvedStylesheetPath = getResolvedStyleSheetPath(getTemplateStyleSheetPath(declaringClass), declaringClass);
-      final boolean lessStylesheet = resolvedStylesheetPath.filter(path -> path.endsWith(".less")).isPresent();
+
+      final Optional<String> resolvedStylesheetRelativePath = getRelativeStylesheetPath(resourceFilesFinder, declaringClass);
+
+      final boolean lessStylesheet = resolvedStylesheetRelativePath.filter(s -> s.endsWith(".less")).isPresent();
 
       /*
        * Generate this component's ClientBundle resource if necessary
        */
-      final boolean generateCssBundle = resolvedStylesheetPath.isPresent() && !lessStylesheet;
+      final boolean generateCssBundle = resolvedStylesheetRelativePath.isPresent() && !lessStylesheet;
       if (!customProvider || generateCssBundle) {
-        generateTemplateResourceInterface(decorable, declaringClass, customProvider, resolvedStylesheetPath.filter(path -> path.endsWith(".css")));
+        final Optional<String> cssFilePath = resolvedStylesheetRelativePath.filter(path -> path.endsWith(".css"));
+        generateTemplateResourceInterface(decorable, declaringClass, customProvider, cssFilePath);
 
       /*
        * Instantiate the ClientBundle Template resource
@@ -255,16 +265,16 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
       /*
        * Compile LESS stylesheet to CSS and generate StyleInjector code
        */
-      if (resolvedStylesheetPath.isPresent() && lessStylesheet) {
+      if (resolvedStylesheetRelativePath.isPresent() && lessStylesheet) {
         try {
-          final Resource lessResource = new ClassPathResource(resolvedStylesheetPath.get(), Thread.currentThread().getContextClassLoader());
+          final Resource lessResource = new ResourceFilesFinderResource(resolvedStylesheetRelativePath.get(), resourceFilesFinder);
           final LessSource source = new LessSource(lessResource);
           final LessCompiler compiler = new LessCompiler();
           final String compiledCss = compiler.compile(source);
 
           controller.addFactoryInitializationStatements(singletonList(invokeStatic(StyleInjector.class, "inject", loadLiteral(compiledCss))));
         } catch (IOException | LessException e) {
-          throw new RuntimeException("Error while attempting to compile the LESS stylesheet [" + resolvedStylesheetPath.get() + "].", e);
+          throw new RuntimeException("Error while attempting to compile the LESS stylesheet [" + resolvedStylesheetRelativePath.get() + "].", e);
         }
       }
 
@@ -330,46 +340,51 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
     }
   }
 
-  private Optional<String> getResolvedStyleSheetPath(final Optional<String> declaredStylesheetPath,
-          final MetaClass declaringClass) {
-    if (declaredStylesheetPath.isPresent()) {
-      return declaredStylesheetPath;
-    }
-    else {
-      final String simpleName = declaringClass.getName();
-      final String unsuffixedPath = declaringClass.getPackageName().replace('.', '/') + "/" + simpleName;
-      final boolean cssSheetExists = (Thread.currentThread().getContextClassLoader().getResource(unsuffixedPath + ".css") != null);
-      if (cssSheetExists) {
-        return Optional.of(unsuffixedPath + ".css");
-      }
-      final boolean lessSheetExists = (Thread.currentThread().getContextClassLoader().getResource(unsuffixedPath + ".less") != null);
-      if (lessSheetExists) {
-        return Optional.of(unsuffixedPath + ".less");
-      }
+  private Optional<String> getRelativeStylesheetPath(final ResourceFilesFinder resourceFilesFinder, final MetaClass declaringClass) {
 
-      return Optional.empty();
+    final Optional<String> templateStyleSheetPath = getTemplateStyleSheetPath(declaringClass);
+    if (templateStyleSheetPath.isPresent()) {
+      return templateStyleSheetPath;
     }
+
+    final String simpleName = declaringClass.getName();
+    final String unsuffixedPath = declaringClass.getPackageName().replace('.', '/') + "/" + simpleName;
+
+    final String possibleCssFilePath = unsuffixedPath + ".css";
+    if (resourceFilesFinder.getResource(possibleCssFilePath).isPresent()) {
+      return Optional.of(possibleCssFilePath);
+    }
+
+    final String possibleLessFilePath = unsuffixedPath + ".less";
+    if (resourceFilesFinder.getResource(possibleLessFilePath).isPresent()) {
+    return Optional.of(possibleLessFilePath);
+  }
+
+    return Optional.empty();
   }
 
   @SuppressWarnings("serial")
   private List<Statement> generateDataFieldMetas(final String dataFieldMetasVarName, final Decorable decorable) {
-    final Map<String, DataField> annoMap = DataFieldCodeDecorator.aggregateDataFieldAnnotationMap(decorable, decorable.getType());
+    final Map<String, MetaAnnotation> annoMap = DataFieldCodeDecorator.aggregateDataFieldAnnotationMap(decorable, decorable.getType());
     final List<Statement> stmts = new ArrayList<>(annoMap.size()+1);
     stmts.add(declareFinalVariable(dataFieldMetasVarName, new TypeLiteral<Map<String, DataFieldMeta>>() {
-    }, newObject(parameterizedAs(HashMap.class, typeParametersOf(String.class, DataFieldMeta.class)), annoMap.size())));
+    }, newObject(parameterizedAs(HashMap.class, typeParametersOf(MetaClassFactory.get(String.class), MetaClassFactory.get(DataFieldMeta.class))), annoMap.size())));
     annoMap
       .entrySet()
       .stream()
       .map(entry -> {
         final String fieldName = entry.getKey();
-        final DataField dataField = entry.getValue();
+        final MetaAnnotation dataField = entry.getValue();
         Statement dataFieldMetaInstance;
-        if (dataField.attributeRules().length == 0 && dataField.defaultStrategy().equals(ConflictStrategy.USE_TEMPLATE)) {
+        final MetaAnnotation[] attributeRules = dataField.valueAsArray("attributeRules", MetaAnnotation[].class);
+        final ConflictStrategy defaultStrategy = dataField.<MetaEnum>value("defaultStrategy").as(ConflictStrategy.class);
+        if (attributeRules.length == 0 && defaultStrategy.equals(ConflictStrategy.USE_TEMPLATE)) {
           dataFieldMetaInstance = newObject(DataFieldMeta.class);
         }
         else {
           dataFieldMetaInstance = newObject(DataFieldMeta.class,
-                  loadLiteral(dataField.attributeRules()), loadLiteral(dataField.defaultStrategy()));
+                  newArray(DataField.AttributeRule.class).initialize((Object[]) attributeRules),
+                  loadLiteral(defaultStrategy));
         }
 
         return loadVariable(dataFieldMetasVarName).invoke("put", fieldName, dataFieldMetaInstance);
@@ -392,9 +407,9 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
     final Set<String> processedNativeHandlers = new HashSet<>();
     final Set<String> processedEventHandlers = new HashSet<>();
 
-    for (final MetaMethod method : declaringClass.getMethodsAnnotatedWith(EventHandler.class)) {
+    for (final MetaMethod method : declaringClass.getMethodsAnnotatedWith(MetaClassFactory.get(EventHandler.class))) {
 
-      final String[] targetDataFieldNames = method.getAnnotation(EventHandler.class).value();
+      final String[] targetDataFieldNames = method.getAnnotation(EventHandler.class).get().valueAsArray(String[].class);
 
       validateNonEmptyEventHandlerTargets(declaringClass, method, targetDataFieldNames);
       final MetaClass eventType = assertEventType(declaringClass, method);
@@ -418,13 +433,11 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
           final Statement fieldsMap, final Statement instance, final Map<String, MetaClass> dataFieldTypes,
           final MetaClass declaringClass, final MetaMethod method, final String[] targetDataFieldNames,
           final MetaClass eventType, final FactoryController controller) {
-    final String[] browserEventTypes = Optional
-      .ofNullable(method.getParameters()[0].getAnnotation(ForEvent.class))
-      .map(anno -> anno.value())
+    final String[] browserEventTypes = method.getParameters()[0].getAnnotation(ForEvent.class)
+      .map(anno -> anno.valueAsArray(String[].class))
       .filter(value -> value.length > 0)
-      .orElseGet(() -> Optional
-                        .ofNullable(eventType.getAnnotation(BrowserEvent.class))
-                        .map(anno -> anno.value())
+      .orElseGet(() -> eventType.getAnnotation(BrowserEvent.class)
+                        .map(anno -> anno.valueAsArray(String[].class))
                         .orElseThrow(() ->
                           new GenerationException(
             String.format(
@@ -479,16 +492,15 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
 
     final BlockBuilder<AnonymousClassStructureBuilder> listenerBuiler = ObjectBuilder.newInstanceOf(handlerType)
         .extend()
-        .publicOverridesMethod(handlerType.getMethods()[0].getName(), Parameter.of(eventType, "event"));
+        .publicOverridesMethod(handlerType.getDeclaredMethods()[0].getName(), Parameter.of(eventType, "event"));
 
 
     listenerBuiler.append(InjectUtil.invokePublicOrPrivateMethod(controller, method, Stmt.loadVariable("event")));
 
     final ObjectBuilder listenerInstance = listenerBuiler.finish().finish();
 
-    final MetaClass hasHandlerType = MetaClassFactory.get("com.google.gwt.event.dom.client.Has"
-        + handlerType.getName()
-        + "s");
+    final Class<?> hasHandlerTypeClass = loadHasHandlerTypeClass(handlerType);
+    final MetaClass hasHandlerTypeMetaClass = MetaClassFactory.get(hasHandlerTypeClass);
 
     for (final String name : targetDataFieldNames) {
       final MetaClass dataFieldType = dataFieldTypes.get(name);
@@ -522,8 +534,8 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
             eventSource, listenerInstance,
             Stmt.invokeStatic(eventType, "getType")));
       }
-      else if (dataFieldType.isAssignableTo(hasHandlerType)) {
-        final Statement widget = Cast.to(hasHandlerType, eventSource);
+      else if (dataFieldType.isAssignableTo(hasHandlerTypeMetaClass)) {
+        final Statement widget = Cast.to(hasHandlerTypeMetaClass, eventSource);
         initStmts.add(Stmt.nestedCall(widget).invoke("add" + handlerType.getName(),
             Cast.to(handlerType, listenerInstance)));
       }
@@ -542,11 +554,19 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
       } else {
         throw new GenerationException("@DataField [" + name + "] of type [" + dataFieldType.getName()
             + "] in class [" + declaringClass.getFullyQualifiedName()
-            + "] must implement the interface [" + hasHandlerType.getName()
+            + "] must implement the interface [" + hasHandlerTypeMetaClass.getName()
             + "] specified by @EventHandler method " + method.getName() + "(" + eventType.getName()
             + ")], be a DOM element (wrapped as either a JavaScriptObject or a native @JsType), "
             + "or be a @Templated bean.");
       }
+    }
+  }
+
+  private Class<?> loadHasHandlerTypeClass(final MetaClass handlerType) {
+    try {
+      return Class.forName("com.google.gwt.event.dom.client.Has" + handlerType.getName() + "s");
+    } catch (final ClassNotFoundException e) {
+      throw new RuntimeException(e);
     }
   }
 
@@ -581,7 +601,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
     final MetaClass handlerType = MetaClassFactory.get(EventListener.class);
     final BlockBuilder<AnonymousClassStructureBuilder> listenerBuilder = ObjectBuilder.newInstanceOf(handlerType)
         .extend()
-        .publicOverridesMethod(handlerType.getMethods()[0].getName(), Parameter.of(eventType, "event"));
+        .publicOverridesMethod(handlerType.getDeclaredMethods()[0].getName(), Parameter.of(eventType, "event"));
     listenerBuilder.append(InjectUtil.invokePublicOrPrivateMethod(controller, method, Stmt.loadVariable("event")));
 
     final ObjectBuilder listenerInstance = listenerBuilder.finish().finish();
@@ -589,7 +609,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
     int eventsToSink =
         Event.FOCUSEVENTS | Event.GESTUREEVENTS | Event.KEYEVENTS | Event.MOUSEEVENTS | Event.TOUCHEVENTS;
     if (method.isAnnotationPresent(SinkNative.class)) {
-      eventsToSink = method.getAnnotation(SinkNative.class).value();
+      eventsToSink = method.getAnnotation(SinkNative.class).get().value();
     }
 
     for (final String name : targetDataFieldNames) {
@@ -652,20 +672,21 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
         return eventType;
       }
       else if (isAnnotatedBrowserEvent(eventType)) {
-        final BrowserEvent eventTypeAnno = eventType.getAnnotation(BrowserEvent.class);
-        final boolean eventTypeMatchesAll = eventTypeAnno.value().length == 0;
-        final Optional<ForEvent> oParamAnno = Optional.ofNullable(method.getParameters()[0].getAnnotation(ForEvent.class)).filter(anno -> anno.value().length > 0);
+        final MetaAnnotation eventTypeAnno = eventType.getAnnotation(BrowserEvent.class).get();
+        String[] value = eventTypeAnno.valueAsArray(String[].class);
+        final boolean eventTypeMatchesAll = value.length == 0;
+        final Optional<MetaAnnotation> oParamAnno = method.getParameters()[0].getAnnotation(ForEvent.class).filter(anno -> anno.valueAsArray(String[].class).length > 0);
         final boolean parameterDeclaresEvent = oParamAnno.isPresent();
 
         if (eventTypeMatchesAll && parameterDeclaresEvent
-                || !eventTypeMatchesAll && (!parameterDeclaresEvent || Arrays.asList(eventTypeAnno.value()).containsAll(Arrays.asList(oParamAnno.get().value())))) {
+                || !eventTypeMatchesAll && (!parameterDeclaresEvent || Arrays.asList(value).containsAll(Arrays.asList(oParamAnno.get().valueAsArray(String[].class))))) {
           return eventType;
         }
         else {
           String message = String.format("@EventHandler parameter [%s] of method [%s] in class [%s] must declare an event type with @%s",
                   method.getParameters()[0].getName(), method.getName(), declaringClass.getFullyQualifiedName(), ForEvent.class.getSimpleName());
           if (!eventTypeMatchesAll) {
-            message += " and must be a subset of the following event types: " + Arrays.toString(eventTypeAnno.value());
+            message += " and must be a subset of the following event types: " + Arrays.toString(value);
           }
 
           throw new GenerationException(message);
@@ -691,8 +712,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
   }
 
   private boolean isNativeJsType(final MetaClass eventType) {
-    return Optional
-            .ofNullable(eventType.getAnnotation(JsType.class)).filter(anno -> anno.isNative()).isPresent();
+    return eventType.getAnnotation(JsType.class).filter(anno -> anno.<Boolean>value("isNative")).isPresent();
   }
 
   private MetaClass getHandlerForEvent(final MetaClass eventType) {
@@ -893,13 +913,13 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
   }
 
   public static Optional<String> getTemplateStyleSheetPath(final MetaClass type) {
-    final Templated anno = type.getAnnotation(Templated.class);
+    final Optional<MetaAnnotation> anno = type.getAnnotation(Templated.class);
 
-    if (anno.stylesheet().isEmpty()) {
+    if (!anno.isPresent() || anno.get().<String>value("stylesheet").isEmpty()) {
       return Optional.empty();
     }
     else {
-      final String rawPath = anno.stylesheet();
+      final String rawPath = anno.get().value("stylesheet");
       final boolean absolute = rawPath.startsWith("/");
 
       if (absolute) {
@@ -944,7 +964,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
     String resource = type.getFullyQualifiedName().replace('.', '/') + ".html";
 
     if (type.isAnnotationPresent(Templated.class)) {
-      final String source = canonicalizeTemplateSourceSyntax(type, type.getAnnotation(Templated.class).value());
+      final String source = canonicalizeTemplateSourceSyntax(type, type.getAnnotation(Templated.class).get().value());
       final Matcher matcher = Pattern.compile("^([^#]+)#?.*$").matcher(source);
       if (matcher.matches()) {
         resource = (matcher.group(1) == null ? resource : matcher.group(1));
@@ -969,7 +989,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
     String resource = type.getFullyQualifiedName().replace('.', '/') + ".html";
 
     if (type.isAnnotationPresent(Templated.class)) {
-      final String source = canonicalizeTemplateSourceSyntax(type, type.getAnnotation(Templated.class).value());
+      final String source = canonicalizeTemplateSourceSyntax(type, type.getAnnotation(Templated.class).get().value());
       final Matcher matcher = Pattern.compile("^([^#]+)#?.*$").matcher(source);
       if (matcher.matches()) {
         resource = (matcher.group(1) == null ? resource : matcher.group(1));
@@ -987,7 +1007,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
     String fragment = "";
 
     if (type.isAnnotationPresent(Templated.class)) {
-      final String source = canonicalizeTemplateSourceSyntax(type, type.getAnnotation(Templated.class).value());
+      final String source = canonicalizeTemplateSourceSyntax(type, type.getAnnotation(Templated.class).get().value());
       final Matcher matcher = Pattern.compile("^.*#([^#]+)$").matcher(source);
       if (matcher.matches()) {
         fragment = (matcher.group(1) == null ? fragment : matcher.group(1));

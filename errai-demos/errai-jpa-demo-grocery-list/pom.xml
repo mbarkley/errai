@@ -295,7 +295,9 @@
     <profile>
       <id>wildfly</id>
       <activation>
-        <activeByDefault>true</activeByDefault>
+        <property>
+          <name>!skipDefaultProfile</name>
+        </property>
       </activation>
 
       <dependencies>
@@ -357,7 +359,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>${maven.compiler.plugin.version}</version>
+        <version>3.6.2</version>
         <configuration>
           <source>1.8</source>
           <target>1.8</target>
@@ -400,6 +402,7 @@
           <soyc>false</soyc>
           <hostedWebapp>src/main/webapp/</hostedWebapp>                
           <compileReport>true</compileReport>
+          <module>org.jboss.errai.demo.grocery.GroceryList</module>
         </configuration>
         <executions>
           <execution>

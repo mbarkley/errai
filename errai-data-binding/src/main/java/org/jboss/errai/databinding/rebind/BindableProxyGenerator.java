@@ -47,7 +47,14 @@ import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.builder.ElseBlockBuilder;
 import org.jboss.errai.codegen.builder.impl.ClassBuilder;
 import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
-import org.jboss.errai.codegen.meta.*;
+import org.jboss.errai.codegen.meta.MetaAnnotation;
+import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaClassFactory;
+import org.jboss.errai.codegen.meta.MetaMethod;
+import org.jboss.errai.codegen.meta.MetaParameter;
+import org.jboss.errai.codegen.meta.MetaParameterizedType;
+import org.jboss.errai.codegen.meta.MetaType;
+import org.jboss.errai.codegen.meta.MetaTypeVariable;
 import org.jboss.errai.codegen.util.Bool;
 import org.jboss.errai.codegen.util.EmptyStatement;
 import org.jboss.errai.codegen.util.If;
@@ -65,6 +72,8 @@ import org.jboss.errai.databinding.client.api.handler.property.PropertyChangeEve
 import org.jboss.errai.databinding.client.api.handler.property.PropertyChangeHandler;
 
 import com.google.gwt.core.ext.TreeLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Generates a proxy for a {@link Bindable} type. A bindable proxy subclasses the bindable type and
@@ -74,18 +83,22 @@ import com.google.gwt.core.ext.TreeLogger;
  * @author Christian Sadilek <csadilek@redhat.com>
  */
 public class BindableProxyGenerator {
+
+  private final Logger log = LoggerFactory.getLogger(BindableProxyLoaderGenerator.class);
+
+
   private final MetaClass bindable;
   private final String agentField;
   private final String targetField;
-  private final TreeLogger logger;
   private final Set<MetaMethod> proxiedAccessorMethods;
+  private final Collection<MetaClass> allBindableTypes;
 
-  public BindableProxyGenerator(final MetaClass bindable, final TreeLogger logger) {
+  public BindableProxyGenerator(final MetaClass bindable, final Collection<MetaClass> allBindableTypes) {
     this.bindable = bindable;
     this.agentField = inferSafeFieldName("agent");
     this.targetField = inferSafeFieldName("target");
-    this.logger = logger;
     this.proxiedAccessorMethods = new HashSet<>();
+    this.allBindableTypes = allBindableTypes;
   }
 
   public ClassStructureBuilder<?> generate() {
@@ -147,15 +160,20 @@ public class BindableProxyGenerator {
   }
 
   private Collection<Statement> registerDeclarativeHandlers(final MetaClass bindable) {
-    final List<MetaMethod> handlerMethods = bindable.getMethodsAnnotatedWith(org.jboss.errai.ui.shared.api.annotations.PropertyChangeHandler.class);
+    final List<MetaMethod> handlerMethods = bindable.getMethodsAnnotatedWith(MetaClassFactory.get(org.jboss.errai.ui.shared.api.annotations.PropertyChangeHandler.class));
     if ( handlerMethods.isEmpty() ) return Collections.emptyList();
 
     final List<Statement> retVal = new ArrayList<>();
     for (final MetaMethod method : handlerMethods) {
       if (method.getParameters().length == 1
               && method.getParameters()[0].getType().getFullyQualifiedName().equals(PropertyChangeEvent.class.getName())) {
-        final String property = method.getAnnotation(org.jboss.errai.ui.shared.api.annotations.PropertyChangeHandler.class).value();
-        if (!property.isEmpty()) validateProperty(bindable, property);
+        final String property = method.getAnnotation(org.jboss.errai.ui.shared.api.annotations.PropertyChangeHandler.class).map(
+                MetaAnnotation::<String>value).orElse("");
+
+        if (!property.isEmpty()) {
+          validateProperty(bindable, property);
+        }
+
         final Object handler = createHandlerForMethod(method);
         final ContextualStatementBuilder subStmt = (property.isEmpty() ?
                 loadVariable("agent").invoke("addPropertyChangeHandler", handler):
@@ -302,11 +320,11 @@ public class BindableProxyGenerator {
       }
 
       Statement updateNestedProxy = null;
-      if (DataBindingUtil.isBindableType(paramType)) {
+      if (allBindableTypes.contains(paramType)) {
         updateNestedProxy =
             Stmt.if_(Bool.expr(agent("binders").invoke("containsKey", property)))
                 .append(Stmt.loadVariable(property).assignValue(Cast.to(paramType,
-                    agent("binders").invoke("get", property).invoke("setModel", Variable.get(property),
+                    agent("binders").invoke("get", property).invoke("setModel", Cast.to(Object.class, Variable.get(property)),
                         Stmt.loadStatic(StateSync.class, "FROM_MODEL"),
                         Stmt.loadLiteral(true)))))
                 .finish();
@@ -430,7 +448,7 @@ public class BindableProxyGenerator {
             "put",
             property,
             Stmt.newObject(PropertyType.class, loadLiteral(propertyType.asBoxed()),
-                DataBindingUtil.isBindableType(propertyType),
+                allBindableTypes.contains(propertyType),
                 propertyType.isAssignableTo(List.class))
             )
         );
@@ -462,7 +480,7 @@ public class BindableProxyGenerator {
       final MetaMethod writeMethod = bindable.getBeanDescriptor().getWriteMethodForProperty(property);
       if (readMethod != null && writeMethod != null && readMethod.isPublic() && writeMethod.isPublic()) {
         final MetaClass type = readMethod.getReturnType();
-        if (!DataBindingUtil.isBindableType(type)) {
+        if (!allBindableTypes.contains(type)) {
           // If we find a collection we copy its elements and unwrap them if necessary
           // TODO support map types
           if (type.isAssignableTo(Collection.class)) {
@@ -483,7 +501,7 @@ public class BindableProxyGenerator {
                 colBlock.append(Stmt.declareFinalVariable(colVarName, type.getErased(), Stmt.newObject(type.getErased())));
               }
               else {
-                logger.log(TreeLogger.WARN, "Bean validation on collection " + property + " in class " + bindable +
+                log.warn("Bean validation on collection " + property + " in class " + bindable +
                         " won't work. Change to either List or Set or use a concrete type instead.");
                 continue;
               }
@@ -588,7 +606,7 @@ public class BindableProxyGenerator {
       }
       else {
         // TODO add full support for generics in errai codegen
-        logger.log(TreeLogger.WARN, "Ignoring method: " + method + " in class " + bindable + ". Methods using " +
+        log.warn("Ignoring method: " + method + " in class " + bindable + ". Methods using " +
             "multiple type parameters or type parameters with multiple bounds are currently not supported in " +
             "@Bindable types! Invoking this method on a bound model will have unpredictable results.");
         return null;
@@ -601,7 +619,7 @@ public class BindableProxyGenerator {
       return (MetaClass) clazz;
     }
 
-    logger.log(TreeLogger.WARN, "Ignoring method: " + method + " in class " + bindable + ". Method cannot be proxied!");
+    log.warn("Ignoring method: " + method + " in class " + bindable + ". Method cannot be proxied!");
     return null;
   }
 

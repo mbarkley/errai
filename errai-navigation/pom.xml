@@ -115,6 +115,19 @@
       <artifactId>powermock-api-mockito2</artifactId>
       <scope>test</scope>
     </dependency>
+
+    <dependency>
+      <groupId>org.jboss.errai</groupId>
+      <artifactId>errai-navigation-export-apt</artifactId>
+      <scope>compile</scope>
+    </dependency>
+
+    <dependency>
+      <!-- Needs provided scope for use in annotation processors -->
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-log4j12</artifactId>
+      <scope>provided</scope>
+    </dependency>
   </dependencies>
   
   <profiles>

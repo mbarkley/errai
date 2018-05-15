@@ -19,17 +19,20 @@ package org.jboss.errai.codegen.meta.impl.gwt;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.jboss.errai.codegen.DefModifiers;
 import org.jboss.errai.codegen.Parameter;
 import org.jboss.errai.codegen.builder.impl.Scope;
+import org.jboss.errai.codegen.meta.MetaAnnotation;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaConstructor;
@@ -37,6 +40,8 @@ import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaTypeVariable;
 import org.jboss.errai.codegen.meta.impl.AbstractMetaClass;
+import org.jboss.errai.codegen.meta.impl.java.JavaReflectionAnnotation;
+import org.jboss.errai.codegen.meta.impl.java.JavaReflectionClass;
 import org.jboss.errai.codegen.util.GWTPrivateMemberAccessor;
 import org.jboss.errai.codegen.util.GenUtil;
 import org.jboss.errai.codegen.util.PrivateAccessUtil;
@@ -504,8 +509,8 @@ public class GWTClass extends AbstractMetaClass<JType> {
   }
 
   @Override
-  public Annotation[] getAnnotations() {
-    return annotations;
+  public Collection<MetaAnnotation> getAnnotations() {
+    return Arrays.stream(annotations).map(JavaReflectionAnnotation::new).collect(Collectors.toList());
   }
 
   @Override
@@ -607,5 +612,11 @@ public class GWTClass extends AbstractMetaClass<JType> {
     }
 
     return new GWTClass(oracle, type, false);
+  }
+
+  @Override
+  public MetaClass getDeclaringClass() {
+    final Class<?> declaringClass = unsafeAsClass().getDeclaringClass();
+    return declaringClass != null ? JavaReflectionClass.newInstance(declaringClass) : null;
   }
 }

@@ -23,6 +23,7 @@ import jsinterop.annotations.JsType;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
 import org.jboss.errai.codegen.exception.GenerationException;
+import org.jboss.errai.codegen.meta.MetaAnnotation;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.util.If;
@@ -76,11 +77,18 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
 
   @Override
   public void generateDecorator(final Decorable decorable, final FactoryController controller) {
+
+    final Set<MetaClass> allConfiguredBindableTypes = DataBindingUtil.getAllBindableTypes(
+            decorable.getInjectionContext().getProcessingContext().erraiConfiguration(),
+            decorable.getInjectionContext().getProcessingContext().metaClassFinder());
+
     final MetaClass targetClass = decorable.getEnclosingInjectable().getInjectedType();
     final List<Statement> statements = new ArrayList<Statement>();
     final boolean hasRunForType =  processedTypes.contains(targetClass);
 
-    final DataBindingUtil.DataBinderRef binderLookup = DataBindingUtil.lookupDataBinderRef(decorable, controller);
+    final DataBindingUtil.DataBinderRef binderLookup = DataBindingUtil.lookupDataBinderRef(decorable, controller,
+            allConfiguredBindableTypes);
+
     if (binderLookup != null) {
       // Generate a reference to the bean's @AutoBound data binder
       if (!hasRunForType) {
@@ -93,10 +101,13 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
       }
 
       // Check if the bound property exists in data model type
-      final Bound bound = (Bound) decorable.getAnnotation();
-      final boolean propertyIsEmpty = bound.property().equals("");
-      String property = propertyIsEmpty ? decorable.getName() : bound.property();
-      if (!DataBindingValidator.isValidPropertyChain(binderLookup.getDataModelType(), property)) {
+      final MetaAnnotation bound = decorable.getAnnotation();
+      final boolean propertyIsEmpty = bound.value("property").equals("");
+      String property = propertyIsEmpty ? decorable.getName() : bound.value("property");
+
+      if (!DataBindingValidator.isValidPropertyChain(binderLookup.getDataModelType(), property,
+              allConfiguredBindableTypes)) {
+
         if (propertyIsEmpty && binderLookup.getDataModelType().equals(getValueType(decorable.getType()))) {
           property = "this";
         }
@@ -150,7 +161,7 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
       // Generate the binding
       Statement conv = coverterStatement(bound, decorable.getType(),
               DataBindingValidator.getPropertyType(binderLookup.getDataModelType(), property));
-      Statement onKeyUp = Stmt.load(bound.onKeyUp());
+      Statement onKeyUp = Stmt.load(bound.value("onKeyUp"));
       statements.add(Stmt.loadVariable("binder").invoke("bind", component, property, conv, loadLiteral(null), onKeyUp));
     }
     else {
@@ -177,8 +188,9 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
     }
   }
 
-  private Statement coverterStatement(final Bound bound, final MetaClass boundType, final MetaClass propertyType) {
-    if (bound.converter().equals(Bound.NO_CONVERTER.class)) {
+  private Statement coverterStatement(final MetaAnnotation bound, final MetaClass boundType, final MetaClass propertyType) {
+    final MetaClass converter = bound.value("converter");
+    if (converter.instanceOf(Bound.NO_CONVERTER.class)) {
       final Optional<MetaClass> valueType;
       if (boundType.isAssignableTo(TakesValue.class)) {
         valueType = Optional.ofNullable(boundType.getMethod("getValue", new Class[0]).getReturnType());
@@ -195,7 +207,7 @@ public class BoundDecorator extends IOCDecoratorExtension<Bound> {
               .orElse(loadLiteral(null));
     }
     else {
-      return Stmt.newObject(bound.converter());
+      return Stmt.newObject(converter);
     }
   }
 

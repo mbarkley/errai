@@ -16,35 +16,30 @@
  */
 package org.jboss.errai.codegen.util;
 
-import static java.lang.reflect.Modifier.isPublic;
+import org.apache.commons.lang3.AnnotationUtils;
+import org.apache.commons.lang3.ClassUtils;
+import org.apache.commons.lang3.Validate;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+import org.jboss.errai.codegen.meta.MetaAnnotation;
+import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaClassFactory;
+import org.jboss.errai.codegen.meta.MetaMethod;
+import org.jboss.errai.common.metadata.MetaDataScanner;
+import org.jboss.errai.common.metadata.ScannerSingleton;
 
+import javax.enterprise.util.Nonbinding;
+import javax.inject.Named;
+import javax.inject.Qualifier;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import javax.enterprise.util.Nonbinding;
-import javax.inject.Named;
-import javax.inject.Qualifier;
-
-import org.apache.commons.lang3.AnnotationUtils;
-import org.apache.commons.lang3.ClassUtils;
-import org.apache.commons.lang3.Validate;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.commons.lang3.builder.ToStringStyle;
-import org.jboss.errai.codegen.meta.MetaClass;
-import org.jboss.errai.codegen.meta.MetaClassFactory;
-import org.jboss.errai.codegen.meta.MetaMethod;
-import org.jboss.errai.common.client.util.AnnotationPropertyAccessor;
-import org.jboss.errai.common.client.util.AnnotationPropertyAccessorBuilder;
-import org.jboss.errai.common.metadata.MetaDataScanner;
-import org.jboss.errai.common.metadata.ScannerSingleton;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * <p>
@@ -141,86 +136,6 @@ public class CDIAnnotationUtils {
     public CDIAnnotationUtils() {
     }
 
-    //-----------------------------------------------------------------------
-    /**
-     * <p>Checks if two annotations are equal using the criteria for equality
-     * presented in the {@link Annotation#equals(Object)} API docs.</p>
-     *
-     * @param a1 the first Annotation to compare, {@code null} returns
-     * {@code false} unless both are {@code null}
-     * @param a2 the second Annotation to compare, {@code null} returns
-     * {@code false} unless both are {@code null}
-     * @return {@code true} if the two annotations are {@code equal} or both
-     * {@code null}
-     */
-    public static boolean equals(Annotation a1, Annotation a2) {
-        if (a1 == a2) {
-            return true;
-        }
-        if (a1 == null || a2 == null) {
-            return false;
-        }
-        final Class<? extends Annotation> type = a1.annotationType();
-        final Class<? extends Annotation> type2 = a2.annotationType();
-        Validate.notNull(type, "Annotation %s with null annotationType()", a1);
-        Validate.notNull(type2, "Annotation %s with null annotationType()", a2);
-        if (!type.equals(type2)) {
-            return false;
-        }
-        try {
-            for (final Method m : type.getDeclaredMethods()) {
-                if (m.getParameterTypes().length == 0
-                        && isValidAnnotationMemberType(m.getReturnType())
-                        && !m.isAnnotationPresent(Nonbinding.class)) {
-                    final Object v1 = m.invoke(a1);
-                    final Object v2 = m.invoke(a2);
-                    if (!memberEquals(m.getReturnType(), v1, v2)) {
-                        return false;
-                    }
-                }
-            }
-        } catch (final IllegalAccessException ex) {
-            return false;
-        } catch (final InvocationTargetException ex) {
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * <p>Generate a hash code for the given annotation using the algorithm
-     * presented in the {@link Annotation#hashCode()} API docs.</p>
-     *
-     * @param a the Annotation for a hash code calculation is desired, not
-     * {@code null}
-     * @return the calculated hash code
-     * @throws RuntimeException if an {@code Exception} is encountered during
-     * annotation member access
-     * @throws IllegalStateException if an annotation method invocation returns
-     * {@code null}
-     */
-    public static int hashCode(Annotation a) {
-        int result = 0;
-        final Class<? extends Annotation> type = a.annotationType();
-        for (final Method m : type.getDeclaredMethods()) {
-            if (!m.isAnnotationPresent(Nonbinding.class)) {
-              try {
-                final Object value = m.invoke(a);
-                if (value == null) {
-                  throw new IllegalStateException(
-                          String.format("Annotation method %s returned null", m));
-                }
-                result += hashMember(m.getName(), value);
-              } catch (final RuntimeException ex) {
-                throw ex;
-              } catch (final Exception ex) {
-                throw new RuntimeException(ex);
-              }
-            }
-        }
-        return result;
-    }
-
     /**
      * <p>Generate a string representation of an Annotation, as suggested by
      * {@link Annotation#toString()}.</p>
@@ -257,7 +172,7 @@ public class CDIAnnotationUtils {
      * @param type the type to check, {@code null}
      * @return {@code true} if the type is a valid type to use in an annotation
      */
-    public static boolean isValidAnnotationMemberType(Class<?> type) {
+    private static boolean isValidAnnotationMemberType(Class<?> type) {
         if (type == null) {
             return false;
         }
@@ -277,14 +192,16 @@ public class CDIAnnotationUtils {
      * @return a hash code for this member
      */
     private static int hashMember(String name, Object value) {
-        final int part1 = name.hashCode() * 127;
-        if (value.getClass().isArray()) {
-            return part1 ^ arrayMemberHash(value.getClass().getComponentType(), value);
-        }
-        if (value instanceof Annotation) {
-            return part1 ^ hashCode((Annotation) value);
-        }
-        return part1 ^ value.hashCode();
+      final int part1 = name.hashCode() * 127;
+      if (value.getClass().isArray()) {
+        return part1 ^ arrayMemberHash(value.getClass().getComponentType(), value);
+      }
+      if (value instanceof Annotation) {
+        return part1 ^ hashCode((Annotation) value);
+      } else if (value instanceof MetaAnnotation) {
+        return part1 ^ hashCode((MetaAnnotation) value);
+      }
+      return part1 ^ value.hashCode();
     }
 
     /**
@@ -426,7 +343,8 @@ public class CDIAnnotationUtils {
 
     public static Set<MetaClass> getQualifiers() {
       final Set<Class<?>> qualifiersAsClasses = getQualifiersAsClasses();
-      final Set<MetaClass> qualifiersAsMetaClasses = qualifiersAsClasses.stream().map(c -> MetaClassFactory.get(c)).collect(Collectors.toSet());
+      final Set<MetaClass> qualifiersAsMetaClasses = qualifiersAsClasses.stream().map(MetaClassFactory::get).collect(
+              toSet());
 
       if (qualifiersAsClasses.size() > qualifiersAsMetaClasses.size()) {
         throw new RuntimeException("Lost some qualifiers when converting from Class to MetaClass");
@@ -435,73 +353,143 @@ public class CDIAnnotationUtils {
       return qualifiersAsMetaClasses;
     }
 
-    public static Collection<MetaMethod> getAnnotationAttributes(final MetaClass annoClass) {
-      return filterAnnotationMethods(Arrays.stream(annoClass.getDeclaredMethods()),
-              method -> !method.isAnnotationPresent(Nonbinding.class) && method.isPublic()
-                      && !method.getName().equals("equals") && !method.getName().equals("hashCode"));
+
+
+  public static Collection<MetaMethod> getAnnotationAttributes(final MetaClass annoClass) {
+    return Arrays.stream(annoClass.getDeclaredMethods())
+            .filter(CDIAnnotationUtils::isPublicDeclaredAndNonNonbinding)
+            .collect(Collectors.toList());
+  }
+
+  public static boolean isPublicDeclaredAndNonNonbinding(final MetaMethod method) {
+    return !method.isAnnotationPresent(Nonbinding.class)
+            && method.isPublic()
+            && !method.getName().equals("equals")
+            && !method.getName().equals("hashCode");
+  }
+
+  /**
+   * <p>Checks if two annotations are equal using the criteria for equality
+   * presented in the {@link Annotation#equals(Object)} API docs.</p>
+   *
+   * @param a1 the first Annotation to compare, {@code null} returns
+   * {@code false} unless both are {@code null}
+   * @param a2 the second Annotation to compare, {@code null} returns
+   * {@code false} unless both are {@code null}
+   * @return {@code true} if the two annotations are {@code equal} or both
+   * {@code null}
+   */
+  public static boolean equals(final Annotation a1, final Annotation a2) {
+    if (a1 == a2) {
+      return true;
     }
-
-    public static Collection<Method> getAnnotationAttributes(final Class<?> annoClass) {
-      return filterAnnotationMethods(Arrays.stream(annoClass.getDeclaredMethods()),
-              method -> !method.isAnnotationPresent(Nonbinding.class) && isPublic(method.getModifiers())
-                      && !method.getName().equals("equals") && !method.getName().equals("hashCode"));
+    if (a1 == null || a2 == null) {
+      return false;
     }
-
-    public static Collection<MetaMethod> getNonBindingAttributes(final MetaClass annoClass) {
-      return filterAnnotationMethods(Arrays.stream(annoClass.getDeclaredMethods()),
-              method -> method.isAnnotationPresent(Nonbinding.class) && method.isPublic()
-                      && !method.getName().equals("equals") && !method.getName().equals("hashCode"));
+    final Class<? extends Annotation> type = a1.annotationType();
+    final Class<? extends Annotation> type2 = a2.annotationType();
+    Validate.notNull(type, "Annotation %s with null annotationType()", a1);
+    Validate.notNull(type2, "Annotation %s with null annotationType()", a2);
+    if (!type.equals(type2)) {
+      return false;
     }
-
-    public static Collection<Method> getNonBindingAttributes(final Class<?> annoClass) {
-      return filterAnnotationMethods(Arrays.stream(annoClass.getDeclaredMethods()),
-              method -> method.isAnnotationPresent(Nonbinding.class) && isPublic(method.getModifiers())
-                      && !method.getName().equals("equals") && !method.getName().equals("hashCode"));
-    }
-
-    private static <T, M> Collection<M> filterAnnotationMethods(final Stream<M> methods, final Predicate<M> methodPredicate) {
-      return methods.filter(methodPredicate).collect(Collectors.toList());
-    }
-
-    public static AnnotationPropertyAccessor createDynamicSerializer(final Class<? extends Annotation> annotationType) {
-      final AnnotationPropertyAccessorBuilder builder = AnnotationPropertyAccessorBuilder.create();
-
-      final Collection<Method> annoAttrs = CDIAnnotationUtils.getAnnotationAttributes(annotationType);
-      for (final Method attr : annoAttrs) {
-        builder.with(attr.getName(), anno -> {
-          try {
-            final String retVal;
-            final Function<Object, String> toString = componentToString(
-                  attr.getReturnType().isArray() ? attr.getReturnType().getComponentType() : attr.getReturnType());
-            if (attr.getReturnType().isArray()) {
-              final StringBuilder sb = new StringBuilder();
-              final Object[] array = (Object[]) attr.invoke(anno);
-              sb.append("[");
-              for (final Object obj : array) {
-                sb.append(toString.apply(obj)).append(",");
-              }
-              sb.replace(sb.length()-1, sb.length(), "]");
-              retVal = sb.toString();
-            }
-            else {
-              retVal = toString.apply(attr.invoke(anno));
-            }
-            return retVal;
-          } catch (final Exception e) {
-            throw new RuntimeException(String.format("Could not access '%s' property while serializing %s.", attr.getName(), anno.annotationType()), e);
+    try {
+      for (final Method m : type.getDeclaredMethods()) {
+        if (m.getParameterTypes().length == 0
+                && isValidAnnotationMemberType(m.getReturnType())
+                && !m.isAnnotationPresent(Nonbinding.class)) {
+          final Object v1 = m.invoke(a1);
+          final Object v2 = m.invoke(a2);
+          if (!memberEquals(m.getReturnType(), v1, v2)) {
+            return false;
           }
-        });
+        }
       }
+    } catch (final IllegalAccessException | InvocationTargetException ex) {
+      return false;
+    }
+    return true;
+  }
 
-      return builder.build();
+  public static boolean equals(final MetaAnnotation anno1, final MetaAnnotation anno2) {
+
+    if (!anno1.annotationType().equals(anno2.annotationType())) {
+      return false;
     }
 
-    private static Function<Object, String> componentToString(final Class<?> returnType) {
-      if (Class.class.equals(returnType)) {
-        return o -> ((Class<?>) o).getName();
-      }
-      else {
-        return o -> String.valueOf(o);
+    final Set<String> members1 = getCdiRelevantMemberNames(anno1);
+    final Set<String> members2 = getCdiRelevantMemberNames(anno2);
+
+    if (members1.size() != members2.size()) {
+      return false;
+    }
+
+    for (final String memberName : members1) {
+      final Object value1 = anno1.value(memberName);
+      final Object value2 = anno2.value(memberName);
+      if (!memberEquals(value1.getClass(), value1, value2)) {
+        return false;
       }
     }
+
+    return true;
+  }
+
+  public static Set<String> getCdiRelevantMemberNames(final MetaAnnotation metaAnnotation) {
+    return metaAnnotation.values()
+            .keySet()
+            .stream()
+            .filter(memberName -> !metaAnnotation.annotationType()
+                    .getMethod(memberName, new MetaClass[0])
+                    .isAnnotationPresent(Nonbinding.class))
+            .collect(toSet());
+  }
+
+  /**
+   * <p>Generate a hash code for the given annotation using the algorithm
+   * presented in the {@link Annotation#hashCode()} API docs.</p>
+   *
+   * @param a the Annotation for a hash code calculation is desired, not
+   * {@code null}
+   * @return the calculated hash code
+   * @throws RuntimeException if an {@code Exception} is encountered during
+   * annotation member access
+   * @throws IllegalStateException if an annotation method invocation returns
+   * {@code null}
+   */
+  public static int hashCode(final Annotation a) {
+    int result = 0;
+    final Class<? extends Annotation> type = a.annotationType();
+    for (final Method m : type.getDeclaredMethods()) {
+      if (!m.isAnnotationPresent(Nonbinding.class)) {
+        try {
+          final Object value = m.invoke(a);
+          if (value == null) {
+            throw new IllegalStateException(String.format("Annotation method %s returned null", m));
+          }
+          result += hashMember(m.getName(), value);
+        } catch (final RuntimeException ex) {
+          throw ex;
+        } catch (final Exception ex) {
+          throw new RuntimeException(ex);
+        }
+      }
+    }
+    return result;
+  }
+
+  public static int hashCode(final MetaAnnotation a) {
+    int result = 0;
+    final MetaClass type = a.annotationType();
+    for (final MetaMethod m : type.getDeclaredMethods()) {
+      if (!m.isAnnotationPresent(Nonbinding.class)) {
+        final Object value = a.value(m.getName());
+        if (value == null) {
+          throw new IllegalStateException(String.format("Annotation method %s returned null", m));
+        }
+        result += hashMember(m.getName(), value);
+      }
+    }
+    return result;
+  }
 }

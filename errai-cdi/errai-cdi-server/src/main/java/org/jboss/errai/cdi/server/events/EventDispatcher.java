@@ -41,11 +41,12 @@ import org.jboss.errai.bus.client.api.messaging.MessageCallback;
 import org.jboss.errai.bus.server.api.RpcContext;
 import org.jboss.errai.bus.server.util.LocalContext;
 import org.jboss.errai.common.client.protocols.MessageParts;
-import org.jboss.errai.config.rebind.EnvUtil;
+import org.jboss.errai.config.marshalling.MarshallingConfiguration;
 import org.jboss.errai.enterprise.client.cdi.CDICommands;
 import org.jboss.errai.enterprise.client.cdi.CDIProtocol;
 import org.jboss.errai.enterprise.client.cdi.api.CDI;
 import org.jboss.errai.enterprise.client.cdi.api.Conversational;
+import org.jboss.errai.marshalling.server.MappingContextSingleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,7 +97,7 @@ public class EventDispatcher implements MessageCallback {
         final ClientObserverMetadata clientObserver = new ClientObserverMetadata(type, annotationTypes);
 
         if (!clientObservers.contains(clientObserver)) {
-          if (type == null || !EnvUtil.isPortableType(type)) {
+          if (type == null || !MappingContextSingleton.get().hasMarshaller(type.getName())) {
             log.warn("client tried to register a non-portable type: " + type);
             return;
           }

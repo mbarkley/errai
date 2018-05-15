@@ -19,6 +19,7 @@
 <module>
   <inherits name='com.google.gwt.user.User'/>
   <inherits name="org.jboss.errai.common.ErraiCommon"/>
+  <inherits name="org.jboss.errai.common.apt.ErraiCommonApt"/>
   <inherits name="org.jboss.errai.common.Logging"/>
   <inherits name="javax.enterprise.Support"/>
   <inherits name="com.google.common.collect.Collect"/>
@@ -26,20 +27,23 @@
   <entry-point class='org.jboss.errai.ioc.client.Container'/>
 
   <generate-with class="org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCGenerator">
-    <when-type-assignable
-        class="org.jboss.errai.ioc.client.Bootstrapper"/>
+    <when-type-assignable class="org.jboss.errai.ioc.client.Bootstrapper"/>
+    <when-property-is name="errai.useAptGenerators" value="false"/>
   </generate-with>
 
   <generate-with class="org.jboss.errai.ioc.rebind.ioc.bootstrapper.QualifierEqualityFactoryGenerator">
     <when-type-assignable class="org.jboss.errai.ioc.client.QualifierEqualityFactory"/>
+    <when-property-is name="errai.useAptGenerators" value="false" />
   </generate-with>
 
   <generate-with class="org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCEnvironmentGenerator">
     <when-type-assignable class="org.jboss.errai.ioc.client.container.IOCEnvironment"/>
+    <when-property-is name="errai.useAptGenerators" value="false" />
   </generate-with>
 
   <generate-with class="org.jboss.errai.ioc.rebind.ioc.bootstrapper.FactoryGenerator">
     <when-type-assignable class="org.jboss.errai.ioc.client.container.Factory"/>
+    <when-property-is name="errai.useAptGenerators" value="false"/>
   </generate-with>
 
   <super-source path="compat"/>

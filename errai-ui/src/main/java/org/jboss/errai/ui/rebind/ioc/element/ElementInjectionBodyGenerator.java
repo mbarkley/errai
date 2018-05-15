@@ -16,12 +16,15 @@
 
 package org.jboss.errai.ui.rebind.ioc.element;
 
+import com.google.common.base.Strings;
+import com.google.gwt.util.tools.shared.StringUtils;
 import elemental2.dom.DomGlobal;
 import elemental2.dom.Element;
 import jsinterop.base.Js;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
+import org.jboss.errai.codegen.meta.MetaAnnotation;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaMethod;
@@ -30,7 +33,6 @@ import org.jboss.errai.common.client.api.annotations.Property;
 import org.jboss.errai.common.client.ui.HasValue;
 import org.jboss.errai.common.client.ui.NativeHasValueAccessors;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.AbstractBodyGenerator;
-import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.Injectable;
 import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectionContext;
 
@@ -58,14 +60,15 @@ class ElementInjectionBodyGenerator extends AbstractBodyGenerator {
 
   private final MetaClass type;
   private final String tagName;
+  private final String classNames;
   private final Set<Property> properties;
   private final List<String> classNames;
 
-  ElementInjectionBodyGenerator(final MetaClass type,
-          final String tagName,
-          final Set<Property> properties,
-          final List<String> classNames) {
+  ElementInjectionBodyGenerator(final MetaClass type, String tagName) {
+    this(type, tagName, Collections.emptySet(), "");
+  }
 
+  ElementInjectionBodyGenerator(final MetaClass type, String tagName, final Set<Property> properties, final String classNames) {
     this.type = type;
     this.tagName = tagName;
     this.properties = properties;
@@ -74,9 +77,7 @@ class ElementInjectionBodyGenerator extends AbstractBodyGenerator {
 
   @Override
   protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
-          final Injectable injectable,
-          final DependencyGraph graph,
-          final InjectionContext injectionContext) {
+          final Injectable injectable, final InjectionContext injectionContext) {
 
     final List<Statement> stmts = new ArrayList<>();
 
@@ -90,11 +91,9 @@ class ElementInjectionBodyGenerator extends AbstractBodyGenerator {
               loadLiteral(property.value())));
     }
 
-    if (!classNames.isEmpty()) {
-      stmts.add(loadVariable(elementVar).loadField("className")
-              .assignValue(loadLiteral(classNames.stream().collect(joining(" ")))));
+    if (!Strings.isNullOrEmpty(classNames)) {
+      stmts.add(loadVariable(elementVar).invoke("addClassName", loadLiteral(classNames)));
     }
-
     final String retValVar = "retVal";
 
     stmts.add(declareFinalVariable(retValVar, type, invokeStatic(Js.class, "cast", loadVariable(elementVar))));
@@ -126,12 +125,11 @@ class ElementInjectionBodyGenerator extends AbstractBodyGenerator {
          */
         return true;
       } else {
-        final Stream<Annotation> getAnnos = Arrays.stream(getValue.getAnnotations());
-        final Stream<Annotation> setAnnos = Arrays.stream(setValue.getAnnotations());
+        final Stream<MetaAnnotation> getAnnos = getValue.getAnnotations().stream();
+        final Stream<MetaAnnotation> setAnnos = setValue.getAnnotations().stream();
 
-        final Predicate<Annotation> testForOverlayOrProperty = anno -> anno.annotationType()
-                .getPackage()
-                .getName()
+        final Predicate<MetaAnnotation> testForOverlayOrProperty = anno -> anno.annotationType()
+                .getPackageName()
                 .equals("jsinterop.annotations");
 
         return getAnnos.anyMatch(testForOverlayOrProperty) || setAnnos.anyMatch(testForOverlayOrProperty);

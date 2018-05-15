@@ -16,11 +16,11 @@
 
 package org.jboss.errai.bus.rebind;
 
-import java.lang.annotation.Annotation;
-import java.util.Collection;
-
+import com.google.gwt.core.ext.GeneratorContext;
+import com.google.gwt.core.ext.TreeLogger;
+import com.google.gwt.core.ext.UnableToCompleteException;
 import org.jboss.errai.bus.client.api.messaging.MessageBus;
-import org.jboss.errai.bus.client.framework.RpcProxyLoader;
+import org.jboss.errai.bus.client.local.RpcProxyLoader;
 import org.jboss.errai.bus.server.annotations.Remote;
 import org.jboss.errai.codegen.InnerClass;
 import org.jboss.errai.codegen.Parameter;
@@ -30,22 +30,26 @@ import org.jboss.errai.codegen.builder.MethodBlockBuilder;
 import org.jboss.errai.codegen.builder.impl.ClassBuilder;
 import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
 import org.jboss.errai.codegen.meta.MetaClass;
-import org.jboss.errai.codegen.util.ProxyUtil.InterceptorProvider;
+import org.jboss.errai.codegen.util.AnnotationFilter;
+import org.jboss.errai.codegen.util.InterceptorProvider;
+import org.jboss.errai.codegen.util.RuntimeAnnotationFilter;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.common.client.api.interceptor.FeatureInterceptor;
 import org.jboss.errai.common.client.api.interceptor.InterceptsRemoteCall;
 import org.jboss.errai.common.client.framework.ProxyProvider;
 import org.jboss.errai.common.client.framework.RemoteServiceProxyFactory;
 import org.jboss.errai.common.metadata.RebindUtils;
+import org.jboss.errai.config.MetaClassFinder;
 import org.jboss.errai.config.rebind.AbstractAsyncGenerator;
 import org.jboss.errai.config.rebind.GenerateAsync;
 import org.jboss.errai.config.util.ClassScanner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gwt.core.ext.GeneratorContext;
-import com.google.gwt.core.ext.TreeLogger;
-import com.google.gwt.core.ext.UnableToCompleteException;
+import java.lang.annotation.Annotation;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Generates the implementation of {@link RpcProxyLoader}.
@@ -54,36 +58,60 @@ import com.google.gwt.core.ext.UnableToCompleteException;
  */
 @GenerateAsync(RpcProxyLoader.class)
 public class RpcProxyLoaderGenerator extends AbstractAsyncGenerator {
+  private static final String IOC_MODULE_NAME = "org.jboss.errai.ioc.Container";
   private static final Logger log = LoggerFactory.getLogger(RpcProxyLoaderGenerator.class);
-  private final String packageName = RpcProxyLoader.class.getPackage().getName();
-  private final String className = RpcProxyLoader.class.getSimpleName() + "Impl";
+
+  private final String packageName = "org.jboss.errai.bus.client.local";
+  private final String classSimpleName = "RpcProxyLoaderImpl";
 
   @Override
   public String generate(final TreeLogger logger, final GeneratorContext context, final String typeName)
-      throws UnableToCompleteException {
+          throws UnableToCompleteException {
 
-    return startAsyncGeneratorsAndWaitFor(RpcProxyLoader.class, context, logger, packageName, className);
+    return startAsyncGeneratorsAndWaitFor(RpcProxyLoader.class, context, logger, packageName, classSimpleName);
   }
 
   @Override
   protected String generate(final TreeLogger logger, final GeneratorContext context) {
+    final Boolean iocEnabled = RebindUtils.isModuleInherited(context, IOC_MODULE_NAME);
+    final Set<String> translatablePackages = RebindUtils.findTranslatablePackages(context);
+    final AnnotationFilter gwtAnnotationFilter = new RuntimeAnnotationFilter(translatablePackages);
+    final MetaClassFinder metaClassFinder = annotation -> getMetaClasses(context, annotation, translatablePackages);
+    final String fqcn = packageName + "." + classSimpleName;
+
+    return generate(metaClassFinder, iocEnabled, gwtAnnotationFilter, fqcn);
+  }
+
+  public String generate(final MetaClassFinder metaClassFinder,
+          final boolean iocEnabled,
+          final AnnotationFilter annotationFilter,
+          final String fqcn) {
+
     log.info("generating RPC proxy loader class...");
 
-    ClassStructureBuilder<?> classBuilder = ClassBuilder.implement(RpcProxyLoader.class);
-    final long time = System.currentTimeMillis();
-    final MethodBlockBuilder<?> loadProxies =
-            classBuilder.publicMethod(void.class, "loadProxies", Parameter.of(MessageBus.class, "bus", true));
+    ClassStructureBuilder<?> classBuilder = ClassBuilder.implement(RpcProxyLoader.class, fqcn);
 
-    final Collection<MetaClass> remotes = ClassScanner.getTypesAnnotatedWith(Remote.class,
-        RebindUtils.findTranslatablePackages(context), context);
+    final long time = System.currentTimeMillis();
+    final MethodBlockBuilder<?> loadProxies = classBuilder.publicMethod(void.class, "loadProxies",
+            Parameter.of(MessageBus.class, "bus", true));
+
+    final Collection<MetaClass> remotes = metaClassFinder.findAnnotatedWith(Remote.class);
     addCacheRelevantClasses(remotes);
 
-    final InterceptorProvider interceptorProvider = getInterceptorProvider(context);
+    final Collection<MetaClass> featureInterceptors = metaClassFinder.findAnnotatedWith(FeatureInterceptor.class);
+    addCacheRelevantClasses(featureInterceptors);
+
+    final Collection<MetaClass> standaloneInterceptors = metaClassFinder.findAnnotatedWith(InterceptsRemoteCall.class);
+    addCacheRelevantClasses(standaloneInterceptors);
+
+    final InterceptorProvider interceptorProvider = new InterceptorProvider(featureInterceptors,
+            standaloneInterceptors);
 
     for (final MetaClass remote : remotes) {
       if (remote.isInterface()) {
         // create the remote proxy for this interface
-        final ClassStructureBuilder<?> remoteProxy = new RpcProxyGenerator(remote, context, interceptorProvider).generate();
+        final ClassStructureBuilder<?> remoteProxy = new RpcProxyGenerator(remote, interceptorProvider,
+                annotationFilter, iocEnabled).generate();
         loadProxies.append(new InnerClass(remoteProxy.getClassDefinition()));
 
         // create the proxy provider
@@ -100,36 +128,36 @@ public class RpcProxyLoaderGenerator extends AbstractAsyncGenerator {
 
     classBuilder = (ClassStructureBuilder<?>) loadProxies.finish();
 
-    String gen = classBuilder.toJavaString();
+    final String gen = classBuilder.toJavaString();
     log.info("generated RPC proxy loader class in " + (System.currentTimeMillis() - time) + "ms.");
     return gen;
   }
 
+  @Override
+  protected boolean isRelevantClass(final MetaClass clazz) {
+    return clazz.isAnnotationPresent(Remote.class)
+            || clazz.isAnnotationPresent(FeatureInterceptor.class)
+            || clazz.isAnnotationPresent(InterceptsRemoteCall.class);
+  }
 
-  private InterceptorProvider getInterceptorProvider(final GeneratorContext context) {
-    final Collection<MetaClass> featureInterceptors = ClassScanner.getTypesAnnotatedWith(FeatureInterceptor.class,
-        RebindUtils.findTranslatablePackages(context), context);
-    addCacheRelevantClasses(featureInterceptors);
+  private Set<MetaClass> getMetaClasses(final GeneratorContext context,
+          final Class<? extends Annotation> annotation,
+          final Set<String> translatablePackages) {
 
-    final Collection<MetaClass> standaloneInterceptors = ClassScanner.getTypesAnnotatedWith(InterceptsRemoteCall.class,
-        RebindUtils.findTranslatablePackages(context), context);
-    addCacheRelevantClasses(standaloneInterceptors);
+    return new HashSet<>(ClassScanner.getTypesAnnotatedWith(annotation, translatablePackages, context));
+  }
 
-    return new InterceptorProvider(featureInterceptors, standaloneInterceptors);
+  public String getPackageName() {
+    return packageName;
+  }
+
+  public String getClassSimpleName() {
+    return classSimpleName;
   }
 
   @Override
-  protected boolean isRelevantClass(MetaClass clazz) {
-    for (final Annotation anno : clazz.getAnnotations()) {
-      if (anno.annotationType().equals(Remote.class) || anno.annotationType().equals(FeatureInterceptor.class)
-              || anno.annotationType().equals(InterceptsRemoteCall.class)) {
-        return true;
-      }
-    }
-
-    return false;
+  public boolean alreadyGeneratedSourcesViaAptGenerators(final GeneratorContext context) {
+    return RebindUtils.isErraiUseAptGeneratorsPropertyEnabled(context);
   }
-
-
 
 }

@@ -16,22 +16,12 @@
 
 package org.jboss.errai.codegen.test.meta;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-
+import com.google.common.collect.Lists;
+import com.google.gwt.core.ext.typeinfo.NotFoundException;
+import org.jboss.errai.codegen.meta.HasAnnotations;
+import org.jboss.errai.codegen.meta.MetaAnnotation;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaConstructor;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
@@ -39,12 +29,24 @@ import org.jboss.errai.codegen.meta.MetaParameterizedType;
 import org.jboss.errai.codegen.meta.MetaType;
 import org.jboss.errai.codegen.meta.MetaTypeVariable;
 import org.jboss.errai.codegen.meta.MetaWildcardType;
+import org.jboss.errai.codegen.test.model.ClassExtendingAnnotatedSuperClass;
+import org.jboss.errai.codegen.test.model.ClassExtendingClassExtendingInheritedAnnotatedSuperClass;
+import org.jboss.errai.codegen.test.model.ClassExtendingInheritedAnnotatedSuperClass;
+import org.jboss.errai.codegen.test.model.ClassImplementingAnnotatedInterface;
+import org.jboss.errai.codegen.test.model.ClassImplementingInheritedAnnotatedInterface;
+import org.jboss.errai.codegen.test.model.ClassWithAnnotations;
 import org.jboss.errai.codegen.test.model.ClassWithArrayGenerics;
 import org.jboss.errai.codegen.test.model.ClassWithGenericCollections;
 import org.jboss.errai.codegen.test.model.ClassWithGenericMethods;
+import org.jboss.errai.codegen.test.model.ClassWithMethodsWithGenericParameters;
 import org.jboss.errai.codegen.test.model.HasManyConstructors;
+import org.jboss.errai.codegen.test.model.InheritedAnnotation;
+import org.jboss.errai.codegen.test.model.MultipleValues;
+import org.jboss.errai.codegen.test.model.Nested;
 import org.jboss.errai.codegen.test.model.ObjectWithNested;
 import org.jboss.errai.codegen.test.model.ParameterizedClass;
+import org.jboss.errai.codegen.test.model.Plain;
+import org.jboss.errai.codegen.test.model.SingleValue;
 import org.jboss.errai.codegen.test.model.TestInterface;
 import org.jboss.errai.codegen.test.model.tree.Child;
 import org.jboss.errai.codegen.test.model.tree.Grandparent;
@@ -56,11 +58,30 @@ import org.jboss.errai.codegen.test.model.tree.ParentInterface;
 import org.jboss.errai.codegen.test.model.tree.ParentSuperInterface1;
 import org.jboss.errai.codegen.test.model.tree.ParentSuperInterface2;
 import org.jboss.errai.codegen.util.GenUtil;
+import org.junit.Assert;
 import org.junit.Test;
 import org.mvel2.util.NullType;
 
-import com.google.common.collect.Lists;
-import com.google.gwt.core.ext.typeinfo.NotFoundException;
+import java.io.Serializable;
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static java.util.Collections.singleton;
+import static java.util.Collections.sort;
+import static java.util.stream.Collectors.toSet;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Subclassable container for the test cases that guarantee an implementation of
@@ -102,63 +123,84 @@ public abstract class AbstractMetaClassTest {
 
   @Test
   public void testInternalNameForOneDimensionalPrimitiveArray() {
-   final String internalName = getMetaClass(char[].class).getInternalName();
-   assertEquals("Wrong internal name generated for one-dimensional primitive array",
-       "[C", internalName);
+    final String internalName = getMetaClass(char[].class).getInternalName();
+    assertEquals("Wrong internal name generated for one-dimensional primitive array", "[C", internalName);
   }
 
   @Test
   public void testInternalNameForOneDimensionalObjectArray() {
-   final String internalName = getMetaClass(String[].class).getInternalName();
-   assertEquals("Wrong internal name generated for one-dimensional object array",
-       "[Ljava/lang/String;", internalName);
+    final String internalName = getMetaClass(String[].class).getInternalName();
+    assertEquals("Wrong internal name generated for one-dimensional object array", "[Ljava/lang/String;", internalName);
   }
 
   @Test
   public void testInternalNameForMultiDimensionalPrimitiveArray() {
-   final String internalName = getMetaClass(char[][].class).getInternalName();
-   assertEquals("Wrong internal name generated for multidimensional primitive array",
-       "[[C", internalName);
+    final String internalName = getMetaClass(char[][].class).getInternalName();
+    assertEquals("Wrong internal name generated for multidimensional primitive array", "[[C", internalName);
   }
 
   @Test
   public void testInternalNameForMultiDimensionalObjectArray() {
-   final String internalName = getMetaClass(String[][].class).getInternalName();
-   assertEquals("Wrong internal name generated for multidimensional object array",
-       "[[Ljava/lang/String;", internalName);
+    final String internalName = getMetaClass(String[][].class).getInternalName();
+    assertEquals("Wrong internal name generated for multidimensional object array", "[[Ljava/lang/String;",
+            internalName);
+  }
+
+  @Test
+  public void testGetNameOnObjectArray() {
+    final String name = getMetaClass(String[].class).getName();
+    assertEquals("String[]", name);
+  }
+
+  @Test
+  public void testGetNameOnPrimitiveArray() {
+    final String name = getMetaClass(char[].class).getName();
+    assertEquals("char[]", name);
+  }
+
+  @Test
+  public void testGetNameOnPrimitive() {
+    final String name = getMetaClass(char.class).getName();
+    assertEquals("char", name);
+  }
+
+  @Test
+  public void testGetNameOnVoid() {
+    final String name = getMetaClass(void.class).getName();
+    assertEquals("void", name);
   }
 
   @Test
   public void testObjectIsAssignableFromNull() throws Exception {
-	  // This test checks the valid case:
-	  // Object example = null;
+    // This test checks the valid case:
+    // Object example = null;
 
-	  final MetaClass metaObject = getMetaClass(Object.class);
-	  final MetaClass metaNull = getMetaClass(NullType.class);
+    final MetaClass metaObject = getMetaClass(Object.class);
+    final MetaClass metaNull = getMetaClass(NullType.class);
 
-	  assertTrue(metaObject.isAssignableFrom(metaNull));
+    assertTrue(metaObject.isAssignableFrom(metaNull));
   }
 
   @Test
   public void testChildIsAssignableFromNull() throws Exception {
-	  // This test checks the valid case:
-	  // Child example = null;
+    // This test checks the valid case:
+    // Child example = null;
 
-	  final MetaClass metaChild = getMetaClass(Child.class);
-	  final MetaClass metaNull = getMetaClass(NullType.class);
+    final MetaClass metaChild = getMetaClass(Child.class);
+    final MetaClass metaNull = getMetaClass(NullType.class);
 
-	  assertTrue(metaChild.isAssignableFrom(metaNull));
+    assertTrue(metaChild.isAssignableFrom(metaNull));
   }
 
   @Test
   public void testNullIsAssignableToChild() throws Exception {
-	  // This test checks the valid case:
-	  // Child example = null;
+    // This test checks the valid case:
+    // Child example = null;
 
-	  final MetaClass metaChild = getMetaClass(Child.class);
-	  final MetaClass metaNull = getMetaClass(NullType.class);
+    final MetaClass metaChild = getMetaClass(Child.class);
+    final MetaClass metaNull = getMetaClass(NullType.class);
 
-	  assertTrue(metaNull.isAssignableTo(metaChild));
+    assertTrue(metaNull.isAssignableTo(metaChild));
   }
 
   @Test
@@ -411,7 +453,7 @@ public abstract class AbstractMetaClassTest {
   @Test
   public void testUncleIsAssignableToChild() {
     // This test checks the allowed case:
-	// ParentInterface pi = new Child();
+    // ParentInterface pi = new Child();
 
     final MetaClass metaChild = getMetaClass(Child.class);
     final MetaClass metaUncle = getMetaClass(ParentInterface.class);
@@ -447,8 +489,47 @@ public abstract class AbstractMetaClassTest {
 
     assertEquals(Child.class.getSimpleName(), child.getName());
     assertEquals(Child.class.getName(), child.getFullyQualifiedName());
-    assertEquals(Child.class.getName(), child.getCanonicalName());
+    assertEquals(Child.class.getCanonicalName(), child.getCanonicalName());
     assertEquals("L" + Child.class.getName().replace('.', '/') + ";", child.getInternalName());
+  }
+
+
+
+  @Test
+  public void testNamingMethodsOfArrayPrimitiveClasses() throws Exception {
+    final List<Class<?>> classes = Arrays.asList(String[].class, Enum[].class, Class[].class, Annotation[].class,
+            byte[].class, short[].class, int[].class, long[].class, float[].class, double[].class, char[].class,
+            boolean[].class);
+
+    for (final Class<?> c : classes) {
+      final MetaClass metaClass = getMetaClass(c);
+      assertEquals(c.getSimpleName(), metaClass.getName());
+      assertEquals(c.getName(), metaClass.getFullyQualifiedName());
+      assertEquals(c.getCanonicalName(), metaClass.getCanonicalName());
+      assertEquals(c.getName().replace('.', '/'), metaClass.getInternalName());
+    }
+  }
+
+  @Test
+  public void testNamingMethodsOfArrayMultidimensionalPrimitiveClasses() throws Exception {
+    final Class<char[][][][][][][][]> charArrayClass = char[][][][][][][][].class;
+    final MetaClass charArrayMetaClass = getMetaClass(charArrayClass);
+
+    assertEquals(charArrayClass.getSimpleName(), charArrayMetaClass.getName());
+    assertEquals(charArrayClass.getName(), charArrayMetaClass.getFullyQualifiedName());
+    assertEquals(charArrayClass.getCanonicalName(), charArrayMetaClass.getCanonicalName());
+    assertEquals(charArrayClass.getName().replace('.', '/'), charArrayMetaClass.getInternalName());
+  }
+
+  @Test
+  public void testNamingMethodsOfMultidimensionalArrayClass() throws Exception {
+    final Class<String[][][][][][][][]> clazz = String[][][][][][][][].class;
+    final MetaClass metaClass = getMetaClass(clazz);
+
+    assertEquals(clazz.getSimpleName(), metaClass.getName());
+    assertEquals(clazz.getName(), metaClass.getFullyQualifiedName());
+    assertEquals(clazz.getCanonicalName(), metaClass.getCanonicalName());
+    assertEquals(clazz.getName().replace('.', '/'), metaClass.getInternalName());
   }
 
   @Test
@@ -463,20 +544,126 @@ public abstract class AbstractMetaClassTest {
   }
 
   // TODO: add private, pkg private, protected methods to Child, Parent, Grandparent, and test getDeclaredMethods()
-//    System.out.println("--gwt methods--");
-//    for (MetaMethod method : Child.class.getName().getDeclaredMethods()) {
-//      System.out.println(method.toString());
-//    }
-//    assertEquals(new HashSet<MetaMethod>(Arrays.asList(Child.class.getName().getDeclaredMethods())),
-//            new HashSet<MetaMethod>(Arrays.asList(javaMC.getDeclaredMethods())));
+  //    System.out.println("--gwt methods--");
+  //    for (MetaMethod method : Child.class.getName().getDeclaredMethods()) {
+  //      System.out.println(method.toString());
+  //    }
+  //    assertEquals(new HashSet<MetaMethod>(Arrays.asList(Child.class.getName().getDeclaredMethods())),
+  //            new HashSet<MetaMethod>(Arrays.asList(javaMC.getDeclaredMethods())));
 
   @Test
   public void testGetInterfaces() throws Exception {
     final MetaClass grandparent = getMetaClass(Grandparent.class);
     assertEquals(1, grandparent.getInterfaces().length);
-    assertEquals(
-            Arrays.asList(getMetaClass(GrandparentInterface.class)),
-            Arrays.asList(grandparent.getInterfaces()));
+    assertEquals(Arrays.asList(getMetaClass(GrandparentInterface.class)), Arrays.asList(grandparent.getInterfaces()));
+  }
+
+  @Test
+  public void testGetParameterizedTypeOnObjectArrayReturnsNull() throws Exception {
+    final MetaClass metaClass = getMetaClass(String[].class);
+    assertNull(metaClass.getParameterizedType());
+  }
+
+  @Test
+  public void testGetParameterizedTypeOnPrimitiveArrayReturnsNull() throws Exception {
+    final MetaClass metaClass = getMetaClass(char[].class);
+    assertNull(metaClass.getParameterizedType());
+  }
+
+  @Test
+  public void testGetParameterizedTypeOnPrimitiveReturnsNull() throws Exception {
+    final MetaClass metaClass = getMetaClass(char.class);
+    assertNull(metaClass.getParameterizedType());
+  }
+
+  @Test
+  public void testGetParameterizedTypeOnNonParameterizedTypeReturnsNull() throws Exception {
+    final MetaClass metaClass = getMetaClass(Object.class);
+    assertNull(metaClass.getParameterizedType());
+  }
+
+  @Test
+  public void testGetParameterizedTypeOnVoidReturnsNull() throws Exception {
+    final MetaClass metaClass = getMetaClass(void.class);
+    assertNull(metaClass.getParameterizedType());
+  }
+
+  @Test
+  public void testNoTypeParametersOnNonParameterizedType() throws Exception {
+    final MetaClass metaClass = getMetaClass(Object.class);
+    assertArrayEquals(new MetaType[0], metaClass.getTypeParameters());
+  }
+
+  @Test
+  public void testNoTypeParametersOnNonParameterizedArrayType() throws Exception {
+    final MetaClass metaClass = getMetaClass(Object[].class);
+    assertArrayEquals(new MetaType[0], metaClass.getTypeParameters());
+  }
+
+  @Test
+  public void testNoTypeParametersOnPrimitiveArrayType() throws Exception {
+    final MetaClass metaClass = getMetaClass(char[].class);
+    assertArrayEquals(new MetaType[0], metaClass.getTypeParameters());
+  }
+
+  @Test
+  public void testNoTypeParametersOnPrimitiveType() throws Exception {
+    final MetaClass metaClass = getMetaClass(char.class);
+    assertArrayEquals(new MetaType[0], metaClass.getTypeParameters());
+  }
+
+  @Test
+  public void testNoTypeParametersOnVoidType() throws Exception {
+    final MetaClass metaClass = getMetaClass(void.class);
+    assertArrayEquals(new MetaType[0], metaClass.getTypeParameters());
+  }
+
+  @Test
+  public void testClassAnnotations() throws Exception {
+    final HasAnnotations annotated = getMetaClass(ClassWithAnnotations.class);
+
+    assertEquals(4, annotated.getAnnotations().size());
+    assertTrue(annotated.isAnnotationPresent(Plain.class));
+    assertEquals("foo", annotated.getAnnotation(SingleValue.class).get().value());
+
+    final MetaAnnotation multipleValues = annotated.getAnnotation(MultipleValues.class).get();
+    assertEquals(new Integer(9001), multipleValues.<Integer>value("num"));
+    assertEquals(MetaClassFactory.get(String.class), multipleValues.<MetaClass>value("clazz"));
+    assertArrayEquals(new String[] { "foo", "bar" }, multipleValues.<String[]>value("str"));
+
+    final MetaAnnotation singleValueNested = annotated.getAnnotation(Nested.class).get().value();
+    assertEquals("bar", singleValueNested.value());
+  }
+
+  @Test
+  public void testFieldAnnotations() throws Exception {
+    final HasAnnotations annotated = getMetaClass(ClassWithAnnotations.class).getDeclaredField("foo");
+
+    assertEquals(1, annotated.getAnnotations().size());
+    assertTrue(annotated.isAnnotationPresent(Plain.class));
+  }
+
+  @Test
+  public void testMethodAnnotations() throws Exception {
+    final HasAnnotations annotated = getMetaClass(ClassWithAnnotations.class).getDeclaredMethod("method",
+            Object.class, Object.class);
+
+    assertEquals(1, annotated.getAnnotations().size());
+    assertTrue(annotated.isAnnotationPresent(Plain.class));
+  }
+
+  @Test
+  public void testParameterAnnotations() throws Exception {
+    final HasAnnotations param1 = getMetaClass(ClassWithAnnotations.class).getDeclaredMethod("method", Object.class,
+            Object.class).getParameters()[0];
+    final HasAnnotations param2 = getMetaClass(ClassWithAnnotations.class).getDeclaredMethod("method", Object.class,
+            Object.class).getParameters()[1];
+
+    assertEquals(1, param1.getAnnotations().size());
+    assertEquals("arg1", param1.getAnnotation(SingleValue.class).get().value());
+
+    assertEquals(1, param2.getAnnotations().size());
+    assertEquals("arg2", param2.getAnnotation(SingleValue.class).get().value());
   }
 
   @Test
@@ -490,8 +677,7 @@ public abstract class AbstractMetaClassTest {
     assertEquals("<java.lang.String>", field.getType().getParameterizedType().toString());
     assertEquals("java.util.Collection<java.lang.String>", field.getType().getFullyQualifiedNameWithTypeParms());
     assertEquals("java.util.Collection", field.getType().getErased().getFullyQualifiedNameWithTypeParms());
-    assertEquals(
-            Arrays.asList(getMetaClass(String.class)),
+    assertEquals(Arrays.asList(getMetaClass(String.class)),
             Arrays.asList(field.getType().getParameterizedType().getTypeParameters()));
   }
 
@@ -504,18 +690,16 @@ public abstract class AbstractMetaClassTest {
     assertEquals("Collection", field.getType().getName());
     assertEquals("java.util.Collection", field.getType().getFullyQualifiedName());
     assertEquals("<? extends java.lang.String>", field.getType().getParameterizedType().toString());
-    assertEquals("java.util.Collection<? extends java.lang.String>", field.getType().getFullyQualifiedNameWithTypeParms());
+    assertEquals("java.util.Collection<? extends java.lang.String>",
+            field.getType().getFullyQualifiedNameWithTypeParms());
     assertEquals("java.util.Collection", field.getType().getErased().getFullyQualifiedNameWithTypeParms());
 
     assertEquals(1, field.getType().getParameterizedType().getTypeParameters().length);
     final MetaWildcardType typeParam = (MetaWildcardType) field.getType().getParameterizedType().getTypeParameters()[0];
 
-    assertEquals("Should have no lower bound",
-            Arrays.asList(),
-            Arrays.asList(typeParam.getLowerBounds()));
+    assertEquals("Should have no lower bound", Arrays.asList(), Arrays.asList(typeParam.getLowerBounds()));
 
-    assertEquals("Upper bound should be java.lang.String",
-            Arrays.asList(getMetaClass(String.class)),
+    assertEquals("Upper bound should be java.lang.String", Arrays.asList(getMetaClass(String.class)),
             Arrays.asList(typeParam.getUpperBounds()));
   }
 
@@ -535,8 +719,7 @@ public abstract class AbstractMetaClassTest {
     final MetaTypeVariable typeVar = (MetaTypeVariable) field.getType().getParameterizedType().getTypeParameters()[0];
 
     assertEquals("T", typeVar.getName());
-    assertEquals("Should have no upper bound",
-            Arrays.asList(getMetaClass(Object.class)),
+    assertEquals("Should have no upper bound", Arrays.asList(getMetaClass(Object.class)),
             Arrays.asList(typeVar.getBounds()));
   }
 
@@ -549,23 +732,22 @@ public abstract class AbstractMetaClassTest {
     final MetaTypeVariable returnType = (MetaTypeVariable) field.getGenericReturnType();
     assertEquals("B", returnType.getName());
 
-    assertEquals("Should have a single upper bound",
-            Arrays.asList(getMetaClass(Serializable.class)),
+    assertEquals("Should have a single upper bound", Arrays.asList(getMetaClass(Serializable.class)),
             Arrays.asList(returnType.getBounds()));
   }
 
   @Test
   public void testFieldWithTwoUpperBoundedTypeVarParam() throws Exception {
     final MetaClass metaClass = getMetaClass(ClassWithGenericCollections.class);
-    final MetaMethod field = metaClass.getDeclaredMethod("hasDoubleBoundedTypeVarFromSelf", new Class[] {});
-    assertNotNull(field);
+    final MetaMethod method = metaClass.getDeclaredMethod("hasDoubleBoundedTypeVarFromSelf", new Class[] {});
+    assertNotNull(method);
 
-    final MetaTypeVariable returnType = (MetaTypeVariable) field.getGenericReturnType();
+    final MetaTypeVariable returnType = (MetaTypeVariable) method.getGenericReturnType();
     assertEquals("B", returnType.getName());
 
-    assertEquals("Should have two upper bounds",
-            Arrays.asList(getMetaClass(Collection.class), getMetaClass(Serializable.class)),
-            Arrays.asList(returnType.getBounds()));
+    final List<MetaClass> expected = Arrays.asList(getMetaClass(Collection.class), getMetaClass(Serializable.class));
+    final List<MetaType> actual = Arrays.asList(returnType.getBounds());
+    assertEquals("Should have two upper bounds", expected, actual);
   }
 
   @Test
@@ -584,7 +766,8 @@ public abstract class AbstractMetaClassTest {
     // I think this would be correct, but right now we get the raw type name
     //assertEquals("org.jboss.errai.codegen.test.model.ParameterizedClass<T>", parameterized.getFullyQualifiedNameWithTypeParms());
 
-    assertEquals("org.jboss.errai.codegen.test.model.ParameterizedClass", parameterized.getErased().getFullyQualifiedNameWithTypeParms());
+    assertEquals("org.jboss.errai.codegen.test.model.ParameterizedClass",
+            parameterized.getErased().getFullyQualifiedNameWithTypeParms());
   }
 
   @Test
@@ -664,7 +847,76 @@ public abstract class AbstractMetaClassTest {
     assertTrue(mpReturnType.getTypeParameters()[0] instanceof MetaWildcardType);
     final MetaWildcardType typeParam = (MetaWildcardType) mpReturnType.getTypeParameters()[0];
     assertArrayEquals(new MetaType[] { getMetaClass(String.class) }, typeParam.getLowerBounds());
-    assertArrayEquals(new MetaType[] { getMetaClass(Object.class)}, typeParam.getUpperBounds());
+    assertArrayEquals(new MetaType[] { getMetaClass(Object.class) }, typeParam.getUpperBounds());
+  }
+
+  @Test
+  public void testParameterTypeWithWildcardParameter() {
+    final MetaClass c = getMetaClass(ClassWithMethodsWithGenericParameters.class);
+    final MetaMethod method = c.getMethod("methodWithUnboundedWildcardCollectionParameter", Collection.class);
+
+    // TODO (ERRAI-459) decide whether it's correct to have the type param present or not
+    // then adjust this assertion to strict equality rather than startsWith()
+    assertTrue(method.getParameters()[0].getType().getFullyQualifiedNameWithTypeParms().startsWith("java.util.Collection"));
+
+    final MetaType genericParameterType = method.getGenericParameterTypes()[0];
+    assertNotNull(genericParameterType);
+    assertTrue("Got unexpected return type type " + genericParameterType.getClass(),
+            genericParameterType instanceof MetaParameterizedType);
+    final MetaParameterizedType mpParameterType = (MetaParameterizedType) genericParameterType;
+    assertEquals(1, mpParameterType.getTypeParameters().length);
+
+    // Sole type parameter should be <?>
+    assertTrue(mpParameterType.getTypeParameters()[0] instanceof MetaWildcardType);
+    final MetaWildcardType typeParam = (MetaWildcardType) mpParameterType.getTypeParameters()[0];
+    assertArrayEquals(new MetaType[] {}, typeParam.getLowerBounds());
+    assertArrayEquals(new MetaType[] { getMetaClass(Object.class) }, typeParam.getUpperBounds());
+  }
+
+  @Test
+  public void tesParameterTypeWithUpperBoundedWildcardParameter() {
+    final MetaClass c = getMetaClass(ClassWithMethodsWithGenericParameters.class);
+    final MetaMethod method = c.getMethod("methodWithUpperBoundedWildcardCollectionParameter", Collection.class);
+
+    // TODO (ERRAI-459) decide whether it's correct to have the type param present or not
+    // then adjust this assertion to strict equality rather than startsWith()
+    assertTrue(method.getParameters()[0].getType().getFullyQualifiedNameWithTypeParms().startsWith("java.util.Collection"));
+
+    final MetaType genericParameterType = method.getGenericParameterTypes()[0];
+    assertNotNull(genericParameterType);
+    assertTrue("Got unexpected return type type " + genericParameterType.getClass(),
+            genericParameterType instanceof MetaParameterizedType);
+    final MetaParameterizedType mpParameterType = (MetaParameterizedType) genericParameterType;
+    assertEquals(1, mpParameterType.getTypeParameters().length);
+
+    // Sole type parameter should be <? extends String>
+    assertTrue(mpParameterType.getTypeParameters()[0] instanceof MetaWildcardType);
+    final MetaWildcardType typeParam = (MetaWildcardType) mpParameterType.getTypeParameters()[0];
+    assertArrayEquals(new MetaType[] {}, typeParam.getLowerBounds());
+    assertArrayEquals(new MetaType[] { getMetaClass(String.class) }, typeParam.getUpperBounds());
+  }
+
+  @Test
+  public void testParameterTypeWithLowerBoundedWildcardParameter() {
+    final MetaClass c = getMetaClass(ClassWithMethodsWithGenericParameters.class);
+    final MetaMethod method = c.getMethod("methodWithLowerBoundedWildcardCollectionParameter", Collection.class);
+
+    // TODO (ERRAI-459) decide whether it's correct to have the type param present or not
+    // then adjust this assertion to strict equality rather than startsWith()
+    assertTrue(method.getParameters()[0].getType().getFullyQualifiedNameWithTypeParms().startsWith("java.util.Collection"));
+
+    final MetaType genericParameterType = method.getGenericParameterTypes()[0];
+    assertNotNull(genericParameterType);
+    assertTrue("Got unexpected return type type " + genericParameterType.getClass(),
+            genericParameterType instanceof MetaParameterizedType);
+    final MetaParameterizedType mpParameterType = (MetaParameterizedType) genericParameterType;
+    assertEquals(1, mpParameterType.getTypeParameters().length);
+
+    // Sole type parameter should be <? extends String>
+    assertTrue(mpParameterType.getTypeParameters()[0] instanceof MetaWildcardType);
+    final MetaWildcardType typeParam = (MetaWildcardType) mpParameterType.getTypeParameters()[0];
+    assertArrayEquals(new MetaType[] { getMetaClass(String.class) }, typeParam.getLowerBounds());
+    assertArrayEquals(new MetaType[] { getMetaClass(Object.class) }, typeParam.getUpperBounds());
   }
 
   @Test
@@ -675,7 +927,7 @@ public abstract class AbstractMetaClassTest {
     assertNotNull(methods);
 
     final List<String> methodSignatures = new ArrayList<>();
-    for(final MetaMethod m : methods) {
+    for (final MetaMethod m : methods) {
       methodSignatures.add(GenUtil.getMethodString(m));
     }
 
@@ -695,9 +947,8 @@ public abstract class AbstractMetaClassTest {
     expectedMethods.add("hashCode([])");
     expectedMethods.add("wait([long, int])");
 
-    Collections.sort(expectedMethods);
-    Collections.sort(methodSignatures);
-
+    sort(expectedMethods);
+    sort(methodSignatures);
 
     assertEquals(expectedMethods.toString(), methodSignatures.toString());
   }
@@ -713,8 +964,8 @@ public abstract class AbstractMetaClassTest {
       actualFields.add(field.getDeclaringClass().getCanonicalName() + "." + field.getName());
     }
 
-    Collections.sort(expectedFields);
-    Collections.sort(actualFields);
+    sort(expectedFields);
+    sort(actualFields);
 
     assertEquals(expectedFields.toString(), actualFields.toString());
   }
@@ -732,8 +983,8 @@ public abstract class AbstractMetaClassTest {
       actualFields.add(field.getDeclaringClass().getCanonicalName() + "." + field.getName());
     }
 
-    Collections.sort(expectedFields);
-    Collections.sort(actualFields);
+    sort(expectedFields);
+    sort(actualFields);
 
     assertEquals(expectedFields.toString(), actualFields.toString());
   }
@@ -749,9 +1000,9 @@ public abstract class AbstractMetaClassTest {
   public void testGetConstructorOnlyFindsPublicConstructor() throws Exception {
     final MetaClass mc = getMetaClass(HasManyConstructors.class);
     assertNotNull(mc.getConstructor(new Class[0]));
-    assertNull(mc.getConstructor(new Class[] {int.class}));
-    assertNull(mc.getConstructor(new Class[] {String.class}));
-    assertNull(mc.getConstructor(new Class[] {double.class}));
+    assertNull(mc.getConstructor(int.class));
+    assertNull(mc.getConstructor(String.class));
+    assertNull(mc.getConstructor(double.class));
   }
 
   @Test
@@ -765,9 +1016,9 @@ public abstract class AbstractMetaClassTest {
   public void testGetDeclaredConstructorFindsAllConstructors() throws Exception {
     final MetaClass mc = getMetaClass(HasManyConstructors.class);
     assertNotNull(mc.getDeclaredConstructor(new Class[0]));
-    assertNotNull(mc.getDeclaredConstructor(new Class[] {int.class}));
-    assertNotNull(mc.getDeclaredConstructor(new Class[] {String.class}));
-    assertNotNull(mc.getDeclaredConstructor(new Class[] {double.class}));
+    assertNotNull(mc.getDeclaredConstructor(int.class));
+    assertNotNull(mc.getDeclaredConstructor(String.class));
+    assertNotNull(mc.getDeclaredConstructor(double.class));
   }
 
   @Test
@@ -784,4 +1035,52 @@ public abstract class AbstractMetaClassTest {
     }
   }
 
+  @Test
+  public void testOuterComponentType() {
+    Assert.assertEquals(getMetaClassImpl(char.class), getMetaClassImpl(char[].class).getOuterComponentType());
+    Assert.assertEquals(getMetaClassImpl(char.class), getMetaClassImpl(char[][].class).getOuterComponentType());
+    Assert.assertEquals(getMetaClassImpl(char.class), getMetaClassImpl(char[][][].class).getOuterComponentType());
+  }
+
+  @Test
+  public void testGetArrayType() {
+    Assert.assertEquals(getMetaClassImpl(char.class), getMetaClassImpl(char.class).asArrayOf(0));
+    Assert.assertEquals(getMetaClassImpl(char[].class), getMetaClassImpl(char.class).asArrayOf(1));
+    Assert.assertEquals(getMetaClassImpl(char[][].class), getMetaClassImpl(char.class).asArrayOf(2));
+  }
+
+  @Test
+  public void testNormalAnnotationsFromInterfaces() {
+    Assert.assertTrue(getMetaClass(ClassImplementingAnnotatedInterface.class).getAnnotations().isEmpty());
+  }
+
+  @Test
+  public void testNormalAnnotationsFromSuperClasses() {
+    Assert.assertTrue(getMetaClass(ClassExtendingAnnotatedSuperClass.class).getAnnotations().isEmpty());
+  }
+
+  @Test
+  public void testInheritedAnnotationsFromInterfaces() {
+    Assert.assertTrue(getMetaClass(ClassImplementingInheritedAnnotatedInterface.class).getAnnotations().isEmpty());
+  }
+
+  @Test
+  public void testInheritedAnnotationsFromSuperClasses() {
+    final Set<MetaClass> annotationsTypes = getMetaClass(ClassExtendingInheritedAnnotatedSuperClass.class).getAnnotations()
+            .stream()
+            .map(MetaAnnotation::annotationType)
+            .collect(toSet());
+
+    Assert.assertEquals(singleton(getMetaClass(InheritedAnnotation.class)), annotationsTypes);
+  }
+
+  @Test
+  public void testInheritedAnnotationsFromSuperSuperClasses() {
+    final Set<MetaClass> annotationsTypes = getMetaClass(ClassExtendingClassExtendingInheritedAnnotatedSuperClass.class).getAnnotations()
+            .stream()
+            .map(MetaAnnotation::annotationType)
+            .collect(toSet());
+
+    Assert.assertEquals(singleton(getMetaClass(InheritedAnnotation.class)), annotationsTypes);
+  }
 }

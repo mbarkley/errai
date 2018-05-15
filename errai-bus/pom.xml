@@ -117,6 +117,7 @@
       <artifactId>errai-marshalling</artifactId>
     </dependency>
 
+
     <dependency>
       <groupId>org.jboss.spec.javax.servlet</groupId>
       <artifactId>jboss-servlet-api_3.1_spec</artifactId>
@@ -149,9 +150,10 @@
     </dependency>
 
     <dependency>
+      <!-- Needs provided scope for use in annotation processors -->
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
-      <scope>test</scope>
+      <scope>provided</scope>
     </dependency>
 
     <dependency>
@@ -210,6 +212,13 @@
       <groupId>org.jgroups</groupId>
       <artifactId>jgroups</artifactId>
     </dependency>
+
+    <dependency>
+      <groupId>org.jboss.errai</groupId>
+      <artifactId>errai-bus-export-apt</artifactId>
+      <scope>compile</scope>
+    </dependency>
+
   </dependencies>
 
   <profiles>
@@ -220,6 +229,9 @@
           <plugin>
             <artifactId>maven-failsafe-plugin</artifactId>
             <configuration>
+              <additionalClasspathElements>
+                <additionalClasspathElement>${basedir}/target/generated-test-sources/test-annotations</additionalClasspathElement>
+              </additionalClasspathElements>
               <forkMode>always</forkMode>
               <argLine>${argLine} -Xmx2500m -Dgwt.args='-testBeginTimeout 5 ${gwtArgs}'</argLine>
               <useManifestOnlyJar>true</useManifestOnlyJar>

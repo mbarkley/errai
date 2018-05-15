@@ -16,28 +16,8 @@
 
 package org.jboss.errai.ioc.rebind.ioc.graph.impl;
 
-import static org.jboss.errai.ioc.rebind.ioc.graph.impl.ResolutionPriority.getMatchingPriority;
-
-import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.inject.Produces;
-
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaField;
@@ -56,8 +36,26 @@ import org.jboss.errai.ioc.rebind.ioc.injector.api.WiringElementType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.inject.Produces;
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+import static org.jboss.errai.ioc.rebind.ioc.graph.impl.ResolutionPriority.getMatchingPriority;
 
 /**
  * @see DependencyGraphBuilder
@@ -82,8 +80,9 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
 
   @Override
   public Injectable addInjectable(final MetaClass injectedType, final Qualifier qualifier,
-          final Predicate<List<InjectableHandle>> pathPredicate, final Class<? extends Annotation> literalScope,
+          final Predicate<List<InjectableHandle>> pathPredicate, final MetaClass literalScope,
           final InjectableType injectableType, final WiringElementType... wiringTypes) {
+
     final InjectableImpl injectable = new InjectableImpl(injectedType, qualifier, pathPredicate,
             nameGenerator.generateFor(injectedType, qualifier, injectableType), literalScope, injectableType,
             Arrays.asList(wiringTypes));
@@ -361,7 +360,7 @@ public final class DependencyGraphBuilderImpl implements DependencyGraphBuilder 
     case Annotated:
       return inj -> !inj.getWiringElementTypes().contains(WiringElementType.Simpleton);
     case Aggressive:
-      return inj -> EntryPoint.class.equals(inj.getScope()) || inj.getWiringElementTypes().contains(WiringElementType.JsType);
+      return inj -> inj.getScope().instanceOf(EntryPoint.class) || inj.getWiringElementTypes().contains(WiringElementType.JsType);
     default:
       throw new RuntimeException("Unrecognized reachability strategy, " + strategy.toString());
     }

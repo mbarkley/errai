@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
@@ -40,6 +41,8 @@ import org.jboss.errai.ioc.client.container.ContextManager;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.FactoryGenerator;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessor;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IocRelevantClassesUtil;
+import org.jboss.errai.config.propertiesfile.ErraiAppPropertiesConfiguration;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.QualifierFactory;
 import org.jboss.errai.ioc.rebind.ioc.graph.impl.DefaultQualifierFactory;
@@ -88,6 +91,8 @@ import com.google.common.collect.HashMultimap;
 @RunWith(MockitoJUnitRunner.class)
 public class IOCProcessorErrorTest {
 
+  private static final ErraiAppPropertiesConfiguration ERRAI_CONFIGURATION = new ErraiAppPropertiesConfiguration();
+  
   private IOCProcessor processor;
 
   @Mock
@@ -129,8 +134,9 @@ public class IOCProcessorErrorTest {
     when(procContext.getBlockBuilder()).thenReturn(blockBuilder);
     when(procContext.getBootstrapBuilder()).thenReturn(classBuilder);
     when(procContext.getBootstrapClass()).thenReturn(classBuilder.getClassDefinition());
+    when(procContext.metaClassFinder()).thenReturn(ann -> new HashSet<>());
 
-    processor = new IOCProcessor(injContext);
+    processor = new IOCProcessor(injContext, ERRAI_CONFIGURATION);
   }
 
   @Test
@@ -215,7 +221,7 @@ public class IOCProcessorErrorTest {
             DependencyIface.class,
             DisabledAlternative.class);
 
-    processor.process(procContext);
+    processor.process(procContext, IocRelevantClassesUtil.findRelevantClasses());
     final DependencyGraph graph = FactoryGenerator.getDependencyGraph();
     assertNotNull("The dependency graph was not set.", graph);
     assertEquals("The dependency graph should not have any injectables.", 0, graph.getNumberOfInjectables());
@@ -229,7 +235,8 @@ public class IOCProcessorErrorTest {
             DepCycleB.class);
 
     try {
-      processor.process(procContext);
+
+      processor.process(procContext, IocRelevantClassesUtil.findRelevantClasses());
       fail("Did not produce error for @Depenent scope cycle.");
     } catch (final RuntimeException e) {
       final String message = e.getMessage();
@@ -247,7 +254,8 @@ public class IOCProcessorErrorTest {
             PseudoCycleB.class);
 
     try {
-      processor.process(procContext);
+
+      processor.process(procContext, IocRelevantClassesUtil.findRelevantClasses());
       fail("Did not produce error for pseudo scope cycle.");
     } catch (final RuntimeException e) {
       final String message = e.getMessage();
@@ -268,7 +276,8 @@ public class IOCProcessorErrorTest {
             InjectsBeanByWrongTypes.class);
 
     try {
-      processor.process(procContext);
+
+      processor.process(procContext, IocRelevantClassesUtil.findRelevantClasses());
       fail("Did not produce error processing context with unsatisfied dependencies.");
     } catch (final AssertionError ae) {
       throw ae;
@@ -297,7 +306,8 @@ public class IOCProcessorErrorTest {
             InjectsStaticMethodProducedBeanByWrongTypes.class);
 
     try {
-      processor.process(procContext);
+
+      processor.process(procContext, IocRelevantClassesUtil.findRelevantClasses());
       fail("Did not produce error processing context with unsatisfied dependencies.");
     } catch (final AssertionError ae) {
       throw ae;
@@ -326,7 +336,8 @@ public class IOCProcessorErrorTest {
             InjectsStaticFieldProducedBeanByWrongTypes.class);
 
     try {
-      processor.process(procContext);
+
+      processor.process(procContext, IocRelevantClassesUtil.findRelevantClasses());
       fail("Did not produce error processing context with unsatisfied dependencies.");
     } catch (final AssertionError ae) {
       throw ae;
@@ -355,7 +366,8 @@ public class IOCProcessorErrorTest {
             InjectsInstanceFieldProducedBeanByWrongTypes.class);
 
     try {
-      processor.process(procContext);
+
+      processor.process(procContext, IocRelevantClassesUtil.findRelevantClasses());
       fail("Did not produce error processing context with unsatisfied dependencies.");
     } catch (final AssertionError ae) {
       throw ae;
@@ -384,7 +396,8 @@ public class IOCProcessorErrorTest {
             InjectsInstanceMethodProducedBeanByWrongTypes.class);
 
     try {
-      processor.process(procContext);
+
+      processor.process(procContext, IocRelevantClassesUtil.findRelevantClasses());
       fail("Did not produce error processing context with unsatisfied dependencies.");
     } catch (final AssertionError ae) {
       throw ae;
@@ -410,7 +423,8 @@ public class IOCProcessorErrorTest {
             );
 
     try {
-      processor.process(procContext);
+
+      processor.process(procContext, IocRelevantClassesUtil.findRelevantClasses());
       fail("Did not produce error processing @Typed annotation with unassignable values.");
     } catch (final AssertionError ae) {
       throw ae;
@@ -430,7 +444,8 @@ public class IOCProcessorErrorTest {
               Object.class,
               ParameterizedIface.class,
               TypeParameterControlModule.class);
-      processor.process(procContext);
+
+      processor.process(procContext, IocRelevantClassesUtil.findRelevantClasses());
       fail("Control passed, but should fail from unsatisfied dependency.");
     } catch (final AssertionError ae) {
       throw ae;
@@ -452,7 +467,8 @@ public class IOCProcessorErrorTest {
     final ExecutorService execService = Executors.newFixedThreadPool(1);
     final Future<Optional<Throwable>> testFuture = execService.submit(() -> {
       try {
-        processor.process(procContext);
+
+        processor.process(procContext, IocRelevantClassesUtil.findRelevantClasses());
       } catch (final Throwable t) {
         return Optional.of(t);
       }
@@ -488,7 +504,8 @@ public class IOCProcessorErrorTest {
             UsesJSTypeWithPrivateConstructor.class
             );
     try {
-      processor.process(procContext);
+
+      processor.process(procContext, IocRelevantClassesUtil.findRelevantClasses());
       fail("Did not produce an error for native JS type with private constructor.");
     } catch (final AssertionError ae) {
       throw ae;
@@ -501,7 +518,8 @@ public class IOCProcessorErrorTest {
   private void assertDisabledTypeReported(final String injSiteTypeName, final String typeWithDepName, final String disabledTypeName)
           throws AssertionError {
     try {
-      processor.process(procContext);
+
+      processor.process(procContext, IocRelevantClassesUtil.findRelevantClasses());
       fail("Calling process should have caused an error from an unsatisfied dependency.");
     } catch (final NullPointerException npe) {
       throw npe;

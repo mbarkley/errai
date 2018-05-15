@@ -142,9 +142,10 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <!-- Needs provided scope for use in annotation processors -->
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
-      <scope>test</scope>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.deltaspike.core</groupId>
@@ -246,7 +247,9 @@
               <forkMode>always</forkMode>
               <argLine>-Xmx1500m ${argLine} -Dgwt.args='-prod'</argLine>
               <useManifestOnlyJar>true</useManifestOnlyJar>
-
+              <additionalClasspathElements>
+                <additionalClasspathElement>${basedir}/target/generated-test-sources/test-annotations</additionalClasspathElement>
+              </additionalClasspathElements>
               <systemProperties>
                 <property>
                   <name>java.io.tmpdir</name>

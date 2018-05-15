@@ -28,12 +28,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.google.gwt.core.ext.GeneratorContext;
 import org.jboss.errai.codegen.exception.GenerationException;
 import org.jboss.errai.codegen.meta.HasAnnotations;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.impl.java.JavaReflectionAnnotation;
 import org.jboss.errai.codegen.meta.impl.java.JavaReflectionClass;
 import org.jboss.errai.common.client.api.IsElement;
 import org.jboss.errai.common.client.dom.HTMLElement;
+import org.jboss.errai.config.MetaClassFinder;
 import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.ioc.rebind.ioc.bootstrapper.IOCProcessingContext;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.InjectionSite;
@@ -58,7 +61,20 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import com.google.gwt.core.ext.GeneratorContext;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.powermock.api.mockito.PowerMockito.when;
 
 /**
  * @author edewit@redhat.com
@@ -144,14 +160,6 @@ public class ValidationRulesTest {
     }
   }
 
-  private List<MetaClass> createMetaClassList(final Class<?>... classes) {
-    final List<MetaClass> result = new ArrayList<MetaClass>(classes.length);
-    for (final Class<?> aClass : classes) {
-      result.add(JavaReflectionClass.newInstance(aClass));
-    }
-    return result;
-  }
-
   @Test
   public void shouldThrowExceptionMoreUniquePages() {
     // given
@@ -217,7 +225,7 @@ public class ValidationRulesTest {
 
     final InjectableProvider transitionToRoleProvider = getTransitionToRoleProvider();
     when(injSite.isAnnotationPresent(org.jboss.errai.ui.nav.client.local.api.TransitionToRole.class)).thenReturn(true);
-    when(injSite.getAnnotation(org.jboss.errai.ui.nav.client.local.api.TransitionToRole.class)).thenReturn(toRoleAnno);
+    when(injSite.getAnnotation(org.jboss.errai.ui.nav.client.local.api.TransitionToRole.class)).thenReturn(Optional.of(new JavaReflectionAnnotation(toRoleAnno)));
     when(toRoleAnno.value()).thenReturn((Class) MyUniquePageRole.class);
 
     transitionToRoleProvider.getInjectable(injSite, nameGenerator);
@@ -231,7 +239,7 @@ public class ValidationRulesTest {
 
     final InjectableProvider transitionToRoleProvider = getTransitionToRoleProvider();
     when(injSite.isAnnotationPresent(org.jboss.errai.ui.nav.client.local.api.TransitionToRole.class)).thenReturn(true);
-    when(injSite.getAnnotation(org.jboss.errai.ui.nav.client.local.api.TransitionToRole.class)).thenReturn(toRoleAnno);
+    when(injSite.getAnnotation(org.jboss.errai.ui.nav.client.local.api.TransitionToRole.class)).thenReturn(Optional.of(new JavaReflectionAnnotation(toRoleAnno)));
     when(toRoleAnno.value()).thenReturn((Class) MyUniquePageRole.class);
 
     transitionToRoleProvider.getInjectable(injSite, nameGenerator);
@@ -251,8 +259,15 @@ public class ValidationRulesTest {
 
 
   private void mockClassScanner(final Class<?>... pages) {
+    final Set<MetaClass> pagesMetaClasses = Arrays.stream(pages)
+            .map(JavaReflectionClass::newUncachedInstance)
+            .collect(Collectors.toSet());
+
     PowerMockito.mockStatic(ClassScanner.class);
-    when(ClassScanner.getTypesAnnotatedWith(Page.class, null)).thenReturn(createMetaClassList(pages));
+    when(ClassScanner.getTypesAnnotatedWith(Page.class, null)).thenReturn(pagesMetaClasses);
+
+    final MetaClassFinder baseMetaClassFinder = ann -> Collections.emptySet();
+    when(procContext.metaClassFinder()).thenReturn(baseMetaClassFinder.extend(Page.class, () -> pagesMetaClasses));
   }
 
   private void overrideBlacklistedClassNames(final String... names) throws SecurityException, NoSuchFieldException,

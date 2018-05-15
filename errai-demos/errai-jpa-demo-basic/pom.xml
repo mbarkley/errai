@@ -127,11 +127,6 @@
 
     <dependency>
       <groupId>org.jboss.errai</groupId>
-      <artifactId>errai-navigation</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>org.jboss.errai</groupId>
       <artifactId>errai-cdi-jboss</artifactId>
       <scope>provided</scope>
     </dependency>
@@ -216,7 +211,9 @@
     <profile>
       <id>wildfly</id>
       <activation>
-        <activeByDefault>true</activeByDefault>
+        <property>
+          <name>!skipDefaultProfile</name>
+        </property>
       </activation>
       <properties>
         <webDescriptor>wildfly</webDescriptor>
@@ -435,7 +432,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>${maven.compiler.plugin.version}</version>
+        <version>3.6.2</version>
         <configuration>
           <source>1.8</source>
           <target>1.8</target>
@@ -453,6 +450,7 @@
           <extraJvmArgs>${argLine} -Xmx2g -Xms1g -XX:+AggressiveOpts -XX:+UseNUMA -XX:CompileThreshold=100 -Derrai.jboss.home=${errai.jboss.home} -Derrai.dev.context=${errai.dev.context}</extraJvmArgs>
           <server>org.jboss.errai.cdi.server.gwt.EmbeddedWildFlyLauncher</server>
           <hostedWebapp>src/main/webapp/</hostedWebapp>
+          <module>org.jboss.errai.demo.jpa.ErraiJpaDemo</module>
         </configuration>
         <executions>
           <execution>

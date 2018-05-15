@@ -33,7 +33,9 @@ import javax.enterprise.inject.Disposes;
 import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
+import org.jboss.errai.codegen.meta.MetaAnnotation;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
@@ -41,7 +43,6 @@ import org.jboss.errai.codegen.meta.MetaParameter;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.ioc.client.container.Factory;
-import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraph;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.Dependency;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DependencyType;
 import org.jboss.errai.ioc.rebind.ioc.graph.api.DependencyGraphBuilder.DisposerMethodDependency;
@@ -66,7 +67,7 @@ public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
 
   @Override
   protected List<Statement> generateCreateInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
-          final Injectable injectable, final DependencyGraph graph, final InjectionContext injectionContext) {
+          final Injectable injectable, final InjectionContext injectionContext) {
     final Multimap<DependencyType, Dependency> depsByType = separateByType(injectable.getDependencies());
     if (depsByType.get(DependencyType.ProducerMember).size() != 1) {
       throw new RuntimeException("A produced type must have exactly 1 producing instance but "
@@ -141,7 +142,7 @@ public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
     if (paramDep.getInjectable().isContextual()) {
       final MetaParameter param = paramDep.getParameter();
       final MetaClass[] typeArgs = getTypeArguments(param.getType());
-      final Annotation[] annotations = param.getAnnotations();
+      final MetaAnnotation[] annotations = param.getAnnotations().toArray(new MetaAnnotation[0]);
       producerParamCreationStmt = castTo(paramDep.getInjectable().getInjectedType(),
               loadVariable("contextManager").invoke("getContextualInstance", paramDep.getInjectable().getFactoryName(), typeArgs, annotations));
     }
@@ -186,7 +187,7 @@ public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
 
   @Override
   protected List<Statement> generateDestroyInstanceStatements(final ClassStructureBuilder<?> bodyBlockBuilder,
-          final Injectable injectable, final DependencyGraph graph, final InjectionContext injectionContext) {
+          final Injectable injectable, final InjectionContext injectionContext) {
     final List<Statement> destroyInstanceStmts = new ArrayList<>();
     final Multimap<DependencyType, Dependency> depsByType = separateByType(injectable.getDependencies());
     final Collection<Dependency> producerMemberDeps = depsByType.get(DependencyType.ProducerMember);
@@ -232,7 +233,7 @@ public class ProducerFactoryBodyGenerator extends AbstractBodyGenerator {
       params[paramDep.getParamIndex()] = paramExpression;
     }
 
-    final MetaParameter disposesParam = disposer.getParametersAnnotatedWith(Disposes.class).get(0);
+    final MetaParameter disposesParam = disposer.getParametersAnnotatedWith(MetaClassFactory.get(Disposes.class)).get(0);
     params[disposesParam.getIndex()] = loadVariable("instance");
 
     return params;

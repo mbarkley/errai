@@ -35,6 +35,7 @@ import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.ConstructorBlockBuilder;
 import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
 import org.jboss.errai.codegen.exception.GenerationException;
+import org.jboss.errai.codegen.meta.MetaAnnotation;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaField;
@@ -52,13 +53,28 @@ import org.jboss.errai.common.client.PageRequest;
 import org.jboss.errai.common.client.api.IsElement;
 import org.jboss.errai.common.client.util.CreationalCallback;
 import org.jboss.errai.common.metadata.RebindUtils;
+import org.jboss.errai.config.MetaClassFinder;
 import org.jboss.errai.config.rebind.AbstractAsyncGenerator;
 import org.jboss.errai.config.rebind.GenerateAsync;
 import org.jboss.errai.config.util.ClassScanner;
 import org.jboss.errai.enterprise.client.cdi.api.CDI;
 import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.marshalling.rebind.util.MarshallingGenUtil;
-import org.jboss.errai.ui.nav.client.local.*;
+import org.jboss.errai.ui.nav.client.local.DefaultPage;
+import org.jboss.errai.ui.nav.client.local.HistoryToken;
+import org.jboss.errai.ui.nav.client.local.Page;
+import org.jboss.errai.ui.nav.client.local.PageHidden;
+import org.jboss.errai.ui.nav.client.local.PageHiding;
+import org.jboss.errai.ui.nav.client.local.PageShowing;
+import org.jboss.errai.ui.nav.client.local.PageShown;
+import org.jboss.errai.ui.nav.client.local.PageState;
+import org.jboss.errai.ui.nav.client.local.TransitionAnchor;
+import org.jboss.errai.ui.nav.client.local.TransitionAnchorFactory;
+import org.jboss.errai.ui.nav.client.local.TransitionTo;
+import org.jboss.errai.ui.nav.client.local.TransitionToRole;
+import org.jboss.errai.ui.nav.client.local.URLPattern;
+import org.jboss.errai.ui.nav.client.local.URLPatternMatcher;
+import org.jboss.errai.ui.nav.client.local.UniquePageRole;
 import org.jboss.errai.ui.nav.client.local.api.NavigationControl;
 import org.jboss.errai.ui.nav.client.local.spi.NavigationGraph;
 import org.jboss.errai.ui.nav.client.local.spi.PageNode;
@@ -80,6 +96,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static java.util.Collections.singletonList;
+
 /**
  * Generates the GeneratedNavigationGraph class based on {@code @Page} annotations.
  *
@@ -88,35 +106,41 @@ import java.util.Set;
 @GenerateAsync(NavigationGraph.class)
 public class NavigationGraphGenerator extends AbstractAsyncGenerator {
 
-  private static final String GENERATED_CLASS_NAME = "GeneratedNavigationGraph";
+  public static final String PACKAGE_NAME = "org.jboss.errai.ui.nav.client.local.spi";
+  public static final String CLASS_NAME = "GeneratedNavigationGraph";
 
   /*
    * These pages should not cause @Page validation if no other pages exist.
    */
-  private static final Collection<String> BLACKLISTED_PAGES = Arrays
-          .asList("org.jboss.errai.security.client.local.context.SecurityContextImpl.SecurityRolesConstraintPage");
+  private static final Collection<String> BLACKLISTED_PAGES = singletonList(
+          "org.jboss.errai.security.client.local.context.SecurityContextImpl.SecurityRolesConstraintPage");
 
   @Override
   public String generate(TreeLogger logger, GeneratorContext context,
           String typeName) throws UnableToCompleteException {
 
-    return startAsyncGeneratorsAndWaitFor(NavigationGraph.class,
-        context, logger, NavigationGraph.class.getPackage().getName(), GENERATED_CLASS_NAME);
+    return startAsyncGeneratorsAndWaitFor(NavigationGraph.class, context, logger, PACKAGE_NAME, CLASS_NAME);
   }
 
   @Override
   protected String generate(TreeLogger logger, GeneratorContext context) {
-    final ClassStructureBuilder<?> classBuilder =
-        Implementations.extend(NavigationGraph.class, GENERATED_CLASS_NAME);
+    final MetaClassFinder metaClassFinder = ann -> new HashSet<>(ClassScanner.getTypesAnnotatedWith(ann, context));
+    final String fqcn = PACKAGE_NAME + "." + CLASS_NAME;
+
+    return generateSource(metaClassFinder, fqcn);
+  }
+
+  public String generateSource(final MetaClassFinder metaClassFinder, final String fqcn) {
+    final ClassStructureBuilder<?> classBuilder = Implementations.extend(NavigationGraph.class, fqcn);
 
     // accumulation of (name, pageclass) mappings for dupe detection and dot file generation
-    BiMap<String, MetaClass> pageNames = HashBiMap.create();
+    final BiMap<String, MetaClass> pageNames = HashBiMap.create();
 
     // accumulation UniquePageRoles for ensuring there is exactly one.
-    Multimap<Class<?>, MetaClass> pageRoles = ArrayListMultimap.create();
+    final Multimap<MetaClass, MetaClass> pageRoles = ArrayListMultimap.create();
 
     ConstructorBlockBuilder<?> ctor = classBuilder.publicConstructor();
-    final Collection<MetaClass> pages = ClassScanner.getTypesAnnotatedWith(Page.class, context);
+    final Collection<MetaClass> pages = metaClassFinder.findAnnotatedWith(Page.class);
     addCacheRelevantClasses(pages);
 
     /*
@@ -134,9 +158,9 @@ public class NavigationGraphGenerator extends AbstractAsyncGenerator {
           throw new GenerationException("Class " + pageClass.getFullyQualifiedName()
                   + " is annotated with @Page, so it must implement IsWidget or be @Templated");
         }
-        Page annotation = pageClass.getAnnotation(Page.class);
+        MetaAnnotation annotation = pageClass.getAnnotation(Page.class).get();
         String pageName = getPageName(pageClass);
-        List<Class<? extends PageRole>> annotatedPageRoles = Arrays.asList(annotation.role());
+        List<MetaClass> annotatedPageRoles = Arrays.asList(annotation.valueAsArray("role", MetaClass[].class));
 
         MetaClass prevPageWithThisName = pageNames.put(pageName, pageClass);
         if (prevPageWithThisName != null) {
@@ -145,9 +169,9 @@ public class NavigationGraphGenerator extends AbstractAsyncGenerator {
                   " are both named [" + pageName + "]");
         }
         Statement pageImplStmt = generateNewInstanceOfPageImpl(pageClass, pageName);
-        if (annotatedPageRoles.contains(DefaultPage.class)) {
+        if (annotatedPageRoles.stream().anyMatch(c -> c.instanceOf(DefaultPage.class))) {
           // need to assign the page impl to a variable and add it to the map twice
-          URLPattern pattern = URLPatternMatcher.generatePattern(annotation.path());
+          URLPattern pattern = URLPatternMatcher.generatePattern(annotation.value("path"));
           if (pattern.getParamList().size() > 0) {
             throw new GenerationException("Default Page must not contain any path parameters.");
           }
@@ -172,10 +196,10 @@ public class NavigationGraphGenerator extends AbstractAsyncGenerator {
             Stmt.nestedCall(Refs.get("pagesByName"))
                 .invoke("put", pageName, Refs.get(fieldName)));
 
-        for (Class<? extends PageRole> annotatedPageRole : annotatedPageRoles) {
+        for (MetaClass annotatedPageRole : annotatedPageRoles) {
           pageRoles.put(annotatedPageRole, pageClass);
           // DefaultPage is already added above.
-          if (!annotatedPageRole.equals(DefaultPage.class))
+          if (!annotatedPageRole.instanceOf(DefaultPage.class))
             ctor.append(
                 Stmt.nestedCall(Refs.get("pagesByRole"))
                   .invoke("put", annotatedPageRole, Refs.get(fieldName)));
@@ -210,8 +234,8 @@ public class NavigationGraphGenerator extends AbstractAsyncGenerator {
     return pageClass.getName();
   }
 
-  private void validateDefaultPagePresent(Collection<MetaClass> pages, Multimap<Class<?>, MetaClass> pageRoles) {
-    Collection<MetaClass> defaultPages = pageRoles.get(DefaultPage.class);
+  private void validateDefaultPagePresent(Collection<MetaClass> pages, Multimap<MetaClass, MetaClass> pageRoles) {
+    Collection<MetaClass> defaultPages = pageRoles.get(MetaClassFactory.getUncached(DefaultPage.class));
     if (!pages.isEmpty() && defaultPages.isEmpty()) {
       throw new GenerationException(
               "No @Page classes have role = DefaultPage. Exactly one @Page class" +
@@ -219,17 +243,17 @@ public class NavigationGraphGenerator extends AbstractAsyncGenerator {
     }
   }
 
-  private void validateUnique(Multimap<Class<?>, MetaClass> pageRoles) {
-    for (Class<?> pageRole : pageRoles.keys()) {
+  private void validateUnique(Multimap<MetaClass, MetaClass> pageRoles) {
+    for (MetaClass pageRole : pageRoles.keys()) {
       final Collection<MetaClass> pages = pageRoles.get(pageRole);
-      if (UniquePageRole.class.isAssignableFrom(pageRole) && pages.size() > 1) {
+      if (pageRole.isAssignableTo(UniquePageRole.class) && pages.size() > 1) {
         createValidationError(pages, pageRole);
       }
     }
   }
 
   private void validateExistingRolesPresent(final Collection<MetaClass> pages,
-          final Multimap<Class<?>, MetaClass> pageRoles) {
+          final Multimap<MetaClass, MetaClass> pageRoles) {
     for (final MetaClass page : pages) {
       for (final MetaField field : getAllFields(page)) {
         if (field.getType().getErased().equals(MetaClassFactory.get(TransitionToRole.class))) {
@@ -264,7 +288,7 @@ public class NavigationGraphGenerator extends AbstractAsyncGenerator {
 
   }
 
-  private void createValidationError(Collection<MetaClass> pages, Class<?> role) {
+  private void createValidationError(Collection<MetaClass> pages, MetaClass role) {
     StringBuilder builder = new StringBuilder();
     for (MetaClass mc : pages) {
       builder.append("\n  ").append(mc.getFullyQualifiedName());
@@ -314,8 +338,8 @@ public class NavigationGraphGenerator extends AbstractAsyncGenerator {
   }
 
   private String getPageURL(MetaClass pageClass, String pageName) {
-    Page pageAnnotation = pageClass.getAnnotation(Page.class);
-    String path = pageAnnotation.path();
+    MetaAnnotation pageAnnotation = pageClass.getAnnotation(Page.class).get();
+    String path = pageAnnotation.value("path");
 
     if (path.equals("")) {
       return pageName;
@@ -387,8 +411,8 @@ public class NavigationGraphGenerator extends AbstractAsyncGenerator {
             "destroy",
             Parameter.of(pageClass, "widget")).body();
 
-    if (pageClass.getAnnotation(Singleton.class) == null && pageClass.getAnnotation(ApplicationScoped.class) == null
-            && pageClass.getAnnotation(EntryPoint.class) == null) {
+    if (!pageClass.isAnnotationPresent(Singleton.class) && !pageClass.isAnnotationPresent(ApplicationScoped.class)
+            && !pageClass.isAnnotationPresent(EntryPoint.class)) {
       method.append(Stmt.loadVariable("bm").invoke("destroyBean", Stmt.loadVariable("widget")));
     }
 
@@ -420,7 +444,7 @@ public class NavigationGraphGenerator extends AbstractAsyncGenerator {
   private MetaMethod checkMethodAndAddPrivateAccessors(AnonymousClassStructureBuilder pageImplBuilder,
       BlockBuilder<?> methodToAppendTo, MetaClass pageClass, Class<? extends Annotation> annotation,
       Parameter... optionalParams) {
-    List<MetaMethod> annotatedMethods = pageClass.getMethodsAnnotatedWith(annotation);
+    List<MetaMethod> annotatedMethods = pageClass.getMethodsAnnotatedWith(MetaClassFactory.get(annotation));
     if (annotatedMethods.size() > 1) {
       throw new UnsupportedOperationException(
           "A @Page can have at most 1 " + createAnnotionName(annotation) + " method, but " + pageClass + " has "
@@ -448,7 +472,7 @@ public class NavigationGraphGenerator extends AbstractAsyncGenerator {
             Parameter param = optionalParams[i - 1];
             MetaParameter realParam = metaMethod.getParameters()[i - 1];
 
-            if (realParam.getType().equals(MetaClassFactory.get(param.getType().asClass()))) {
+            if (realParam.getType().equals(param.getType())) {
               paramValues[i] = Stmt.loadVariable(param.getName());
             } else {
               throw new UnsupportedOperationException(
@@ -536,8 +560,8 @@ public class NavigationGraphGenerator extends AbstractAsyncGenerator {
     int idx = 0;
 
     method.append(Stmt.declareFinalVariable("pageState", Map.class, new HashMap<String, Object>()));
-    for (MetaField field : pageClass.getFieldsAnnotatedWith(PageState.class)) {
-      PageState psAnno = field.getAnnotation(PageState.class);
+    for (MetaField field : pageClass.getFieldsAnnotatedWith(MetaClassFactory.get(PageState.class))) {
+      MetaAnnotation psAnno = field.getAnnotation(PageState.class).get();
       String fieldName = field.getName();
       String queryParamName = psAnno.value();
       if (queryParamName == null || queryParamName.trim().isEmpty()) {
@@ -631,7 +655,7 @@ public class NavigationGraphGenerator extends AbstractAsyncGenerator {
    * {@code .errai} cache directory.
    *
    */
-  private void renderNavigationToDotFile(BiMap<String, MetaClass> pages, Multimap<Class<?>, MetaClass> pageRoles) {
+  private void renderNavigationToDotFile(BiMap<String, MetaClass> pages, Multimap<MetaClass, MetaClass> pageRoles) {
     final File dotFile = new File(RebindUtils.getErraiCacheDir().getAbsolutePath(), "navgraph.gv");
     PrintWriter out = null;
     try {
@@ -648,9 +672,9 @@ public class NavigationGraphGenerator extends AbstractAsyncGenerator {
         // entry for the node itself
         out.print("\"" + pageName + "\"");
 
-        Page pageAnnotation = pageClass.getAnnotation(Page.class);
-        List<Class<? extends PageRole>> roles = Arrays.asList(pageAnnotation.role());
-        if (roles.contains(DefaultPage.class)) {
+        MetaAnnotation pageAnnotation = pageClass.getAnnotation(Page.class).get();
+        List<MetaClass> roles = Arrays.asList(pageAnnotation.valueAsArray("role", MetaClass[].class));
+        if (roles.stream().anyMatch(s -> s.instanceOf(DefaultPage.class))) {
           out.print(" [penwidth=3]");
         }
         out.println();
@@ -690,9 +714,9 @@ public class NavigationGraphGenerator extends AbstractAsyncGenerator {
     }
   }
 
-  private MetaType getPageWithRole(final MetaType uniquePageRole, final Multimap<Class<?>, MetaClass> pageRoles) {
-    for (final Class<?> pageRole : pageRoles.keySet()) {
-      if (UniquePageRole.class.isAssignableFrom(pageRole) && uniquePageRole.getName().equals(pageRole.getSimpleName())) {
+  private MetaType getPageWithRole(final MetaType uniquePageRole, final Multimap<MetaClass, MetaClass> pageRoles) {
+    for (final MetaClass pageRole : pageRoles.keySet()) {
+      if (pageRole.isAssignableTo(UniquePageRole.class) && uniquePageRole.getName().equals(pageRole.getName())) {
         final Collection<MetaClass> matchingPages = pageRoles.get(pageRole);
         if (matchingPages.size() == 1) {
           return matchingPages.iterator().next();
@@ -757,4 +781,10 @@ public class NavigationGraphGenerator extends AbstractAsyncGenerator {
   protected boolean isRelevantClass(MetaClass clazz) {
     return clazz.isAnnotationPresent(Page.class);
   }
+
+  @Override
+  public boolean alreadyGeneratedSourcesViaAptGenerators(final GeneratorContext context) {
+    return RebindUtils.isErraiUseAptGeneratorsPropertyEnabled(context);
+  }
+
 }
